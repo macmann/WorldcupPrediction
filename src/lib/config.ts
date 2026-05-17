@@ -1,5 +1,5 @@
 export const config = {
-  jwtSecret: process.env.JWT_SECRET ?? "dev-only-change-me",
+  jwtSecret: process.env.NEXTAUTH_SECRET ?? process.env.JWT_SECRET ?? "dev-only-change-me",
   tournamentStartTime: new Date(process.env.TOURNAMENT_START_TIME ?? "2026-06-11T00:00:00.000Z"),
   footballApiBaseUrl: process.env.FOOTBALL_API_BASE_URL ?? "https://api.football-data.org/v4",
   footballApiKey: process.env.FOOTBALL_API_KEY ?? "",
