@@ -1,6 +1,7 @@
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
 import { PlatformLogo } from "@/components/Icons";
+import { UserProfile } from "@/components/UserProfile";
 
 export function AppShell({ children, title = "WC Predictor", eyebrow = "2026 Pool" }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
   return (
@@ -15,6 +16,7 @@ export function AppShell({ children, title = "WC Predictor", eyebrow = "2026 Poo
             <h1 className="mt-2 text-3xl font-black tracking-tight">{title}</h1>
           </div>
         </div>
+        <UserProfile />
       </header>
       <section className="-mt-4 min-h-[calc(100vh-8rem)] space-y-4 rounded-t-[2rem] bg-slate-50 px-4 pb-28 pt-5">{children}</section>
       <BottomNav />
