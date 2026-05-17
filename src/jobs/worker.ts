@@ -1,0 +1,6 @@
+import { startBackgroundJobs } from "./runtime";
+
+startBackgroundJobs().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
