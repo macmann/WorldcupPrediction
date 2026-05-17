@@ -1,5 +1,5 @@
 import { MatchStatus } from "@prisma/client";
-import { config } from "@/lib/config";
+import { config } from "../lib/config";
 
 export type ExternalFixture = {
   id: number;

@@ -5,14 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "tsx src/server.ts",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
     "worker": "tsx src/jobs/worker.ts",
     "scheduler": "tsx src/jobs/scheduler.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "postinstall": "prisma generate",
+    "render-build": "prisma generate && next build",
+    "render-start": "prisma migrate deploy && tsx src/server.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -23,7 +26,9 @@
     "next": "^14.2.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "tsx": "^4.19.2",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -34,9 +39,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
     "postcss": "^8.4.49",
-    "prisma": "^5.22.0",
     "tailwindcss": "^3.4.15",
-    "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }
 }

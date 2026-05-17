@@ -1,6 +1,6 @@
 import { MatchStatus } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import { calculateMatchPoints } from "@/lib/scoring";
+import { prisma } from "../lib/prisma";
+import { calculateMatchPoints } from "../lib/scoring";
 
 export async function recalculateMatch(matchId: number) {
   const match = await prisma.match.findUnique({ where: { id: matchId } });

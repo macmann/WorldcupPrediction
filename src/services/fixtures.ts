@@ -1,7 +1,7 @@
 import { MatchStatus } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../lib/prisma";
 import { fetchWorldCupFixtures } from "./footballApi";
-import { scoringQueue } from "@/jobs/queues";
+import { getScoringQueue } from "../jobs/queues";
 
 export async function ingestFixtures() {
   const fixtures = await fetchWorldCupFixtures();
@@ -29,7 +29,7 @@ export async function ingestFixtures() {
       }
     });
     if (fixture.status === MatchStatus.FINISHED && fixture.homeScore !== null && fixture.awayScore !== null) {
-      await scoringQueue.add("score-match", { matchId: fixture.id }, { jobId: `score-${fixture.id}` });
+      await getScoringQueue().add("score-match", { matchId: fixture.id }, { jobId: `score-${fixture.id}` });
     }
   }
   return { upserted: fixtures.length };
