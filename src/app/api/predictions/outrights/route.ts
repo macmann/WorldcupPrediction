@@ -68,7 +68,9 @@ export async function GET(request: Request) {
       } : null,
       source: hasProvider ? "live-provider" : "database",
       message: options.players.length === 0 || options.goalkeepers.length === 0
-        ? "Connect WC2026_API_KEY or FOOTBALL_API_KEY with squad/player support to populate live player and goalkeeper options."
+        ? hasProvider
+          ? "Your football provider keys are configured, but the connected provider response did not include squad/player and goalkeeper data yet."
+          : "Connect WC2026_API_KEY or FOOTBALL_API_KEY with squad/player support to populate live player and goalkeeper options."
         : null
     });
   } catch (error) {
