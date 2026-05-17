@@ -3,7 +3,7 @@ import { StoreProvider } from "@/store/useStore";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "WC Predictor",
+  title: "Football Fantasy Myanmar - WC 2026",
   description: "Predict scores, join private leagues, and climb the World Cup leaderboard.",
   icons: {
     icon: "/logo.svg",
