@@ -3,7 +3,7 @@ import { Card, SectionTitle, SkeletonCard } from "@/components/Cards";
 import { OutrightPicksCard } from "@/components/OutrightPicksCard";
 import { Countdown } from "@/components/Countdown";
 import { PredictionForm } from "@/components/PredictionForm";
-import { defaultOutrights, getDemoLeagues } from "@/lib/frontendData";
+import { getDemoLeagues } from "@/lib/frontendData";
 import { fetchMatches } from "@/lib/serverMatches";
 
 export default async function Dashboard() {
@@ -11,7 +11,7 @@ export default async function Dashboard() {
   const now = new Date();
   const nextMatch = matches.find((match) => new Date(match.kickoffTime) > now) ?? matches[0];
   const leagues = getDemoLeagues();
-  const canEditOutrights = now < new Date(defaultOutrights.tournamentStartsAt);
+  const canEditOutrights = true;
 
   return (
     <AppShell>

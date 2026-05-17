@@ -61,7 +61,7 @@ Notes:
 openssl rand -base64 32
 ```
 
-- Fixture sync uses `WC2026_API_KEY` first when present, then falls back to the football-data.org-compatible `FOOTBALL_API_KEY`.
+- Fixture sync and outright-pick option sync use `WC2026_API_KEY` first when present, then fall back to the football-data.org-compatible `FOOTBALL_API_KEY`. The Champion, Best Player, and Best Goalkeeper dropdowns are loaded from synced tournament teams/squads instead of hard-coded mock options; if your provider does not expose squad/player data, those player dropdowns stay disabled until real players are available in the database.
 
 ### 3. Apply the Prisma schema to your hosted database
 
@@ -229,6 +229,7 @@ For early prototypes, you can use `npx prisma db push`, but migration files are 
 1. Users register and are enrolled in the global league.
 2. Users save match predictions until kickoff.
 3. Recurring fixture sync jobs ingest fixture data from the external football API.
-4. Live score jobs poll for completed matches and queue scoring work.
-5. Scoring jobs recalculate prediction awards, exact-score counts, and global points.
-6. Leaderboards sort by global points, exact-score count, and registration timestamp.
+4. Outright pick option loading syncs live tournament teams and squads for Champion, Best Player, and Best Goalkeeper selections.
+5. Live score jobs poll for completed matches and queue scoring work.
+6. Scoring jobs recalculate prediction awards, exact-score counts, and global points.
+7. Leaderboards sort by global points, exact-score count, and registration timestamp.
