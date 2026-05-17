@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
+import { config } from "@/lib/config";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
+import { getOutrightOptions, syncOutrightCatalog } from "@/services/outrightCatalog";
 
 const schema = z.object({
   tournamentId: z.string().uuid().optional(),
@@ -15,6 +17,63 @@ async function resolveTournamentStartTime(tournamentId: string) {
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { startsAt: true } });
   if (!tournament) throw Object.assign(new Error("Tournament not found"), { status: 404 });
   return tournament.startsAt;
+}
+
+function optionName(option: { flagEmoji?: string | null; name: string; team?: { shortName?: string | null; name: string } | null }) {
+  const teamSuffix = option.team ? ` (${option.team.shortName ?? option.team.name})` : "";
+  return `${option.flagEmoji ? `${option.flagEmoji} ` : ""}${option.name}${teamSuffix}`;
+}
+
+export async function GET(request: Request) {
+  try {
+    const user = await requireUser();
+    const { searchParams } = new URL(request.url);
+    let options = await getOutrightOptions();
+    const shouldRefresh = searchParams.get("refresh") === "1";
+    const hasProvider = Boolean(config.wc2026ApiKey || config.footballApiKey);
+
+    if (shouldRefresh || options.teams.length === 0 || (hasProvider && (options.players.length === 0 || options.goalkeepers.length === 0))) {
+      await syncOutrightCatalog();
+      options = await getOutrightOptions();
+    }
+
+    const outright = await prisma.outright.findUnique({
+      where: { userId: user.id },
+      include: {
+        championTeam: true,
+        bestPlayer: { include: { team: true } },
+        bestGoalkeeper: { include: { team: true } }
+      }
+    });
+
+    return NextResponse.json({
+      tournament: {
+        id: options.tournament.id,
+        name: options.tournament.name,
+        startsAt: options.tournament.startsAt
+      },
+      canEdit: new Date() < options.tournament.startsAt,
+      options: {
+        teams: options.teams.map((team) => ({ id: team.id, name: optionName(team), groupName: team.groupName })),
+        players: options.players.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null })),
+        goalkeepers: options.goalkeepers.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null }))
+      },
+      outright: outright ? {
+        championTeamId: outright.championTeamId,
+        bestPlayerId: outright.bestPlayerId,
+        bestGkId: outright.bestGkId,
+        champion: optionName(outright.championTeam),
+        bestPlayer: optionName(outright.bestPlayer),
+        bestGk: optionName(outright.bestGoalkeeper)
+      } : null,
+      source: hasProvider ? "live-provider" : "database",
+      message: options.players.length === 0 || options.goalkeepers.length === 0
+        ? "Connect WC2026_API_KEY or FOOTBALL_API_KEY with squad/player support to populate live player and goalkeeper options."
+        : null
+    });
+  } catch (error) {
+    return jsonError(error);
+  }
 }
 
 export async function POST(request: Request) {

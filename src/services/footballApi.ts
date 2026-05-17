@@ -1,6 +1,28 @@
 import { MatchStatus } from "@prisma/client";
 import { config } from "../lib/config";
 
+export type ExternalTeam = {
+  externalId?: string;
+  name: string;
+  shortName?: string | null;
+  flagEmoji?: string | null;
+  groupName?: string | null;
+};
+
+export type ExternalPlayer = {
+  externalId?: string;
+  name: string;
+  position?: string | null;
+  isGoalkeeper: boolean;
+  teamExternalId?: string | null;
+  teamName?: string | null;
+};
+
+export type ExternalCatalog = {
+  teams: ExternalTeam[];
+  players: ExternalPlayer[];
+};
+
 export type ExternalFixture = {
   id: number;
   externalId?: string;
@@ -110,4 +132,83 @@ export async function fetchWorldCupFixtures(): Promise<ExternalFixture[]> {
   if (config.wc2026ApiKey) return fetchWc2026ApiFixtures();
   if (config.footballApiKey) return fetchFootballDataFixtures();
   return [];
+}
+
+
+function parseTeam(raw: any): ExternalTeam | null {
+  const name = raw?.name ?? raw?.team_name ?? raw?.teamName ?? raw?.country;
+  if (!name || /\bTBD\b/i.test(String(name))) return null;
+  return {
+    externalId: raw?.id !== undefined ? String(raw.id) : raw?.external_id !== undefined ? String(raw.external_id) : undefined,
+    name: String(name),
+    shortName: raw?.shortName ?? raw?.short_name ?? raw?.tla ?? null,
+    flagEmoji: raw?.flagEmoji ?? raw?.flag_emoji ?? null,
+    groupName: normalizeGroupName(raw?.groupName ?? raw?.group_name ?? raw?.group ?? null)
+  };
+}
+
+function parsePlayer(raw: any, team?: ExternalTeam | null): ExternalPlayer | null {
+  const name = raw?.name ?? raw?.player_name ?? raw?.playerName;
+  if (!name) return null;
+  const position = raw?.position ?? raw?.role ?? null;
+  return {
+    externalId: raw?.id !== undefined ? String(raw.id) : raw?.external_id !== undefined ? String(raw.external_id) : undefined,
+    name: String(name),
+    position,
+    isGoalkeeper: Boolean(raw?.isGoalkeeper ?? raw?.is_goalkeeper) || String(position ?? "").toUpperCase().includes("KEEPER") || String(position ?? "").toUpperCase() === "GK",
+    teamExternalId: team?.externalId ?? (raw?.team_id !== undefined ? String(raw.team_id) : raw?.teamId !== undefined ? String(raw.teamId) : null),
+    teamName: team?.name ?? raw?.team_name ?? raw?.teamName ?? null
+  };
+}
+
+async function fetchFootballDataTeamDetail(teamId: string): Promise<{ players: ExternalPlayer[] }> {
+  const response = await fetch(`${config.footballApiBaseUrl}/teams/${teamId}`, {
+    headers: { "X-Auth-Token": config.footballApiKey },
+    cache: "no-store"
+  });
+  if (!response.ok) return { players: [] };
+  const payload = await response.json();
+  const team = parseTeam(payload);
+  return { players: (payload.squad ?? []).map((player: any) => parsePlayer(player, team)).filter(Boolean) as ExternalPlayer[] };
+}
+
+async function fetchFootballDataCatalog(): Promise<ExternalCatalog> {
+  const response = await fetch(`${config.footballApiBaseUrl}/competitions/${config.worldCupCompetitionCode}/teams`, {
+    headers: { "X-Auth-Token": config.footballApiKey },
+    cache: "no-store"
+  });
+  if (!response.ok) throw new Error(`Football API teams failed: ${response.status}`);
+  const payload = await response.json();
+  const rawTeams = payload.teams ?? [];
+  const teams = rawTeams.map(parseTeam).filter(Boolean) as ExternalTeam[];
+  const embeddedPlayers = rawTeams.flatMap((rawTeam: any) => {
+    const team = parseTeam(rawTeam);
+    return (rawTeam.squad ?? rawTeam.players ?? []).map((player: any) => parsePlayer(player, team)).filter(Boolean) as ExternalPlayer[];
+  });
+
+  const detailPlayers = embeddedPlayers.length > 0
+    ? []
+    : (await Promise.all(teams.filter((team) => team.externalId).map((team) => fetchFootballDataTeamDetail(team.externalId!)))).flatMap((detail) => detail.players);
+
+  return { teams, players: [...embeddedPlayers, ...detailPlayers] };
+}
+
+async function fetchWc2026ApiCatalog(): Promise<ExternalCatalog> {
+  const [teamsResponse, playersResponse] = await Promise.all([
+    fetch(`${config.wc2026ApiBaseUrl}/teams`, { headers: { Authorization: `Bearer ${config.wc2026ApiKey}` }, cache: "no-store" }),
+    fetch(`${config.wc2026ApiBaseUrl}/players`, { headers: { Authorization: `Bearer ${config.wc2026ApiKey}` }, cache: "no-store" })
+  ]);
+
+  const teamsPayload = teamsResponse.ok ? await teamsResponse.json() : [];
+  const playersPayload = playersResponse.ok ? await playersResponse.json() : [];
+  const teams = (Array.isArray(teamsPayload) ? teamsPayload : teamsPayload.teams ?? []).map(parseTeam).filter(Boolean) as ExternalTeam[];
+  const players = (Array.isArray(playersPayload) ? playersPayload : playersPayload.players ?? []).map((player: any) => parsePlayer(player)).filter(Boolean) as ExternalPlayer[];
+
+  return { teams, players };
+}
+
+export async function fetchWorldCupCatalog(): Promise<ExternalCatalog> {
+  if (config.wc2026ApiKey) return fetchWc2026ApiCatalog();
+  if (config.footballApiKey) return fetchFootballDataCatalog();
+  return { teams: [], players: [] };
 }

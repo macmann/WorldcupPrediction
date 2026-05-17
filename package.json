@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "worker": "node --env-file=.env --import tsx src/jobs/runtime.ts",
     "scheduler": "node --env-file=.env --import tsx src/jobs/scheduler.ts",
     "prisma:generate": "prisma generate",

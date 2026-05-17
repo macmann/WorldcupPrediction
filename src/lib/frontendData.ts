@@ -27,31 +27,37 @@ export type MatchFilters = {
   matchday?: string | number;
 };
 
-export const demoOutrightOptions = {
-  teams: [
-    { id: "11111111-1111-4111-8111-111111111111", name: "Argentina" },
-    { id: "22222222-2222-4222-8222-222222222222", name: "France" },
-    { id: "33333333-3333-4333-8333-333333333333", name: "Brazil" },
-    { id: "44444444-4444-4444-8444-444444444444", name: "Spain" }
-  ],
-  players: [
-    { id: "55555555-5555-4555-8555-555555555555", name: "Kylian Mbappé" },
-    { id: "66666666-6666-4666-8666-666666666666", name: "Lionel Messi" },
-    { id: "77777777-7777-4777-8777-777777777777", name: "Jude Bellingham" },
-    { id: "88888888-8888-4888-8888-888888888888", name: "Vinícius Jr." }
-  ],
-  goalkeepers: [
-    { id: "99999999-9999-4999-8999-999999999999", name: "Alisson" },
-    { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Emiliano Martínez" },
-    { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Thibaut Courtois" },
-    { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", name: "Mike Maignan" }
-  ]
+export type OutrightOption = {
+  id: string;
+  name: string;
+  groupName?: string | null;
+  teamName?: string | null;
+};
+
+export type OutrightOptionsPayload = {
+  tournament: { id: string; name: string; startsAt: string };
+  canEdit: boolean;
+  options: {
+    teams: OutrightOption[];
+    players: OutrightOption[];
+    goalkeepers: OutrightOption[];
+  };
+  outright: {
+    championTeamId: string;
+    bestPlayerId: string;
+    bestGkId: string;
+    champion: string;
+    bestPlayer: string;
+    bestGk: string;
+  } | null;
+  source: "live-provider" | "database";
+  message: string | null;
 };
 
 export const defaultOutrights = {
-  champion: "Argentina",
-  bestPlayer: "Kylian Mbappé",
-  bestGk: "Alisson",
+  champion: "—",
+  bestPlayer: "—",
+  bestGk: "—",
   tournamentStartsAt: "2026-06-11T00:00:00.000Z"
 };
 
