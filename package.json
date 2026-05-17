@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev:web": "next dev",
+    "dev:web:clean": "npm run clean:next && next dev",
     "dev:worker": "node --env-file=.env --import tsx src/jobs/runtime.ts",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:worker\"",
     "build": "next build",
+    "clean:next": "node -e \"require('node:fs').rmSync('.next',{recursive:true,force:true})\"",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

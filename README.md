@@ -117,13 +117,29 @@ npm run dev:web
 npm run dev:worker
 ```
 
+### Clearing a stale Next.js cache
+
+If Next.js logs a webpack cache restore warning such as `Restoring pack failed` with `invalid stored block lengths`, the local `.next` cache is usually corrupted. It is safe to delete because Next.js rebuilds it automatically. Run:
+
+```bash
+npm run clean:next
+```
+
+Then restart the web server with either `npm run dev:web` or the one-step clean start command:
+
+```bash
+npm run dev:web:clean
+```
+
 ## Useful commands
 
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Runs Next.js and the BullMQ worker locally with `concurrently`. |
 | `npm run dev:web` | Runs only the Next.js local development server. |
+| `npm run dev:web:clean` | Clears the local `.next` cache, then runs the Next.js local development server. |
 | `npm run dev:worker` | Runs only the BullMQ worker runtime. |
+| `npm run clean:next` | Removes the local `.next` directory when Next.js or webpack caches become stale or corrupted. |
 | `npm run build` | Builds the Next.js app. |
 | `npm start` | Starts the built Next.js app with `next start`. |
 | `npm run worker` | Starts the BullMQ worker process. |
