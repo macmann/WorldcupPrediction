@@ -4,16 +4,27 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
-import { getScoringQueue } from "@/jobs/queues";
+import { enqueueScoringJob } from "@/jobs/scoringEngine.job";
 
-const schema = z.object({ homeScore: z.number().int().min(0), awayScore: z.number().int().min(0) });
+const paramsSchema = z.object({ id: z.coerce.number().int().positive() });
+const schema = z.object({ homeScore: z.number().int().min(0), awayScore: z.number().int().min(0) }).strict();
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     await requireAdmin();
+    const { id } = paramsSchema.parse(params);
     const input = schema.parse(await request.json());
-    const match = await prisma.match.update({ where: { id: Number(params.id) }, data: { homeScore: input.homeScore, awayScore: input.awayScore, status: MatchStatus.FINISHED } });
-    await getScoringQueue().add("score-match", { matchId: match.id }, { jobId: `admin-score-${match.id}-${Date.now()}` });
+    const match = await prisma.match.update({
+      where: { id },
+      data: {
+        homeScore: input.homeScore,
+        awayScore: input.awayScore,
+        homeScore90: input.homeScore,
+        awayScore90: input.awayScore,
+        status: MatchStatus.FINISHED
+      }
+    });
+    await enqueueScoringJob(match.id);
     return NextResponse.json({ match });
   } catch (error) {
     return jsonError(error);

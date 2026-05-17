@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { calculateMatchPoints, calculateOutrightPoints } from "../src/lib/scoring";
 
 test("awards two points for an exact score", () => {
-  assert.deepEqual(calculateMatchPoints({ home: 2, away: 1 }, { home: 2, away: 1 }), { points: 2, exact: true });
+  assert.deepEqual(calculateMatchPoints({ home: 2, away: 1 }, { home: 2, away: 1 }), { points: 2, exact: true, correctOutcome: true });
 });
 
 test("awards one point for the correct non-exact outcome", () => {

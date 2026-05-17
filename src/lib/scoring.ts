@@ -3,26 +3,20 @@ export type ScoreLine = {
   away: number;
 };
 
+function outcome(score: ScoreLine) {
+  if (score.home > score.away) return "HOME";
+  if (score.away > score.home) return "AWAY";
+  return "DRAW";
+}
+
 export function calculateMatchPoints(predicted: ScoreLine, actual: ScoreLine) {
   const exactScore = predicted.home === actual.home && predicted.away === actual.away;
-  if (exactScore) return { points: 2, exact: true };
+  if (exactScore) return { points: 2, exact: true, correctOutcome: true };
 
-  const predictedHomeWin = predicted.home > predicted.away;
-  const predictedAwayWin = predicted.away > predicted.home;
-  const predictedDraw = predicted.home === predicted.away;
-  const actualHomeWin = actual.home > actual.away;
-  const actualAwayWin = actual.away > actual.home;
-  const actualDraw = actual.home === actual.away;
+  const correctOutcome = outcome(predicted) === outcome(actual);
+  if (correctOutcome) return { points: 1, exact: false, correctOutcome: true };
 
-  if (
-    (predictedHomeWin && actualHomeWin) ||
-    (predictedAwayWin && actualAwayWin) ||
-    (predictedDraw && actualDraw)
-  ) {
-    return { points: 1, exact: false };
-  }
-
-  return { points: 0, exact: false };
+  return { points: 0, exact: false, correctOutcome: false };
 }
 
 export function calculateOutrightPoints(
