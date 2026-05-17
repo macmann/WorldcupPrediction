@@ -2,47 +2,71 @@ import { MatchStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { calculateMatchPoints } from "../lib/scoring";
 
+function standardTimeScore(match: { homeScore90: number | null; awayScore90: number | null; homeScore: number | null; awayScore: number | null }) {
+  return {
+    home: match.homeScore90 ?? match.homeScore,
+    away: match.awayScore90 ?? match.awayScore
+  };
+}
+
 export async function recalculateMatch(matchId: number) {
   const match = await prisma.match.findUnique({ where: { id: matchId } });
-  if (!match || match.status !== MatchStatus.FINISHED || match.homeScore === null || match.awayScore === null) {
-    throw Object.assign(new Error("Match must be finished with a final score before scoring"), { status: 422 });
+  const actual = match ? standardTimeScore(match) : { home: null, away: null };
+
+  if (!match || match.status !== MatchStatus.FINISHED || actual.home === null || actual.away === null) {
+    throw Object.assign(new Error("Match must be finished with a standard-time score before scoring"), { status: 422 });
   }
 
   const predictions = await prisma.prediction.findMany({ where: { matchId } });
+  const scoredAt = new Date();
 
   await prisma.$transaction(async (tx) => {
-    await tx.prediction.updateMany({ where: { matchId }, data: { pointsAwarded: null, isLocked: true } });
-
     for (const prediction of predictions) {
       const result = calculateMatchPoints(
         { home: prediction.predictedHomeScore, away: prediction.predictedAwayScore },
-        { home: match.homeScore!, away: match.awayScore! }
+        { home: actual.home!, away: actual.away! }
       );
       await tx.prediction.update({
         where: { id: prediction.id },
-        data: { pointsAwarded: result.points, isLocked: true }
+        data: {
+          pointsAwarded: result.points,
+          isExactScore: result.exact,
+          isCorrectOutcome: result.correctOutcome,
+          isLocked: true,
+          scoredAt
+        }
       });
     }
 
-    const aggregates = await tx.prediction.groupBy({
+    const pointAggregates = await tx.prediction.groupBy({
       by: ["userId"],
       _sum: { pointsAwarded: true },
       where: { pointsAwarded: { not: null } }
     });
-    const exactAggregates = await tx.prediction.findMany({
-      where: { pointsAwarded: 2 },
-      select: { userId: true }
+    const exactAggregates = await tx.prediction.groupBy({
+      by: ["userId"],
+      _count: { _all: true },
+      where: { isExactScore: true }
     });
-    const exactCounts = new Map<string, number>();
-    exactAggregates.forEach((prediction) => exactCounts.set(prediction.userId, (exactCounts.get(prediction.userId) ?? 0) + 1));
+    const outcomeAggregates = await tx.prediction.groupBy({
+      by: ["userId"],
+      _count: { _all: true },
+      where: { isCorrectOutcome: true }
+    });
 
-    await tx.user.updateMany({ data: { globalPoints: 0, exactScoresCount: 0 } });
-    for (const aggregate of aggregates) {
+    const pointsByUser = new Map(pointAggregates.map((aggregate) => [aggregate.userId, aggregate._sum.pointsAwarded ?? 0]));
+    const exactByUser = new Map(exactAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));
+    const outcomeByUser = new Map(outcomeAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));
+    const userIds = new Set([...pointsByUser.keys(), ...exactByUser.keys(), ...outcomeByUser.keys()]);
+
+    await tx.user.updateMany({ data: { globalPoints: 0, exactScoresCount: 0, correctOutcomesCount: 0 } });
+    for (const userId of userIds) {
       await tx.user.update({
-        where: { id: aggregate.userId },
+        where: { id: userId },
         data: {
-          globalPoints: aggregate._sum.pointsAwarded ?? 0,
-          exactScoresCount: exactCounts.get(aggregate.userId) ?? 0
+          globalPoints: pointsByUser.get(userId) ?? 0,
+          exactScoresCount: exactByUser.get(userId) ?? 0,
+          correctOutcomesCount: outcomeByUser.get(userId) ?? 0
         }
       });
     }

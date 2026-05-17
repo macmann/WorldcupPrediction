@@ -2,7 +2,7 @@ import { scheduleRecurringJobs } from "./runtime";
 
 scheduleRecurringJobs()
   .then(() => {
-    console.log("Scheduled daily fixture ingestion and three-minute live match sync jobs.");
+    console.log("Scheduled daily fixture ingestion at 00:00 UTC and three-minute live score polling.");
     process.exit(0);
   })
   .catch((error) => {

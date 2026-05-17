@@ -4,6 +4,7 @@ import { config } from "../lib/config";
 
 let redisConnection: IORedis | null = null;
 let fixtureQueue: Queue | null = null;
+let liveScoreQueue: Queue | null = null;
 let scoringQueue: Queue | null = null;
 
 export function getConnection() {
@@ -16,6 +17,11 @@ export function getFixtureQueue() {
   return fixtureQueue;
 }
 
+export function getLiveScoreQueue() {
+  liveScoreQueue ??= new Queue("live-scores", { connection: getConnection() });
+  return liveScoreQueue;
+}
+
 export function getScoringQueue() {
   scoringQueue ??= new Queue("scoring", { connection: getConnection() });
   return scoringQueue;
@@ -23,9 +29,11 @@ export function getScoringQueue() {
 
 export async function closeQueues() {
   await fixtureQueue?.close();
+  await liveScoreQueue?.close();
   await scoringQueue?.close();
   await redisConnection?.quit();
   fixtureQueue = null;
+  liveScoreQueue = null;
   scoringQueue = null;
   redisConnection = null;
 }

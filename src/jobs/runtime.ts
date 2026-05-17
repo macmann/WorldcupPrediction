@@ -1,15 +1,17 @@
 import { Worker } from "bullmq";
-import { closeQueues, getConnection, getFixtureQueue, getScoringQueue } from "./queues";
-import { ingestFixtures, syncLiveMatches } from "../services/fixtures";
-import { recalculateMatch } from "../services/scoring";
+import { closeQueues, getConnection } from "./queues";
+import { fixtureSyncJobName, processFixtureSyncJob, scheduleFixtureSyncJob } from "./fixtureSync.job";
+import { liveScorePollJobName, processLiveScorePollJob, scheduleLiveScorePollJob } from "./liveScorePoll.job";
+import { processScoringEngineJob, scoringEngineJobName } from "./scoringEngine.job";
 
 let started = false;
 let workers: Worker[] = [];
 
 export async function scheduleRecurringJobs() {
-  const fixtureQueue = getFixtureQueue();
-  await fixtureQueue.upsertJobScheduler("daily-fixture-ingestion", { pattern: "0 2 * * *" }, { name: "daily-fixture-ingestion" });
-  await fixtureQueue.upsertJobScheduler("live-match-sync", { every: 3 * 60 * 1000 }, { name: "live-match-sync" });
+  await Promise.all([
+    scheduleFixtureSyncJob(),
+    scheduleLiveScorePollJob()
+  ]);
 }
 
 export async function startBackgroundJobs() {
@@ -20,15 +22,24 @@ export async function startBackgroundJobs() {
     new Worker(
       "fixtures",
       async (job) => {
-        if (job.name === "daily-fixture-ingestion") return ingestFixtures();
-        if (job.name === "live-match-sync") return syncLiveMatches();
+        if (job.name === fixtureSyncJobName) return processFixtureSyncJob(job);
+        throw new Error(`Unknown fixtures job: ${job.name}`);
       },
       { connection: getConnection(), concurrency: 2 }
     ),
     new Worker(
+      "live-scores",
+      async (job) => {
+        if (job.name === liveScorePollJobName) return processLiveScorePollJob(job);
+        throw new Error(`Unknown live score job: ${job.name}`);
+      },
+      { connection: getConnection(), concurrency: 1 }
+    ),
+    new Worker(
       "scoring",
       async (job) => {
-        if (job.name === "score-match") return recalculateMatch(Number(job.data.matchId));
+        if (job.name === scoringEngineJobName) return processScoringEngineJob(job);
+        throw new Error(`Unknown scoring job: ${job.name}`);
       },
       { connection: getConnection(), concurrency: 8 }
     )
