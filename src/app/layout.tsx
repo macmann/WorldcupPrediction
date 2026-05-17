@@ -4,7 +4,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "WC Predictor",
-  description: "Predict scores, join private leagues, and climb the World Cup leaderboard."
+  description: "Predict scores, join private leagues, and climb the World Cup leaderboard.",
+  icons: {
+    icon: "/logo.svg",
+    apple: "/logo.svg"
+  }
 };
 
 export const viewport: Viewport = {
