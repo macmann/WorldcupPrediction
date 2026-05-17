@@ -3,7 +3,8 @@ import { Card, SectionTitle, SkeletonCard } from "@/components/Cards";
 import { OutrightPicksCard } from "@/components/OutrightPicksCard";
 import { Countdown } from "@/components/Countdown";
 import { PredictionForm } from "@/components/PredictionForm";
-import { defaultOutrights, fetchMatches, getDemoLeagues } from "@/lib/frontendData";
+import { defaultOutrights, getDemoLeagues } from "@/lib/frontendData";
+import { fetchMatches } from "@/lib/serverMatches";
 
 export default async function Dashboard() {
   const matches = await fetchMatches();

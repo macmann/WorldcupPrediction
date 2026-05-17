@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
-import { fetchMatches } from "@/lib/frontendData";
+import { fetchMatches } from "@/lib/serverMatches";
 
 function pointsClass(points: number | null | undefined) {
   if (points === 2) return "bg-emerald-100 text-emerald-800";
