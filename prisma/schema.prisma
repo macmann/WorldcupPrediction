@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+}
+
+enum LeagueType {
+  GLOBAL
+  PRIVATE
+}
+
+model User {
+  id                    String         @id @default(uuid()) @db.Uuid
+  email                 String         @unique
+  passwordHash          String         @map("password_hash")
+  displayName           String         @map("display_name")
+  registrationTimestamp DateTime       @default(now()) @map("registration_timestamp")
+  globalPoints          Int            @default(0) @map("global_points")
+  exactScoresCount      Int            @default(0) @map("exact_scores_count")
+  isAdmin               Boolean        @default(false) @map("is_admin")
+  predictions           Prediction[]
+  outrights             Outright?
+  leagueMemberships     LeagueMember[]
+
+  @@map("users")
+}
+
+model Match {
+  id          Int          @id
+  matchday    Int?
+  homeTeam    String       @map("home_team")
+  awayTeam    String       @map("away_team")
+  kickoffTime DateTime     @map("kickoff_time")
+  status      MatchStatus  @default(SCHEDULED)
+  homeScore   Int?         @map("home_score")
+  awayScore   Int?         @map("away_score")
+  predictions Prediction[]
+
+  @@index([matchday, kickoffTime])
+  @@index([status, kickoffTime])
+  @@map("matches")
+}
+
+model Prediction {
+  id                 String  @id @default(uuid()) @db.Uuid
+  userId             String  @map("user_id") @db.Uuid
+  matchId            Int     @map("match_id")
+  predictedHomeScore Int     @map("predicted_home_score")
+  predictedAwayScore Int     @map("predicted_away_score")
+  pointsAwarded      Int?    @map("points_awarded")
+  isLocked           Boolean @default(false) @map("is_locked")
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match              Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchId])
+  @@index([matchId])
+  @@map("predictions")
+}
+
+model Outright {
+  userId         String @id @map("user_id") @db.Uuid
+  championTeamId String @map("champion_team_id")
+  bestPlayerId   String @map("best_player_id")
+  bestGkId       String @map("best_gk_id")
+  pointsAwarded  Int?   @map("points_awarded")
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("outrights")
+}
+
+model League {
+  id          String         @id @default(uuid()) @db.Uuid
+  name        String
+  joinCode    String         @unique @map("join_code") @db.VarChar(8)
+  type        LeagueType     @default(PRIVATE)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  memberships LeagueMember[]
+
+  @@map("leagues")
+}
+
+model LeagueMember {
+  leagueId String   @map("league_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at")
+  league   League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([leagueId, userId])
+  @@index([userId])
+  @@map("league_members")
+}
