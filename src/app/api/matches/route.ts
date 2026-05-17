@@ -37,13 +37,19 @@ export async function GET(request: Request) {
         ...(query.group ? { groupName: query.group.toUpperCase() } : {})
       },
       orderBy: { kickoffTime: "asc" },
-      include: { predictions: { where: { userId: user.id }, take: 1 } }
+      include: {
+        homeTeamRef: { select: { flagEmoji: true } },
+        awayTeamRef: { select: { flagEmoji: true } },
+        predictions: { where: { userId: user.id }, take: 1 }
+      }
     });
 
     const now = new Date();
     return NextResponse.json({
-      matches: matches.map(({ predictions, ...match }) => ({
+      matches: matches.map(({ predictions, homeTeamRef, awayTeamRef, ...match }) => ({
         ...match,
+        homeFlagEmoji: homeTeamRef?.flagEmoji ?? null,
+        awayFlagEmoji: awayTeamRef?.flagEmoji ?? null,
         isLocked: now >= match.kickoffTime || match.status !== MatchStatus.SCHEDULED,
         prediction: predictions[0] ?? null
       }))

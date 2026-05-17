@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import type { MatchOutcome } from "@/lib/frontendData";
 
 export type UserSession = {
   id?: string;
@@ -11,8 +12,9 @@ export type UserSession = {
 
 export type OptimisticPrediction = {
   matchId: number;
-  predictedHomeScore: number;
-  predictedAwayScore: number;
+  predictedOutcome?: MatchOutcome | null;
+  predictedHomeScore?: number | null;
+  predictedAwayScore?: number | null;
   status: "idle" | "saving" | "saved" | "error";
   error?: string;
 };
@@ -42,6 +44,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setPredictions((current) => ({
       ...current,
       [prediction.matchId]: {
+        ...current[prediction.matchId],
         ...prediction,
         status: prediction.status ?? "saving"
       }

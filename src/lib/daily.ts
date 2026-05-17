@@ -5,13 +5,16 @@ export type DailyMatchScore = {
   id: number;
   homeTeam: string;
   awayTeam: string;
+  homeFlagEmoji: string | null;
+  awayFlagEmoji: string | null;
   kickoffTime: string;
   status: string;
   homeScore: number | null;
   awayScore: number | null;
   prediction: {
-    predictedHomeScore: number;
-    predictedAwayScore: number;
+    predictedOutcome: "HOME" | "DRAW" | "AWAY" | null;
+    predictedHomeScore: number | null;
+    predictedAwayScore: number | null;
     pointsAwarded: number | null;
     isExactScore: boolean;
     isCorrectOutcome: boolean;
@@ -93,6 +96,8 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
       id: true,
       homeTeam: true,
       awayTeam: true,
+      homeTeamRef: { select: { flagEmoji: true } },
+      awayTeamRef: { select: { flagEmoji: true } },
       kickoffTime: true,
       status: true,
       homeScore: true,
@@ -100,6 +105,7 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
       predictions: {
         where: { userId: user.id },
         select: {
+          predictedOutcome: true,
           predictedHomeScore: true,
           predictedAwayScore: true,
           pointsAwarded: true,
@@ -133,6 +139,7 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
       })
     : [];
 
+  const finishedMatchCount = matches.filter((match) => match.status === "FINISHED" || match.homeScore !== null).length;
   const rowsByUser = new Map<string, Omit<DailyLeaderboardRow, "rank" | "accuracy" | "isCurrentUser"> & { registrationTimestamp: Date }>();
 
   for (const prediction of predictions) {
@@ -165,7 +172,7 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
       exactScores: row.exactScores,
       correctOutcomes: row.correctOutcomes,
       scoredPredictions: row.scoredPredictions,
-      accuracy: percentage(row.correctOutcomes, row.scoredPredictions),
+      accuracy: percentage(row.correctOutcomes, finishedMatchCount),
       isCurrentUser: row.userId === user.id
     }));
 
@@ -174,7 +181,6 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
   const userAccuracy = currentUserRow?.accuracy ?? 0;
   const userScoredPredictions = currentUserRow?.scoredPredictions ?? 0;
   const winner = leaderboard[0] ?? null;
-  const finishedMatchCount = matches.filter((match) => match.status === "FINISHED" || match.homeScore !== null).length;
   const shareText = currentUserRow
     ? `I ranked #${currentUserRow.rank} for ${selectedDate} with ${currentUserRow.points} pts and ${currentUserRow.accuracy}% accuracy on FFM WC2026.`
     : `Daily Winner is live for ${selectedDate} on FFM WC2026. Make your World Cup predictions and chase the daily crown!`;
@@ -195,6 +201,8 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
       id: match.id,
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
+      homeFlagEmoji: match.homeTeamRef?.flagEmoji ?? null,
+      awayFlagEmoji: match.awayTeamRef?.flagEmoji ?? null,
       kickoffTime: match.kickoffTime.toISOString(),
       status: match.status,
       homeScore: match.homeScore,
