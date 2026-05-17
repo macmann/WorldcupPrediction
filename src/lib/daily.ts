@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { teamFlagEmoji } from "@/lib/countryFlags";
 import { prisma } from "@/lib/prisma";
 
 export type DailyMatchScore = {
@@ -201,8 +202,8 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
       id: match.id,
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
-      homeFlagEmoji: match.homeTeamRef?.flagEmoji ?? null,
-      awayFlagEmoji: match.awayTeamRef?.flagEmoji ?? null,
+      homeFlagEmoji: teamFlagEmoji(match.homeTeam, match.homeTeamRef?.flagEmoji),
+      awayFlagEmoji: teamFlagEmoji(match.awayTeam, match.awayTeamRef?.flagEmoji),
       kickoffTime: match.kickoffTime.toISOString(),
       status: match.status,
       homeScore: match.homeScore,

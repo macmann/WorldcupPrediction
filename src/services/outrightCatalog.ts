@@ -1,4 +1,5 @@
 import { config } from "@/lib/config";
+import { countryNameToFlagEmoji } from "@/lib/countryFlags";
 import { prisma } from "@/lib/prisma";
 import { fetchWorldCupCatalog, type ExternalCatalog } from "@/services/footballApi";
 
@@ -46,7 +47,7 @@ async function upsertCatalog(catalog: ExternalCatalog) {
       externalId: existingTeam?.externalId ?? team.externalId,
       name: team.name,
       shortName: team.shortName,
-      flagEmoji: team.flagEmoji,
+      flagEmoji: team.flagEmoji ?? countryNameToFlagEmoji(team.name),
       groupName: team.groupName
     };
     const savedTeam = existingTeam
@@ -105,13 +106,13 @@ async function upsertTeamsFromFixtures() {
     const [homeTeam, awayTeam] = await Promise.all([
       prisma.team.upsert({
         where: { tournamentId_name: { tournamentId: tournament.id, name: fixture.homeTeam } },
-        create: { tournamentId: tournament.id, name: fixture.homeTeam, groupName: fixture.groupName },
-        update: { groupName: fixture.groupName ?? undefined }
+        create: { tournamentId: tournament.id, name: fixture.homeTeam, flagEmoji: countryNameToFlagEmoji(fixture.homeTeam), groupName: fixture.groupName },
+        update: { flagEmoji: countryNameToFlagEmoji(fixture.homeTeam) ?? undefined, groupName: fixture.groupName ?? undefined }
       }),
       prisma.team.upsert({
         where: { tournamentId_name: { tournamentId: tournament.id, name: fixture.awayTeam } },
-        create: { tournamentId: tournament.id, name: fixture.awayTeam, groupName: fixture.groupName },
-        update: { groupName: fixture.groupName ?? undefined }
+        create: { tournamentId: tournament.id, name: fixture.awayTeam, flagEmoji: countryNameToFlagEmoji(fixture.awayTeam), groupName: fixture.groupName },
+        update: { flagEmoji: countryNameToFlagEmoji(fixture.awayTeam) ?? undefined, groupName: fixture.groupName ?? undefined }
       })
     ]);
     upserted += 2;

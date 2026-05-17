@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
 import { DailyShareActions } from "@/components/DailyShareActions";
+import { TeamName, teamNameWithFlag } from "@/components/TeamName";
 import { getDailyWinnerSummary } from "@/lib/daily";
 
 function formatDate(date: string) {
@@ -20,9 +21,9 @@ function pointsClass(points: number | null | undefined) {
   return "bg-amber-100 text-amber-800";
 }
 
-function outcomeText(outcome: "HOME" | "DRAW" | "AWAY" | null | undefined, homeTeam: string, awayTeam: string) {
-  if (outcome === "HOME") return `${homeTeam} win`;
-  if (outcome === "AWAY") return `${awayTeam} win`;
+function outcomeText(outcome: "HOME" | "DRAW" | "AWAY" | null | undefined, homeTeam: string, awayTeam: string, homeFlagEmoji?: string | null, awayFlagEmoji?: string | null) {
+  if (outcome === "HOME") return `${teamNameWithFlag(homeTeam, homeFlagEmoji)} win`;
+  if (outcome === "AWAY") return `${teamNameWithFlag(awayTeam, awayFlagEmoji)} win`;
   if (outcome === "DRAW") return "Draw";
   return "–";
 }
@@ -104,13 +105,13 @@ export default async function DailyWinnerPage({ searchParams }: { searchParams: 
             <div key={match.id} className="rounded-2xl border border-slate-100 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="flex flex-wrap items-center gap-2 font-black"><span>{match.homeFlagEmoji} {match.homeTeam}</span><span className="text-slate-400">vs</span><span>{match.awayFlagEmoji} {match.awayTeam}</span></h3>
+                  <h3 className="flex flex-wrap items-center gap-2 font-black"><TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} /><span className="text-slate-400">vs</span><TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} /></h3>
                   <p className="text-xs font-semibold text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-black ${pointsClass(match.prediction?.pointsAwarded)}`}>+{match.prediction?.pointsAwarded ?? 0}</span>
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2 text-center text-sm">
-                <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">W/D/W</p><p className="font-black">{outcomeText(match.prediction?.predictedOutcome, match.homeTeam, match.awayTeam)}</p></div>
+                <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">W/D/W</p><p className="font-black">{outcomeText(match.prediction?.predictedOutcome, match.homeTeam, match.awayTeam, match.homeFlagEmoji, match.awayFlagEmoji)}</p></div>
                 <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">Score</p><p className="font-black">{scorePickText(match.prediction)}</p></div>
                 <div className="rounded-2xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Actual</p><p className="font-black text-emerald-800">{resultText(match)}</p></div>
                 <div className="rounded-2xl bg-indigo-50 p-3"><p className="text-xs text-indigo-700">Accuracy</p><p className="font-black text-indigo-800">{match.prediction?.isCorrectOutcome ? "100%" : match.homeScore !== null ? "0%" : "–"}</p></div>

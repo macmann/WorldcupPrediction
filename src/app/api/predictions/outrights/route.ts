@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { config } from "@/lib/config";
+import { teamFlagEmoji } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { getOutrightOptions, syncOutrightCatalog } from "@/services/outrightCatalog";
@@ -30,9 +31,10 @@ async function resolveOutrightLockDeadline(tournamentId: string) {
   return firstRoundOf16Match?.kickoffTime ?? config.outrightLockTime ?? tournament.startsAt;
 }
 
-function optionName(option: { flagEmoji?: string | null; name: string; team?: { shortName?: string | null; name: string } | null }) {
+function optionName(option: { flagEmoji?: string | null; name: string; team?: { flagEmoji?: string | null; shortName?: string | null; name: string } | null }) {
+  const flag = teamFlagEmoji(option.team?.name ?? option.name, option.flagEmoji ?? option.team?.flagEmoji);
   const teamSuffix = option.team ? ` (${option.team.shortName ?? option.team.name})` : "";
-  return `${option.flagEmoji ? `${option.flagEmoji} ` : ""}${option.name}${teamSuffix}`;
+  return `${flag ? `${flag} ` : ""}${option.name}${teamSuffix}`;
 }
 
 export async function GET(request: Request) {

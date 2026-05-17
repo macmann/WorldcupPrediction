@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { config } from "@/lib/config";
+import { teamFlagEmoji } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { ingestFixtures } from "@/services/fixtures";
@@ -48,8 +49,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       matches: matches.map(({ predictions, homeTeamRef, awayTeamRef, ...match }) => ({
         ...match,
-        homeFlagEmoji: homeTeamRef?.flagEmoji ?? null,
-        awayFlagEmoji: awayTeamRef?.flagEmoji ?? null,
+        homeFlagEmoji: teamFlagEmoji(match.homeTeam, homeTeamRef?.flagEmoji),
+        awayFlagEmoji: teamFlagEmoji(match.awayTeam, awayTeamRef?.flagEmoji),
         isLocked: now >= match.kickoffTime || match.status !== MatchStatus.SCHEDULED,
         prediction: predictions[0] ?? null
       }))
