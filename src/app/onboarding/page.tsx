@@ -27,7 +27,7 @@ export default function OnboardingPage() {
         if (!response.ok) throw new Error((await response.json()).error ?? "Could not save outright picks");
         window.localStorage.setItem("worldcup:onboarding-completed", "true");
         setOnboardingCompleted(true);
-        router.push("/");
+        router.push("/dashboard");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Could not save outright picks");
       }

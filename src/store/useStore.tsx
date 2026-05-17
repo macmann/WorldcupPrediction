@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 
 export type UserSession = {
   id?: string;
+  email?: string;
   displayName: string;
   onboardingCompleted: boolean;
 };
@@ -28,7 +29,7 @@ type AppStore = {
 const StoreContext = createContext<AppStore | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<UserSession | null>({ displayName: "You", onboardingCompleted: false });
+  const [user, setUserState] = useState<UserSession | null>(null);
   const [predictions, setPredictions] = useState<Record<number, OptimisticPrediction>>({});
 
   const setUser = useCallback((nextUser: UserSession | null) => setUserState(nextUser), []);
