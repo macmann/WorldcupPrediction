@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { config } from "@/lib/config";
-import { teamFlagEmoji } from "@/lib/countryFlags";
+import { teamFlagEmoji, teamFlagImageUrl } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { ingestFixtures } from "@/services/fixtures";
@@ -51,6 +51,8 @@ export async function GET(request: Request) {
         ...match,
         homeFlagEmoji: teamFlagEmoji(match.homeTeam, homeTeamRef?.flagEmoji),
         awayFlagEmoji: teamFlagEmoji(match.awayTeam, awayTeamRef?.flagEmoji),
+        homeFlagImageUrl: teamFlagImageUrl(match.homeTeam),
+        awayFlagImageUrl: teamFlagImageUrl(match.awayTeam),
         isLocked: now >= match.kickoffTime || match.status !== MatchStatus.SCHEDULED,
         prediction: predictions[0] ?? null
       }))

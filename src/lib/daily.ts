@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { teamFlagEmoji } from "@/lib/countryFlags";
+import { teamFlagEmoji, teamFlagImageUrl } from "@/lib/countryFlags";
 import { prisma } from "@/lib/prisma";
 
 export type DailyMatchScore = {
@@ -8,6 +8,8 @@ export type DailyMatchScore = {
   awayTeam: string;
   homeFlagEmoji: string | null;
   awayFlagEmoji: string | null;
+  homeFlagImageUrl: string | null;
+  awayFlagImageUrl: string | null;
   kickoffTime: string;
   status: string;
   homeScore: number | null;
@@ -204,6 +206,8 @@ export async function getDailyWinnerSummary(requestedDate?: string): Promise<Dai
       awayTeam: match.awayTeam,
       homeFlagEmoji: teamFlagEmoji(match.homeTeam, match.homeTeamRef?.flagEmoji),
       awayFlagEmoji: teamFlagEmoji(match.awayTeam, match.awayTeamRef?.flagEmoji),
+      homeFlagImageUrl: teamFlagImageUrl(match.homeTeam),
+      awayFlagImageUrl: teamFlagImageUrl(match.awayTeam),
       kickoffTime: match.kickoffTime.toISOString(),
       status: match.status,
       homeScore: match.homeScore,

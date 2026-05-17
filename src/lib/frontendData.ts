@@ -18,6 +18,8 @@ export type Match = {
   awayTeam: string;
   homeFlagEmoji?: string | null;
   awayFlagEmoji?: string | null;
+  homeFlagImageUrl?: string | null;
+  awayFlagImageUrl?: string | null;
   kickoffTime: string;
   status: string;
   homeScore?: number | null;

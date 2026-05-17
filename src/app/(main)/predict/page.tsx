@@ -136,9 +136,9 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{matchLabel(match)}</p>
                     <h3 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black">
-                      <TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} />
+                      <TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} flagImageUrl={match.homeFlagImageUrl} />
                       <span className="text-slate-400">vs</span>
-                      <TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} />
+                      <TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} flagImageUrl={match.awayFlagImageUrl} />
                     </h3>
                     <p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
                   </div>
