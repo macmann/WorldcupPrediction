@@ -3,14 +3,16 @@ import { Card, SectionTitle, SkeletonCard } from "@/components/Cards";
 import { OutrightPicksCard } from "@/components/OutrightPicksCard";
 import { Countdown } from "@/components/Countdown";
 import { PredictionForm } from "@/components/PredictionForm";
-import { getDemoLeagues } from "@/lib/frontendData";
+import { getUserLeagues } from "@/lib/leagues";
 import { fetchMatches } from "@/lib/serverMatches";
 
 export default async function Dashboard() {
   const matches = await fetchMatches();
   const now = new Date();
   const nextMatch = matches.find((match) => new Date(match.kickoffTime) > now) ?? matches[0];
-  const leagues = getDemoLeagues();
+  const leagues = await getUserLeagues();
+  const globalLeague = leagues.find((league) => league.type === "GLOBAL");
+  const topPrivateLeague = leagues.filter((league) => league.type === "PRIVATE").sort((a, b) => a.rank - b.rank)[0];
   const canEditOutrights = true;
 
   return (
@@ -34,13 +36,13 @@ export default async function Dashboard() {
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-navy p-4 text-white">
             <p className="text-sm font-bold">Global Rank</p>
-            <p className="mt-3 text-3xl font-black">#{leagues[0]?.rank ?? "—"}</p>
-            <p className="text-xs text-slate-300">of {leagues[0]?.members ?? "—"}</p>
+            <p className="mt-3 text-3xl font-black">#{globalLeague?.rank ?? "—"}</p>
+            <p className="text-xs text-slate-300">of {globalLeague?.members ?? "—"}</p>
           </div>
           <div className="rounded-2xl bg-indigo-600 p-4 text-white">
             <p className="text-sm font-bold">Top Private</p>
-            <p className="mt-3 text-3xl font-black">#{leagues[1]?.rank ?? "—"}</p>
-            <p className="text-xs text-indigo-100">{leagues[1]?.name ?? "Join a league"}</p>
+            <p className="mt-3 text-3xl font-black">#{topPrivateLeague?.rank ?? "—"}</p>
+            <p className="text-xs text-indigo-100">{topPrivateLeague?.name ?? "Join a league"}</p>
           </div>
         </div>
       </Card>

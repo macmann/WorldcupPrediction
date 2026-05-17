@@ -1,5 +1,3 @@
-import { leaderboard, leagues } from "@/lib/demoData";
-
 export type MatchPrediction = {
   predictedHomeScore: number;
   predictedAwayScore: number;
@@ -60,14 +58,6 @@ export const defaultOutrights = {
   bestGk: "—",
   tournamentStartsAt: "2026-06-11T00:00:00.000Z"
 };
-
-export function getDemoLeagues() {
-  return leagues;
-}
-
-export function getDemoLeaderboard() {
-  return leaderboard.map((user) => ({ rank: user.rank, user, joinedAt: user.registrationTimestamp }));
-}
 
 export function matchLabel(match: Pick<Match, "matchday" | "stage" | "groupName">) {
   if (match.stage === "GROUP" && match.groupName) return `Group ${match.groupName}`;
