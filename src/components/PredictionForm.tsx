@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LockIcon } from "@/components/Icons";
 import { useStore } from "@/store/useStore";
@@ -58,9 +57,9 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
       {locked ? (
         <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-slate-100 py-3 text-sm font-black text-slate-600"><LockIcon className="h-4 w-4" /> Locked at kickoff</div>
       ) : (
-        <motion.button type="button" onClick={savePrediction} disabled={isPending || home === "" || away === ""} whileTap={{ scale: 0.98 }} animate={{ backgroundColor: optimistic?.status === "saved" ? "#059669" : undefined }} className="mt-3 w-full rounded-2xl bg-emerald-600 py-3 font-black text-white shadow-lg shadow-emerald-600/20 transition disabled:bg-slate-300 disabled:shadow-none">
+        <button type="button" onClick={savePrediction} disabled={isPending || home === "" || away === ""} className={`mt-3 w-full rounded-2xl py-3 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none ${optimistic?.status === "saved" ? "bg-emerald-700" : "bg-emerald-600"}`}>
           {optimistic?.status === "saved" ? "Saved ✓" : optimistic?.status === "saving" ? "Saving…" : "Save prediction"}
-        </motion.button>
+        </button>
       )}
       {optimistic?.status === "error" && <p className="mt-2 text-center text-xs font-bold text-red-600">{optimistic.error}</p>}
     </div>

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     const token = await createSessionToken(user.id);
     cookies().set("session", token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
-    return NextResponse.json({ user: { id: user.id, email: user.email, displayName: user.displayName } }, { status: 201 });
+    return NextResponse.json({ user: { id: user.id, email: user.email, displayName: user.displayName, onboardingCompleted: Boolean((user as { onboardingCompletedAt?: Date | null }).onboardingCompletedAt) } }, { status: 201 });
   } catch (error) {
     return jsonError(error);
   }
