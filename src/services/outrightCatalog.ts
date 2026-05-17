@@ -33,26 +33,28 @@ async function upsertCatalog(catalog: ExternalCatalog) {
   const teamIdByName = new Map<string, string>();
 
   for (const team of catalog.teams) {
-    const savedTeam = await prisma.team.upsert({
-      where: team.externalId
-        ? { tournamentId_externalId: { tournamentId: tournament.id, externalId: team.externalId } }
-        : { tournamentId_name: { tournamentId: tournament.id, name: team.name } },
-      create: {
+    const existingTeam = await prisma.team.findFirst({
+      where: {
         tournamentId: tournament.id,
-        externalId: team.externalId,
-        name: team.name,
-        shortName: team.shortName,
-        flagEmoji: team.flagEmoji,
-        groupName: team.groupName
-      },
-      update: {
-        name: team.name,
-        shortName: team.shortName,
-        flagEmoji: team.flagEmoji,
-        groupName: team.groupName
+        OR: [
+          ...(team.externalId ? [{ externalId: team.externalId }] : []),
+          { name: team.name }
+        ]
       }
     });
+    const teamData = {
+      externalId: existingTeam?.externalId ?? team.externalId,
+      name: team.name,
+      shortName: team.shortName,
+      flagEmoji: team.flagEmoji,
+      groupName: team.groupName
+    };
+    const savedTeam = existingTeam
+      ? await prisma.team.update({ where: { id: existingTeam.id }, data: teamData })
+      : await prisma.team.create({ data: { tournamentId: tournament.id, ...teamData } });
+
     if (team.externalId) teamIdByExternalId.set(team.externalId, savedTeam.id);
+    if (savedTeam.externalId) teamIdByExternalId.set(savedTeam.externalId, savedTeam.id);
     teamIdByName.set(team.name.toLowerCase(), savedTeam.id);
   }
 
