@@ -16,6 +16,12 @@ enum MatchStatus {
   FINISHED
 }
 
+enum MatchOutcome {
+  HOME
+  DRAW
+  AWAY
+}
+
 enum LeagueType {
   GLOBAL
   PRIVATE
@@ -196,8 +202,9 @@ model Prediction {
   id                 String   @id @default(uuid()) @db.Uuid
   userId             String   @map("user_id") @db.Uuid
   matchId            Int      @map("match_id")
-  predictedHomeScore Int      @map("predicted_home_score")
-  predictedAwayScore Int      @map("predicted_away_score")
+  predictedOutcome   MatchOutcome? @map("predicted_outcome")
+  predictedHomeScore Int?     @map("predicted_home_score")
+  predictedAwayScore Int?     @map("predicted_away_score")
   pointsAwarded      Int?     @map("points_awarded")
   isExactScore       Boolean  @default(false) @map("is_exact_score")
   isCorrectOutcome   Boolean  @default(false) @map("is_correct_outcome")

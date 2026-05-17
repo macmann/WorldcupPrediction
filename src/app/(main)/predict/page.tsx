@@ -130,15 +130,24 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
           const locked = match.isLocked || now >= new Date(match.kickoffTime) || match.status !== "SCHEDULED";
           return (
             <Card key={match.id} className={locked ? "opacity-80" : ""}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{matchLabel(match)}</p>
-                  <h3 className="text-lg font-black">{match.homeTeam} vs {match.awayTeam}</h3>
-                  <p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
-                </div>
-                {locked && <span className="flex items-center gap-1 rounded-full bg-slate-200 px-3 py-1 text-xs font-bold"><LockIcon className="h-3 w-3" /> Locked</span>}
-              </div>
-              <PredictionForm match={match} serverNowIso={now.toISOString()} />
+              <details className="group">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{matchLabel(match)}</p>
+                    <h3 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black">
+                      <span className="inline-flex items-center gap-1">{match.homeFlagEmoji && <span aria-hidden="true">{match.homeFlagEmoji}</span>}{match.homeTeam}</span>
+                      <span className="text-slate-400">vs</span>
+                      <span className="inline-flex items-center gap-1">{match.awayFlagEmoji && <span aria-hidden="true">{match.awayFlagEmoji}</span>}{match.awayTeam}</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {locked && <span className="flex items-center gap-1 rounded-full bg-slate-200 px-3 py-1 text-xs font-bold"><LockIcon className="h-3 w-3" /> Locked</span>}
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500 group-open:bg-emerald-100 group-open:text-emerald-700">Tap to pick</span>
+                  </div>
+                </summary>
+                <PredictionForm match={match} serverNowIso={now.toISOString()} />
+              </details>
             </Card>
           );
         }) : (

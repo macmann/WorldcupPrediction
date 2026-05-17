@@ -1,7 +1,12 @@
+export type MatchOutcome = "HOME" | "DRAW" | "AWAY";
+
 export type MatchPrediction = {
-  predictedHomeScore: number;
-  predictedAwayScore: number;
+  predictedOutcome?: MatchOutcome | null;
+  predictedHomeScore?: number | null;
+  predictedAwayScore?: number | null;
   pointsAwarded?: number | null;
+  isExactScore?: boolean;
+  isCorrectOutcome?: boolean;
 };
 
 export type Match = {
@@ -11,6 +16,8 @@ export type Match = {
   groupName?: string | null;
   homeTeam: string;
   awayTeam: string;
+  homeFlagEmoji?: string | null;
+  awayFlagEmoji?: string | null;
   kickoffTime: string;
   status: string;
   homeScore?: number | null;

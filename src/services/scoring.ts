@@ -23,7 +23,12 @@ export async function recalculateMatch(matchId: number) {
   await prisma.$transaction(async (tx) => {
     for (const prediction of predictions) {
       const result = calculateMatchPoints(
-        { home: prediction.predictedHomeScore, away: prediction.predictedAwayScore },
+        {
+          outcome: prediction.predictedOutcome,
+          score: prediction.predictedHomeScore !== null && prediction.predictedAwayScore !== null
+            ? { home: prediction.predictedHomeScore, away: prediction.predictedAwayScore }
+            : null
+        },
         { home: actual.home!, away: actual.away! }
       );
       await tx.prediction.update({

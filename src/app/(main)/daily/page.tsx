@@ -14,10 +14,22 @@ function resultText(match: { homeScore: number | null; awayScore: number | null 
 }
 
 function pointsClass(points: number | null | undefined) {
-  if (points === 2) return "bg-emerald-100 text-emerald-800";
+  if ((points ?? 0) >= 3) return "bg-emerald-100 text-emerald-800";
   if (points === 1) return "bg-indigo-100 text-indigo-800";
   if (points === 0) return "bg-slate-100 text-slate-600";
   return "bg-amber-100 text-amber-800";
+}
+
+function outcomeText(outcome: "HOME" | "DRAW" | "AWAY" | null | undefined, homeTeam: string, awayTeam: string) {
+  if (outcome === "HOME") return `${homeTeam} win`;
+  if (outcome === "AWAY") return `${awayTeam} win`;
+  if (outcome === "DRAW") return "Draw";
+  return "–";
+}
+
+function scorePickText(prediction: { predictedHomeScore: number | null; predictedAwayScore: number | null } | null) {
+  if (!prediction || prediction.predictedHomeScore === null || prediction.predictedAwayScore === null) return "–";
+  return `${prediction.predictedHomeScore}-${prediction.predictedAwayScore}`;
 }
 
 export default async function DailyWinnerPage({ searchParams }: { searchParams: { date?: string } }) {
@@ -52,7 +64,7 @@ export default async function DailyWinnerPage({ searchParams }: { searchParams: 
           <div>
             <p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-300">{formatDate(summary.selectedDate)}</p>
             <h2 className="mt-2 text-4xl font-black">{summary.userRank ? `#${summary.userRank}` : "Play today"}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-300">{summary.userPoints} points • {summary.userAccuracy}% accuracy from {summary.userScoredPredictions} scored picks</p>
+            <p className="mt-1 text-sm font-semibold text-slate-300">{summary.userPoints} points • {summary.userAccuracy}% accuracy from {summary.finishedMatchCount} available matches</p>
           </div>
           <div className="rounded-3xl bg-white/10 p-4 text-right ring-1 ring-white/10">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-300">Matches</p>
@@ -92,15 +104,16 @@ export default async function DailyWinnerPage({ searchParams }: { searchParams: 
             <div key={match.id} className="rounded-2xl border border-slate-100 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-black">{match.homeTeam} vs {match.awayTeam}</h3>
+                  <h3 className="flex flex-wrap items-center gap-2 font-black"><span>{match.homeFlagEmoji} {match.homeTeam}</span><span className="text-slate-400">vs</span><span>{match.awayFlagEmoji} {match.awayTeam}</span></h3>
                   <p className="text-xs font-semibold text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-black ${pointsClass(match.prediction?.pointsAwarded)}`}>+{match.prediction?.pointsAwarded ?? 0}</span>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
-                <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">Pick</p><p className="font-black">{match.prediction ? `${match.prediction.predictedHomeScore}-${match.prediction.predictedAwayScore}` : "–"}</p></div>
+              <div className="mt-3 grid grid-cols-4 gap-2 text-center text-sm">
+                <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">W/D/W</p><p className="font-black">{outcomeText(match.prediction?.predictedOutcome, match.homeTeam, match.awayTeam)}</p></div>
+                <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">Score</p><p className="font-black">{scorePickText(match.prediction)}</p></div>
                 <div className="rounded-2xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Actual</p><p className="font-black text-emerald-800">{resultText(match)}</p></div>
-                <div className="rounded-2xl bg-indigo-50 p-3"><p className="text-xs text-indigo-700">Accuracy</p><p className="font-black text-indigo-800">{match.prediction?.isCorrectOutcome ? "100%" : match.prediction?.pointsAwarded !== null && match.prediction?.pointsAwarded !== undefined ? "0%" : "–"}</p></div>
+                <div className="rounded-2xl bg-indigo-50 p-3"><p className="text-xs text-indigo-700">Accuracy</p><p className="font-black text-indigo-800">{match.prediction?.isCorrectOutcome ? "100%" : match.homeScore !== null ? "0%" : "–"}</p></div>
               </div>
             </div>
           ))}
@@ -119,7 +132,7 @@ export default async function DailyWinnerPage({ searchParams }: { searchParams: 
               {summary.leaderboard.length ? summary.leaderboard.map((row) => (
                 <tr key={row.userId} className={`border-t border-slate-100 ${row.isCurrentUser ? "bg-emerald-50" : ""}`}>
                   <td className="p-3 font-black">{row.rank}</td>
-                  <td className="font-bold">{row.displayName}<span className="block text-xs font-semibold text-slate-500">{row.exactScores} exact • {row.correctOutcomes}/{row.scoredPredictions} correct</span></td>
+                  <td className="font-bold">{row.displayName}<span className="block text-xs font-semibold text-slate-500">{row.exactScores} exact • {row.correctOutcomes}/{summary.finishedMatchCount} correct</span></td>
                   <td className="font-black">{row.points}</td>
                   <td className="pr-3 font-black text-emerald-700">{row.accuracy}%</td>
                 </tr>
