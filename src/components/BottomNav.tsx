@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BallIcon, CalendarIcon, HistoryIcon, HomeIcon, TrophyIcon, UsersIcon } from "@/components/Icons";
+import { BallIcon, CalendarIcon, HistoryIcon, HomeIcon, TrophyIcon } from "@/components/Icons";
 
 const tabs = [
   { href: "/dashboard", label: "Home", icon: HomeIcon },
   { href: "/winners", label: "Winners", icon: TrophyIcon },
   { href: "/predict", label: "Predict", icon: BallIcon },
   { href: "/daily", label: "Daily", icon: CalendarIcon },
-  { href: "/leagues", label: "Leagues", icon: UsersIcon },
   { href: "/history", label: "History", icon: HistoryIcon }
 ] as const;
 
