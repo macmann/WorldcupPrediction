@@ -31,6 +31,16 @@ function dateTabs(matches: Match[]) {
   return Array.from(new Set(matches.map((match) => dateKey(match.kickoffTime)))).sort();
 }
 
+function defaultDateTab(dates: string[], now: Date) {
+  if (!dates.length) return undefined;
+
+  const today = dateKey(now);
+
+  if (dates.includes(today)) return today;
+
+  return dates.find((tabDate) => tabDate > today) ?? dates[dates.length - 1];
+}
+
 function addUtcDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setUTCDate(nextDate.getUTCDate() + days);
@@ -53,61 +63,68 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
   const allMatches = await fetchMatches();
   const groups = groupTabs(allMatches);
   const dates = dateTabs(allMatches);
-  const selectedDate = searchParams?.date && dates.includes(searchParams.date) ? searchParams.date : undefined;
-  const selectedGroup = !selectedDate
-    ? searchParams?.group && groups.includes(searchParams.group)
-      ? searchParams.group
-      : groups[0]
-    : undefined;
+  const now = new Date();
+  const requestedDate = searchParams?.date && dates.includes(searchParams.date) ? searchParams.date : undefined;
+  const requestedGroup = searchParams?.group && groups.includes(searchParams.group) ? searchParams.group : undefined;
+  const selectedDate = requestedDate ?? (requestedGroup ? undefined : defaultDateTab(dates, now));
+  const selectedGroup = !selectedDate ? requestedGroup ?? groups[0] : undefined;
   const matches = selectedDate
     ? allMatches.filter((match) => dateKey(match.kickoffTime) === selectedDate)
     : selectedGroup
       ? allMatches.filter((match) => match.stage !== "GROUP" || match.groupName === selectedGroup)
       : allMatches;
-  const now = new Date();
+  const selectedDateLabel = selectedDate ? dateTabLabel(selectedDate, now) : undefined;
 
   return (
     <AppShell title="Match Center" eyebrow="Predictor">
       <SectionTitle eyebrow="Fixtures" title="Make your picks" />
-      <div className="space-y-3">
-        <div>
-          <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">By date</p>
-          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            {dates.length ? (
-              dates.map((tabDate) => {
-                const isActive = tabDate === selectedDate;
-                const dailyMatches = allMatches.filter((match) => dateKey(match.kickoffTime) === tabDate).length;
+      <details className="rounded-3xl bg-white/80 p-4 shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-black text-navy [&::-webkit-details-marker]:hidden">
+          <span>Filters</span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+            {selectedDateLabel ? `Showing ${selectedDateLabel}` : selectedGroup ? `Showing Group ${selectedGroup}` : "All fixtures"}
+          </span>
+        </summary>
+        <div className="mt-4 space-y-3">
+          <div>
+            <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">By date</p>
+            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+              {dates.length ? (
+                dates.map((tabDate) => {
+                  const isActive = tabDate === selectedDate;
+                  const dailyMatches = allMatches.filter((match) => dateKey(match.kickoffTime) === tabDate).length;
 
-                return (
-                  <Link key={tabDate} href={`/predict?date=${encodeURIComponent(tabDate)}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
-                    {dateTabLabel(tabDate, now)} <span className={isActive ? "text-white/70" : "text-slate-400"}>({dailyMatches})</span>
-                  </Link>
-                );
-              })
-            ) : (
-              <span className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-500 shadow-sm">Fixtures syncing…</span>
-            )}
+                  return (
+                    <Link key={tabDate} href={`/predict?date=${encodeURIComponent(tabDate)}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
+                      {dateTabLabel(tabDate, now)} <span className={isActive ? "text-white/70" : "text-slate-400"}>({dailyMatches})</span>
+                    </Link>
+                  );
+                })
+              ) : (
+                <span className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-500 shadow-sm">Fixtures syncing…</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">By group</p>
+            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+              {groups.length ? (
+                groups.map((group) => {
+                  const isActive = group === selectedGroup;
+
+                  return (
+                    <Link key={group} href={`/predict?group=${encodeURIComponent(group)}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
+                      Group {group}
+                    </Link>
+                  );
+                })
+              ) : (
+                <span className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-500 shadow-sm">Fixtures syncing…</span>
+              )}
+            </div>
           </div>
         </div>
-        <div>
-          <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">By group</p>
-          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            {groups.length ? (
-              groups.map((group) => {
-                const isActive = group === selectedGroup;
-
-                return (
-                  <Link key={group} href={`/predict?group=${encodeURIComponent(group)}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
-                    Group {group}
-                  </Link>
-                );
-              })
-            ) : (
-              <span className="rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-500 shadow-sm">Fixtures syncing…</span>
-            )}
-          </div>
-        </div>
-      </div>
+      </details>
       <div className="space-y-3">
         {matches.length ? matches.map((match) => {
           const locked = match.isLocked || now >= new Date(match.kickoffTime) || match.status !== "SCHEDULED";
