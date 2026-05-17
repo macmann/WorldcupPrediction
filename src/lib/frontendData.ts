@@ -33,7 +33,7 @@ export type OutrightOption = {
 };
 
 export type OutrightOptionsPayload = {
-  tournament: { id: string; name: string; startsAt: string };
+  tournament: { id: string; name: string; startsAt: string; outrightLockAt: string };
   canEdit: boolean;
   options: {
     teams: OutrightOption[];

@@ -1,3 +1,4 @@
+import { StageType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -13,10 +14,20 @@ const schema = z.object({
   bestGkId: z.string().uuid()
 }).strict();
 
-async function resolveTournamentStartTime(tournamentId: string) {
+async function resolveOutrightLockDeadline(tournamentId: string) {
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { startsAt: true } });
   if (!tournament) throw Object.assign(new Error("Tournament not found"), { status: 404 });
-  return tournament.startsAt;
+
+  const firstRoundOf16Match = await prisma.match.findFirst({
+    where: {
+      stage: StageType.ROUND_OF_16,
+      OR: [{ tournamentId }, { tournamentId: null }]
+    },
+    orderBy: { kickoffTime: "asc" },
+    select: { kickoffTime: true }
+  });
+
+  return firstRoundOf16Match?.kickoffTime ?? config.outrightLockTime ?? tournament.startsAt;
 }
 
 function optionName(option: { flagEmoji?: string | null; name: string; team?: { shortName?: string | null; name: string } | null }) {
@@ -46,13 +57,16 @@ export async function GET(request: Request) {
       }
     });
 
+    const outrightLockDeadline = await resolveOutrightLockDeadline(options.tournament.id);
+
     return NextResponse.json({
       tournament: {
         id: options.tournament.id,
         name: options.tournament.name,
-        startsAt: options.tournament.startsAt
+        startsAt: options.tournament.startsAt,
+        outrightLockAt: outrightLockDeadline
       },
-      canEdit: new Date() < options.tournament.startsAt,
+      canEdit: new Date() < outrightLockDeadline,
       options: {
         teams: options.teams.map((team) => ({ id: team.id, name: optionName(team), groupName: team.groupName })),
         players: options.players.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null })),
@@ -105,9 +119,9 @@ export async function POST(request: Request) {
       throw Object.assign(new Error("All outright selections must belong to the same tournament"), { status: 400 });
     }
 
-    const tournamentStartTime = await resolveTournamentStartTime(tournamentId);
-    if (new Date() >= tournamentStartTime) {
-      throw Object.assign(new Error("Tournament outright picks are locked"), { status: 403 });
+    const outrightLockDeadline = await resolveOutrightLockDeadline(tournamentId);
+    if (new Date() >= outrightLockDeadline) {
+      throw Object.assign(new Error("Tournament winner, Golden Ball, and Golden Glove picks are locked"), { status: 403 });
     }
 
     const outright = await prisma.$transaction(async (tx) => {
