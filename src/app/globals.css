@@ -3,5 +3,11 @@
 @tailwind utilities;
 
 :root { color-scheme: light; }
-body { @apply bg-slate-100 text-slate-950 antialiased; }
-input { @apply outline-none; }
+html, body { min-height: 100%; }
+body { @apply bg-slate-200 text-slate-950 antialiased; }
+input, button, select { @apply outline-none; }
+button, a { -webkit-tap-highlight-color: transparent; }
+.mobile-app { scrollbar-width: none; -ms-overflow-style: none; }
+.mobile-app::-webkit-scrollbar, .no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+@media (max-width: 400px) { .mobile-app { max-width: 100%; } }
