@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Card, SectionTitle } from "@/components/Cards";
+import { Countdown } from "@/components/Countdown";
 import { PlatformLogo } from "@/components/Icons";
 import type { OutrightOptionsPayload } from "@/lib/frontendData";
 import { useStore } from "@/store/useStore";
@@ -84,24 +85,31 @@ export default function OnboardingPage() {
           <h1 className="mt-2 text-3xl font-black tracking-tight">Lock your tournament outrights</h1>
         </div>
       </div>
-      <p className="mt-3 text-sm font-medium text-emerald-50">Choose Champion, Best Player, and Best Goalkeeper before entering the app. These picks are required and post to the backend outright predictions API.</p>
+      <p className="mt-3 text-sm font-medium text-emerald-50">Choose your Tournament Winner, Golden Ball, and Golden Glove before entering the app. These picks stay open until the Round of 16 starts.</p>
 
       <Card className="mt-6 text-slate-950">
         <SectionTitle eyebrow="Required" title="Outright picks" />
-        <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{statusMessage}</p>
+        <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{data?.canEdit === false ? "Tournament Winner, Golden Ball, and Golden Glove picks are locked because the Round of 16 has started." : statusMessage}</p>
+        <div className="mt-4 rounded-3xl bg-gradient-to-br from-navy to-emerald-800 p-4 text-white">
+          <p className="text-xs font-black uppercase tracking-widest text-emerald-200">Selection deadline</p>
+          <p className="mt-1 text-sm font-bold">Closes when the Round of 16 starts</p>
+          <div className="mt-3">
+            {data?.tournament.outrightLockAt ? <Countdown target={data.tournament.outrightLockAt} /> : <p className="text-sm font-bold text-emerald-50">Deadline syncing…</p>}
+          </div>
+        </div>
         <div className="mt-5 space-y-4">
-          <label className="block text-sm font-black">Champion
-            <select value={championTeamId} onChange={(event) => setChampionTeamId(event.target.value)} disabled={!data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+          <label className="block text-sm font-black">Tournament Winner
+            <select value={championTeamId} onChange={(event) => setChampionTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
-          <label className="block text-sm font-black">Best Player
-            <select value={bestPlayerId} onChange={(event) => setBestPlayerId(event.target.value)} disabled={!data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+          <label className="block text-sm font-black">Golden Ball
+            <select value={bestPlayerId} onChange={(event) => setBestPlayerId(event.target.value)} disabled={!data?.canEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
             </select>
           </label>
-          <label className="block text-sm font-black">Best Goalkeeper
-            <select value={bestGkId} onChange={(event) => setBestGkId(event.target.value)} disabled={!data?.options.goalkeepers.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+          <label className="block text-sm font-black">Golden Glove
+            <select value={bestGkId} onChange={(event) => setBestGkId(event.target.value)} disabled={!data?.canEdit || !data?.options.goalkeepers.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.goalkeepers ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
             </select>
           </label>

@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle, SkeletonCard } from "@/components/Cards";
-import { OutrightPicksCard } from "@/components/OutrightPicksCard";
 import { Countdown } from "@/components/Countdown";
 import { PredictionForm } from "@/components/PredictionForm";
 import { getUserLeagues } from "@/lib/leagues";
@@ -13,12 +12,8 @@ export default async function Dashboard() {
   const leagues = await getUserLeagues();
   const globalLeague = leagues.find((league) => league.type === "GLOBAL");
   const topPrivateLeague = leagues.filter((league) => league.type === "PRIVATE").sort((a, b) => a.rank - b.rank)[0];
-  const canEditOutrights = true;
-
   return (
     <AppShell>
-      <OutrightPicksCard canEdit={canEditOutrights} />
-
       {nextMatch ? (
         <Card className="bg-gradient-to-br from-emerald-500 to-pitch-900 text-white">
           <p className="text-sm font-semibold text-emerald-100">Next upcoming match</p>
