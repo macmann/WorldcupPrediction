@@ -1,7 +1,15 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
+import { DailyShareActions } from "@/components/DailyShareActions";
 import { getLeagueDetail } from "@/lib/leagues";
+
+function movementLabel(movement: { direction: "up" | "down" | "same" | "new"; places: number; previousRank: number | null }) {
+  if (movement.direction === "up") return `▲ Up ${movement.places} from #${movement.previousRank}`;
+  if (movement.direction === "down") return `▼ Down ${movement.places} from #${movement.previousRank}`;
+  if (movement.direction === "same") return `Holding #${movement.previousRank}`;
+  return "New on this table";
+}
 
 export default async function LeagueDetail({ params }: { params: { id: string } }) {
   const league = await getLeagueDetail(params.id);
@@ -25,6 +33,7 @@ export default async function LeagueDetail({ params }: { params: { id: string } 
             <p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-300">Your position</p>
             <h2 className="mt-2 text-4xl font-black">#{league.userRank}</h2>
             <p className="mt-1 text-sm font-semibold text-slate-300">{league.userPoints} points from match and outright predictions</p>
+            <p className="mt-2 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-200 ring-1 ring-white/10">{movementLabel(league.rankMovement)}</p>
           </div>
           <div className="rounded-3xl bg-white/10 p-4 text-right ring-1 ring-white/10">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-300">Members</p>
@@ -41,6 +50,12 @@ export default async function LeagueDetail({ params }: { params: { id: string } 
             <p className="mt-1 font-black">{league.isOwner ? "Owner" : "Member"}</p>
           </div>
         </div>
+      </Card>
+
+      <Card>
+        <SectionTitle eyebrow="Share" title="Post your league position" />
+        <p className="mt-2 text-sm font-semibold text-slate-500">Share your overall league rank, whether you moved up or down, and your current points.</p>
+        <div className="mt-4"><DailyShareActions text={league.shareText} path={`/leagues/${league.id}`} title={`${league.name} standings`} buttonLabel="Share my league position" copiedLabel="Copied league share text" /></div>
       </Card>
 
       <Card>

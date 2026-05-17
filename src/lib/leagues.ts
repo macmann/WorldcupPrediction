@@ -39,6 +39,12 @@ export type LeagueLeaderboardRow = {
   user: Omit<RankedLeagueMember["user"], "registrationTimestamp"> & { registrationTimestamp: string };
 };
 
+export type LeagueRankMovement = {
+  direction: "up" | "down" | "same" | "new";
+  places: number;
+  previousRank: number | null;
+};
+
 export type LeagueDetail = {
   id: string;
   name: string;
@@ -48,6 +54,8 @@ export type LeagueDetail = {
   memberCount: number;
   userRank: number;
   userPoints: number;
+  rankMovement: LeagueRankMovement;
+  shareText: string;
   isOwner: boolean;
   leaderboard: LeagueLeaderboardRow[];
 };
@@ -163,6 +171,27 @@ export async function getLeagueDetail(id: string): Promise<LeagueDetail | null |
 
   const rankedMembers = rankMembers(league.memberships);
   const currentUserRow = rankedMembers.find((member) => member.user.id === user.id);
+  const userRank = currentUserRow?.rank ?? rankedMembers.length;
+  const userPoints = currentUserRow?.user.globalPoints ?? user.globalPoints;
+  const previousSnapshot = await prisma.leagueRankSnapshot.findFirst({
+    where: { leagueId: league.id, userId: user.id },
+    select: { rank: true },
+    orderBy: { capturedAt: "desc" }
+  });
+  const rankMovement = previousSnapshot
+    ? {
+        direction: previousSnapshot.rank > userRank ? "up" as const : previousSnapshot.rank < userRank ? "down" as const : "same" as const,
+        places: Math.abs(previousSnapshot.rank - userRank),
+        previousRank: previousSnapshot.rank
+      }
+    : { direction: "new" as const, places: 0, previousRank: null };
+  const movementText = rankMovement.direction === "up"
+    ? `up ${rankMovement.places}`
+    : rankMovement.direction === "down"
+      ? `down ${rankMovement.places}`
+      : rankMovement.direction === "same"
+        ? "holding steady"
+        : "new on the table";
 
   return {
     id: league.id,
@@ -171,8 +200,10 @@ export async function getLeagueDetail(id: string): Promise<LeagueDetail | null |
     type: league.type,
     createdAt: league.createdAt.toISOString(),
     memberCount: rankedMembers.length,
-    userRank: currentUserRow?.rank ?? rankedMembers.length,
-    userPoints: currentUserRow?.user.globalPoints ?? user.globalPoints,
+    userRank,
+    userPoints,
+    rankMovement,
+    shareText: `I’m #${userRank} in ${league.name} (${movementText}) with ${userPoints} pts on FFM WC2026.`,
     isOwner: league.ownerUserId === user.id,
     leaderboard: rankedMembers.map((member) => ({
       rank: member.rank,
