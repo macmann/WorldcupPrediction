@@ -1,4 +1,4 @@
-import { leaderboard, leagues, matches as demoMatches } from "@/lib/demoData";
+import { leaderboard, leagues } from "@/lib/demoData";
 
 export type MatchPrediction = {
   predictedHomeScore: number;
@@ -10,6 +10,7 @@ export type Match = {
   id: number;
   matchday?: string | number | null;
   stage?: string | null;
+  groupName?: string | null;
   homeTeam: string;
   awayTeam: string;
   kickoffTime: string;
@@ -18,6 +19,12 @@ export type Match = {
   awayScore?: number | null;
   isLocked?: boolean;
   prediction?: MatchPrediction | null;
+};
+
+export type MatchFilters = {
+  group?: string;
+  stage?: string;
+  matchday?: string | number;
 };
 
 export const demoOutrightOptions = {
@@ -48,17 +55,6 @@ export const defaultOutrights = {
   tournamentStartsAt: "2026-06-11T00:00:00.000Z"
 };
 
-export async function fetchMatches(): Promise<Match[]> {
-  try {
-    const response = await fetch("/api/matches", { cache: "no-store" });
-    if (!response.ok) throw new Error("Unable to load API matches");
-    const data = await response.json();
-    return data.matches ?? demoMatches;
-  } catch {
-    return demoMatches as Match[];
-  }
-}
-
 export function getDemoLeagues() {
   return leagues;
 }
@@ -67,6 +63,8 @@ export function getDemoLeaderboard() {
   return leaderboard.map((user) => ({ rank: user.rank, user, joinedAt: user.registrationTimestamp }));
 }
 
-export function matchLabel(match: Pick<Match, "matchday" | "stage">) {
-  return match.matchday ? `Matchday ${match.matchday}` : (match.stage ?? "Fixture").replaceAll("_", " ");
+export function matchLabel(match: Pick<Match, "matchday" | "stage" | "groupName">) {
+  if (match.stage === "GROUP" && match.groupName) return `Group ${match.groupName}`;
+  if (match.stage && match.stage !== "GROUP") return match.stage.replaceAll("_", " ");
+  return match.matchday ? `Matchday ${match.matchday}` : "Fixture";
 }

@@ -47,6 +47,8 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NEXTAUTH_SECRET="replace-with-a-strong-secret"
 JWT_SECRET="replace-with-a-strong-secret"
 FOOTBALL_API_KEY="replace-with-your-football-api-key"
+# Optional preferred 2026-specific fixture provider. If set, this is used before football-data.org.
+WC2026_API_KEY="replace-with-your-wc2026-api-key"
 ```
 
 Notes:
@@ -58,6 +60,8 @@ Notes:
 ```bash
 openssl rand -base64 32
 ```
+
+- Fixture sync uses `WC2026_API_KEY` first when present, then falls back to the football-data.org-compatible `FOOTBALL_API_KEY`.
 
 ### 3. Apply the Prisma schema to your hosted database
 
