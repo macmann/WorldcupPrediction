@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PlusIcon } from "@/components/Icons";
 
 export function LeagueActions() {
+  const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
   const [leagueName, setLeagueName] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -14,8 +16,13 @@ export function LeagueActions() {
     startTransition(async () => {
       try {
         const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-        if (!response.ok) throw new Error((await response.json()).error ?? "League action failed");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error ?? "League action failed");
         setMessage(success);
+        setJoinCode("");
+        setLeagueName("");
+        router.refresh();
+        if (data.league?.id) router.push(`/leagues/${data.league.id}`);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "League action failed");
       }
