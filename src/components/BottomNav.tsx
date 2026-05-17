@@ -22,7 +22,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Primary navigation" className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t border-slate-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(15,23,42,0.08)] backdrop-blur">
+    <nav aria-label="Primary navigation" className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[400px] border-t border-slate-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(15,23,42,0.08)] backdrop-blur">
       <div className="grid gap-1 text-center text-[11px] font-black text-slate-500" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((tab) => {
           const active = isActive(pathname, tab.href);
