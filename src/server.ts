@@ -37,7 +37,7 @@ async function main() {
   process.on("SIGINT", shutdown);
 
   server.listen(port, hostname, () => {
-    console.log(`World Cup Predictor ready on http://${hostname}:${port}`);
+    console.log(`Football Fantasy Myanmar - WC 2026 ready on http://${hostname}:${port}`);
   });
 }
 

@@ -1,4 +1,4 @@
-# World Cup Predictor Web App
+# Football Fantasy Myanmar - WC 2026 Web App
 
 A standard Node.js/Next.js application for World Cup score predictions, private leagues, live fixture ingestion, and event-driven scoring. This project is designed to run natively with Node.js: no Dockerfile, no `docker-compose`, and no local container dependencies are required.
 

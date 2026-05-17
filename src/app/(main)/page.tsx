@@ -66,7 +66,7 @@ export default function LoginPage() {
           <PlatformLogo className="h-14 w-14" />
         </span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">WC Predictor</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">Football Fantasy Myanmar - WC 2026</p>
           <h1 className="mt-2 text-4xl font-black tracking-tight">Sign in first</h1>
         </div>
       </div>
