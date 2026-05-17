@@ -16,7 +16,7 @@ export default async function Dashboard() {
       {nextMatch ? (
         <Card className="bg-gradient-to-br from-emerald-500 to-pitch-900 text-white">
           <p className="text-sm font-semibold text-emerald-100">Next upcoming match</p>
-          <h2 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-black"><TeamName name={nextMatch.homeTeam} flagEmoji={nextMatch.homeFlagEmoji} flagClassName="ring-white/30" /><span className="text-emerald-100">vs</span><TeamName name={nextMatch.awayTeam} flagEmoji={nextMatch.awayFlagEmoji} flagClassName="ring-white/30" /></h2>
+          <h2 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-black"><TeamName name={nextMatch.homeTeam} flagEmoji={nextMatch.homeFlagEmoji} flagImageUrl={nextMatch.homeFlagImageUrl} flagClassName="ring-white/30" /><span className="text-emerald-100">vs</span><TeamName name={nextMatch.awayTeam} flagEmoji={nextMatch.awayFlagEmoji} flagImageUrl={nextMatch.awayFlagImageUrl} flagClassName="ring-white/30" /></h2>
           <p className="mt-1 text-xs font-semibold text-emerald-100">{new Date(nextMatch.kickoffTime).toUTCString()}</p>
           <div className="mt-4"><Countdown target={nextMatch.kickoffTime} /></div>
           <div className="mt-4 rounded-3xl bg-white p-3 text-slate-950">

@@ -174,6 +174,13 @@ const SUBDIVISION_FLAGS: Record<string, string> = {
   "GB-WLS": "🏴\u{e0067}\u{e0062}\u{e0077}\u{e006c}\u{e0073}\u{e007f}"
 };
 
+const SUBDIVISION_FLAG_IMAGE_URLS: Record<string, string> = {
+  "GB-ENG": "https://flagcdn.io/flags/4x3/gb-eng.svg",
+  "GB-NIR": "https://flagcdn.io/flags/4x3/gb-nir.svg",
+  "GB-SCT": "https://flagcdn.io/flags/4x3/gb-sct.svg",
+  "GB-WLS": "https://flagcdn.io/flags/4x3/gb-wls.svg"
+};
+
 function normalizeCountryName(countryName: string) {
   return countryName
     .trim()
@@ -181,6 +188,11 @@ function normalizeCountryName(countryName: string) {
     .replace(/^the\s+/, "")
     .replace(/\s+\(.*\)$/, "")
     .replace(/\s+/g, " ");
+}
+
+export function countryCodeFromName(countryName?: string | null) {
+  if (!countryName || /\b(TBD|TBA)\b/i.test(countryName)) return null;
+  return COUNTRY_CODE_BY_NAME[normalizeCountryName(countryName)] ?? null;
 }
 
 export function flagEmojiFromCountryCode(countryCode?: string | null) {
@@ -194,11 +206,27 @@ export function flagEmojiFromCountryCode(countryCode?: string | null) {
     .join("");
 }
 
+export function flagImageUrlFromCountryCode(countryCode?: string | null) {
+  if (!countryCode) return null;
+  const normalized = countryCode.trim().toUpperCase();
+  if (SUBDIVISION_FLAG_IMAGE_URLS[normalized]) return SUBDIVISION_FLAG_IMAGE_URLS[normalized];
+  if (!/^[A-Z]{2}$/.test(normalized)) return null;
+
+  return `https://flagcdn.io/flags/4x3/${normalized.toLowerCase()}.svg`;
+}
+
 export function countryNameToFlagEmoji(countryName?: string | null) {
-  if (!countryName || /\b(TBD|TBA)\b/i.test(countryName)) return null;
-  return flagEmojiFromCountryCode(COUNTRY_CODE_BY_NAME[normalizeCountryName(countryName)]);
+  return flagEmojiFromCountryCode(countryCodeFromName(countryName));
+}
+
+export function countryNameToFlagImageUrl(countryName?: string | null) {
+  return flagImageUrlFromCountryCode(countryCodeFromName(countryName));
 }
 
 export function teamFlagEmoji(teamName?: string | null, flagEmoji?: string | null) {
   return flagEmoji ?? countryNameToFlagEmoji(teamName);
+}
+
+export function teamFlagImageUrl(teamName?: string | null) {
+  return countryNameToFlagImageUrl(teamName);
 }

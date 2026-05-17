@@ -33,7 +33,7 @@ async function resolveOutrightLockDeadline(tournamentId: string) {
 
 function optionName(option: { flagEmoji?: string | null; name: string; team?: { flagEmoji?: string | null; shortName?: string | null; name: string } | null }) {
   const flag = teamFlagEmoji(option.team?.name ?? option.name, option.flagEmoji ?? option.team?.flagEmoji);
-  const teamSuffix = option.team ? ` (${option.team.shortName ?? option.team.name})` : "";
+  const teamSuffix = option.team ? ` — ${option.team.name}` : "";
   return `${flag ? `${flag} ` : ""}${option.name}${teamSuffix}`;
 }
 
