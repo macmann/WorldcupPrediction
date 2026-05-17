@@ -20,7 +20,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="absolute inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(15,23,42,0.08)] backdrop-blur">
+    <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[400px] border-t border-slate-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(15,23,42,0.08)] backdrop-blur">
       <div className="grid grid-cols-4 gap-1 text-center text-[11px] font-black text-slate-500">
         {tabs.map((tab) => {
           const active = isActive(pathname, tab.href);
