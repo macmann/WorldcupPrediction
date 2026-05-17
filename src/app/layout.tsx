@@ -3,7 +3,7 @@ import { StoreProvider } from "@/store/useStore";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "World Cup Predictor",
+  title: "WC Predictor",
   description: "Predict scores, join private leagues, and climb the World Cup leaderboard."
 };
 
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <StoreProvider>
           <div className="min-h-dvh bg-slate-200 md:flex md:items-stretch md:justify-center">
-            <div className="mobile-app relative h-dvh w-full max-w-[400px] overflow-y-auto overflow-x-hidden bg-slate-50 shadow-2xl">
+            <div className="mobile-app relative h-dvh w-full max-w-[400px] overflow-y-auto overflow-x-hidden border-x border-slate-300 bg-slate-50 shadow-2xl">
               {children}
             </div>
           </div>

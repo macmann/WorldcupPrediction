@@ -1,7 +1,7 @@
 import { BottomNav } from "@/components/BottomNav";
 import { OnboardingGate } from "@/components/OnboardingGate";
 
-export function AppShell({ children, title = "World Cup Predictor", eyebrow = "2026 Pool" }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
+export function AppShell({ children, title = "WC Predictor", eyebrow = "2026 Pool" }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
   return (
     <OnboardingGate>
       <header className="sticky top-0 z-20 bg-navy px-5 pb-8 pt-6 text-white">

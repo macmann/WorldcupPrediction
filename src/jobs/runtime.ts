@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { Worker } from "bullmq";
 import { closeQueues, getConnection } from "./queues";
 import { fixtureSyncJobName, processFixtureSyncJob, scheduleFixtureSyncJob } from "./fixtureSync.job";
@@ -55,4 +56,23 @@ export async function stopBackgroundJobs() {
   await closeQueues();
   workers = [];
   started = false;
+}
+async function runStandaloneWorker() {
+  await startBackgroundJobs();
+
+  const shutdown = async (signal: NodeJS.Signals) => {
+    console.log(`Received ${signal}; stopping background jobs.`);
+    await stopBackgroundJobs();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runStandaloneWorker().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 }
