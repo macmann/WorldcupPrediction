@@ -1,5 +1,6 @@
 import { MatchStatus } from "@prisma/client";
 import { config } from "../lib/config";
+import { countryNameToFlagEmoji } from "../lib/countryFlags";
 
 export type ExternalTeam = {
   externalId?: string;
@@ -203,7 +204,7 @@ function parseTeam(raw: any): ExternalTeam | null {
     externalId: externalId !== undefined && externalId !== null ? String(externalId) : undefined,
     name: String(name),
     shortName: raw?.shortName ?? raw?.short_name ?? raw?.tla ?? raw?.code ?? raw?.fifa_code ?? null,
-    flagEmoji: raw?.flagEmoji ?? raw?.flag_emoji ?? raw?.flag ?? null,
+    flagEmoji: raw?.flagEmoji ?? raw?.flag_emoji ?? raw?.flag ?? countryNameToFlagEmoji(String(name)),
     groupName: normalizeGroupName(raw?.groupName ?? raw?.group_name ?? raw?.group ?? null)
   };
 }

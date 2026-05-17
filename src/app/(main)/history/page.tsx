@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
+import { TeamName, teamNameWithFlag } from "@/components/TeamName";
 import { fetchMatches } from "@/lib/serverMatches";
 import type { MatchOutcome } from "@/lib/frontendData";
 
@@ -9,9 +10,9 @@ function pointsClass(points: number | null | undefined) {
   return "bg-slate-100 text-slate-600";
 }
 
-function outcomeText(outcome: MatchOutcome | null | undefined, homeTeam: string, awayTeam: string) {
-  if (outcome === "HOME") return `${homeTeam} win`;
-  if (outcome === "AWAY") return `${awayTeam} win`;
+function outcomeText(outcome: MatchOutcome | null | undefined, homeTeam: string, awayTeam: string, homeFlagEmoji?: string | null, awayFlagEmoji?: string | null) {
+  if (outcome === "HOME") return `${teamNameWithFlag(homeTeam, homeFlagEmoji)} win`;
+  if (outcome === "AWAY") return `${teamNameWithFlag(awayTeam, awayFlagEmoji)} win`;
   if (outcome === "DRAW") return "Draw";
   return "–";
 }
@@ -33,11 +34,11 @@ export default async function History() {
           return (
             <Card key={match.id}>
               <div className="flex items-center justify-between gap-3">
-                <div><h3 className="flex flex-wrap items-center gap-2 font-black"><span>{match.homeFlagEmoji} {match.homeTeam}</span><span className="text-slate-400">vs</span><span>{match.awayFlagEmoji} {match.awayTeam}</span></h3><p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p></div>
+                <div><h3 className="flex flex-wrap items-center gap-2 font-black"><TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} /><span className="text-slate-400">vs</span><TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} /></h3><p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p></div>
                 <span className={`rounded-full px-3 py-1 text-xs font-black ${pointsClass(points)}`}>+{points} PTS</span>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">W/D/W Pick</p><p className="text-sm font-black">{outcomeText(match.prediction?.predictedOutcome, match.homeTeam, match.awayTeam)}</p></div>
+                <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">W/D/W Pick</p><p className="text-sm font-black">{outcomeText(match.prediction?.predictedOutcome, match.homeTeam, match.awayTeam, match.homeFlagEmoji, match.awayFlagEmoji)}</p></div>
                 <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">Score Pick</p><p className="text-xl font-black">{scorePickText(match.prediction)}</p></div>
                 <div className="rounded-2xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Actual Score</p><p className="text-xl font-black text-emerald-800">{match.homeScore ?? "–"}-{match.awayScore ?? "–"}</p></div>
               </div>

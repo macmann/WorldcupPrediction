@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
 import { LockIcon } from "@/components/Icons";
+import { TeamName } from "@/components/TeamName";
 import { PredictionForm } from "@/components/PredictionForm";
 import { matchLabel, type Match } from "@/lib/frontendData";
 import { fetchMatches } from "@/lib/serverMatches";
@@ -135,9 +136,9 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{matchLabel(match)}</p>
                     <h3 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black">
-                      <span className="inline-flex items-center gap-1">{match.homeFlagEmoji && <span aria-hidden="true">{match.homeFlagEmoji}</span>}{match.homeTeam}</span>
+                      <TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} />
                       <span className="text-slate-400">vs</span>
-                      <span className="inline-flex items-center gap-1">{match.awayFlagEmoji && <span aria-hidden="true">{match.awayFlagEmoji}</span>}{match.awayTeam}</span>
+                      <TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} />
                     </h3>
                     <p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
                   </div>

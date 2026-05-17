@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LockIcon } from "@/components/Icons";
+import { TeamName, teamNameWithFlag } from "@/components/TeamName";
 import { useStore } from "@/store/useStore";
 import type { Match, MatchOutcome } from "@/lib/frontendData";
 
@@ -10,8 +11,8 @@ function lockedByServerTime(match: Match, serverTime: Date) {
 }
 
 function outcomeLabel(outcome: MatchOutcome, match: Match) {
-  if (outcome === "HOME") return `${match.homeTeam} win`;
-  if (outcome === "AWAY") return `${match.awayTeam} win`;
+  if (outcome === "HOME") return `${teamNameWithFlag(match.homeTeam, match.homeFlagEmoji)} win`;
+  if (outcome === "AWAY") return `${teamNameWithFlag(match.awayTeam, match.awayFlagEmoji)} win`;
   return "Draw";
 }
 
@@ -113,10 +114,16 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
       <section className="rounded-3xl border border-slate-100 bg-slate-50 p-3">
         <p className="text-xs font-black uppercase tracking-wider text-slate-400">Correct score</p>
         <p className="text-sm font-bold text-slate-600">Exact score prediction scores 3 marks.</p>
-        <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <input aria-label={`${match.homeTeam} score`} type="number" min="0" inputMode="numeric" disabled={locked} value={home} onChange={(event) => setHome(event.target.value)} className={inputClass} />
-          <span className="font-black text-slate-400">–</span>
-          <input aria-label={`${match.awayTeam} score`} type="number" min="0" inputMode="numeric" disabled={locked} value={away} onChange={(event) => setAway(event.target.value)} className={inputClass} />
+        <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+          <label className="block">
+            <span className="mb-2 flex justify-center text-xs font-black text-slate-600"><TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} className="max-w-full" flagClassName="h-7 w-7 text-lg" nameClassName="truncate" /></span>
+            <input aria-label={`${match.homeTeam} score`} type="number" min="0" inputMode="numeric" disabled={locked} value={home} onChange={(event) => setHome(event.target.value)} className={inputClass} />
+          </label>
+          <span className="pb-4 font-black text-slate-400">–</span>
+          <label className="block">
+            <span className="mb-2 flex justify-center text-xs font-black text-slate-600"><TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} className="max-w-full" flagClassName="h-7 w-7 text-lg" nameClassName="truncate" /></span>
+            <input aria-label={`${match.awayTeam} score`} type="number" min="0" inputMode="numeric" disabled={locked} value={away} onChange={(event) => setAway(event.target.value)} className={inputClass} />
+          </label>
         </div>
         {!locked && (
           <button type="button" onClick={saveScore} disabled={isPending || home === "" || away === ""} className={`mt-3 w-full rounded-2xl py-3 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none ${optimistic?.status === "saved" ? "bg-emerald-700" : "bg-emerald-600"}`}>
