@@ -28,7 +28,7 @@ Install these tools before starting:
 npm install
 ```
 
-The `postinstall` script runs `prisma generate`, so the Prisma client is generated automatically after dependencies are installed.
+The `postinstall` script runs `prisma generate`, so the Prisma client is generated automatically after dependencies are installed. The worker and scheduler npm scripts load `.env` with Node's built-in `--env-file=.env` flag, so use Node.js 20+ as listed in the prerequisites.
 
 ### 2. Create your environment file
 
