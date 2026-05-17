@@ -44,7 +44,7 @@ export default function SignupPage() {
         </span>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">Create account</p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">Join Football Fantasy Myanmar - WC 2026</h1>
+          <h1 className="mt-2 text-4xl font-black tracking-tight">Join FFM - WC2026</h1>
         </div>
       </div>
       <p className="mt-3 text-sm font-medium text-emerald-50">Sign up once, then continue to the dashboard to enter your tournament winner picks.</p>

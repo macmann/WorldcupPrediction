@@ -3,7 +3,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { PlatformLogo } from "@/components/Icons";
 import { UserProfile } from "@/components/UserProfile";
 
-export function AppShell({ children, title = "Football Fantasy Myanmar - WC 2026", eyebrow = "2026 Pool" }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
+export function AppShell({ children, title = "FFM - WC2026", eyebrow = "2026 Pool" }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
   return (
     <AuthGate>
       <header className="sticky top-0 z-20 bg-navy px-5 pb-8 pt-6 text-white">
