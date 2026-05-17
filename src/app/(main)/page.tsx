@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState, useTransition } from "react";
 import { Card } from "@/components/Cards";
+import { PlatformLogo } from "@/components/Icons";
 import { useStore } from "@/store/useStore";
 
 export default function LoginPage() {
@@ -60,8 +61,15 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-dvh bg-gradient-to-b from-navy to-emerald-950 px-4 py-8 text-white">
-      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">WC Predictor</p>
-      <h1 className="mt-2 text-4xl font-black tracking-tight">Sign in first</h1>
+      <div className="flex items-center gap-4">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/10 shadow-lg shadow-emerald-950/30 ring-1 ring-white/15">
+          <PlatformLogo className="h-14 w-14" />
+        </span>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">WC Predictor</p>
+          <h1 className="mt-2 text-4xl font-black tracking-tight">Sign in first</h1>
+        </div>
+      </div>
       <p className="mt-3 text-sm font-medium text-emerald-50">Log in to unlock your dashboard, make match predictions, and choose your Champion, Best Player, and Best Goalkeeper.</p>
 
       <Card className="mt-8 text-slate-950">

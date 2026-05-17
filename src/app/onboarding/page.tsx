@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Card, SectionTitle } from "@/components/Cards";
+import { PlatformLogo } from "@/components/Icons";
 import type { OutrightOptionsPayload } from "@/lib/frontendData";
 import { useStore } from "@/store/useStore";
 
@@ -74,8 +75,15 @@ export default function OnboardingPage() {
 
   return (
     <main className="min-h-dvh bg-gradient-to-b from-navy to-emerald-950 px-4 pb-8 pt-8 text-white">
-      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">First-time setup</p>
-      <h1 className="mt-2 text-3xl font-black tracking-tight">Lock your tournament outrights</h1>
+      <div className="flex items-center gap-4">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/10 shadow-lg shadow-emerald-950/30 ring-1 ring-white/15">
+          <PlatformLogo className="h-14 w-14" />
+        </span>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">First-time setup</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight">Lock your tournament outrights</h1>
+        </div>
+      </div>
       <p className="mt-3 text-sm font-medium text-emerald-50">Choose Champion, Best Player, and Best Goalkeeper before entering the app. These picks are required and post to the backend outright predictions API.</p>
 
       <Card className="mt-6 text-slate-950">
