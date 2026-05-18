@@ -34,7 +34,13 @@ The `postinstall` script runs `prisma generate`, so the Prisma client is generat
 
 If `prisma migrate dev`, `prisma db push`, or `prisma generate` applies the schema successfully but then fails with an error like `ENOENT: no such file or directory, open ... node_modules\@prisma\client\generator-build\prisma_schema_build_bg.wasm`, your local Prisma install is usually incomplete or mixed between package managers/versions. This repository is pinned to npm with a committed lockfile so Prisma CLI and `@prisma/client` resolve to the same version.
 
-From the project root, rebuild dependencies with npm only:
+From the project root, run the repository repair helper. It checks for mismatched Prisma packages, accidental `node_modules/.pnpm` content, and missing generator assets; with `--fix`, it rebuilds dependencies from `package-lock.json` and regenerates Prisma Client.
+
+```bash
+npm run prisma:repair -- --fix
+```
+
+If you prefer to do the same steps manually, rebuild dependencies with npm only:
 
 ```bash
 rm -rf node_modules
@@ -50,7 +56,7 @@ npm ci
 npm run prisma:generate
 ```
 
-Avoid running `pnpm install`, `yarn install`, or copying `node_modules` from another machine for this app, because Prisma's generated client expects the WebAssembly files from the same package installation that generated it.
+Avoid running `pnpm install`, `yarn install`, or copying `node_modules` from another machine for this app, because Prisma's generated client expects the package files from the same npm installation that generated it.
 
 ### 2. Create your environment file
 
