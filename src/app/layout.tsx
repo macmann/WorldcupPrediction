@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ViewportFrame } from "@/components/ViewportFrame";
 import { StoreProvider } from "@/store/useStore";
 import "./globals.css";
 
@@ -23,11 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <StoreProvider>
-          <div className="min-h-dvh bg-slate-200 md:flex md:items-stretch md:justify-center">
-            <div className="mobile-app relative h-dvh w-full max-w-[400px] overflow-y-auto overflow-x-hidden border-x border-slate-300 bg-slate-50 shadow-2xl">
-              {children}
-            </div>
-          </div>
+          <ViewportFrame>{children}</ViewportFrame>
         </StoreProvider>
       </body>
     </html>

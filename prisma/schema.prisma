@@ -66,6 +66,9 @@ model User {
   exactScoresCount        Int                      @default(0) @map("exact_scores_count")
   correctOutcomesCount    Int                      @default(0) @map("correct_outcomes_count")
   isAdmin                 Boolean                  @default(false) @map("is_admin")
+  isBanned                Boolean                  @default(false) @map("is_banned")
+  banReason               String?                  @map("ban_reason")
+  bannedAt                DateTime?                @map("banned_at") @db.Timestamptz(6)
   onboardingCompletedAt   DateTime?                @map("onboarding_completed_at") @db.Timestamptz(6)
   predictions             Prediction[]
   outrights               Outright?
@@ -78,6 +81,7 @@ model User {
   shareCards              ShareCard[]
 
   @@index([globalPoints(sort: Desc), exactScoresCount(sort: Desc), registrationTimestamp(sort: Asc)], map: "leaderboard_tiebreaker_idx")
+  @@index([isBanned])
   @@map("users")
 }
 
@@ -115,6 +119,7 @@ model Tournament {
   startsAt        DateTime @map("starts_at") @db.Timestamptz(6)
   endsAt          DateTime? @map("ends_at") @db.Timestamptz(6)
   hostCountries   String[] @default([]) @map("host_countries")
+  isActive        Boolean  @default(true) @map("is_active")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   teams           Team[]
@@ -122,6 +127,7 @@ model Tournament {
   matches         Match[]
   outrights       Outright[]
 
+  @@index([isActive, startsAt])
   @@map("tournaments")
 }
 
@@ -178,6 +184,7 @@ model Match {
   venue            String?
   kickoffTime      DateTime     @map("kickoff_time") @db.Timestamptz(6)
   status           MatchStatus  @default(SCHEDULED)
+  isEnabled        Boolean      @default(true) @map("is_enabled")
   homeScore        Int?         @map("home_score")
   awayScore        Int?         @map("away_score")
   homeScore90      Int?         @map("home_score_90")
@@ -194,6 +201,7 @@ model Match {
 
   @@index([matchday, kickoffTime])
   @@index([status, kickoffTime])
+  @@index([isEnabled, kickoffTime])
   @@index([tournamentId, stage, kickoffTime])
   @@map("matches")
 }

@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     const input = schema.parse(await request.json());
     const user = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
     if (!user?.passwordHash) throw Object.assign(new Error("Invalid email or password"), { status: 401 });
+    if (user.isBanned) throw Object.assign(new Error(user.banReason ? `Account restricted: ${user.banReason}` : "Account restricted"), { status: 403 });
 
     const validPassword = await bcrypt.compare(input.password, user.passwordHash);
     if (!validPassword) throw Object.assign(new Error("Invalid email or password"), { status: 401 });
