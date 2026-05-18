@@ -22,7 +22,7 @@ export async function GET() {
     await requireAdmin();
     const tournaments = await prisma.tournament.findMany({
       orderBy: [{ startsAt: "desc" }, { name: "asc" }],
-      select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, hostCountries: true, isActive: true }
+      select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, hostCountries: true, isActive: true, externalId: true }
     });
     return NextResponse.json({ tournaments });
   } catch (error) {

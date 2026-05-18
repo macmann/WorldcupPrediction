@@ -27,6 +27,9 @@ export type ExternalCatalog = {
 export type ExternalFixture = {
   id: number;
   externalId?: string;
+  tournamentExternalId?: string | null;
+  homeTeamExternalId?: string | null;
+  awayTeamExternalId?: string | null;
   matchday?: number | null;
   stage?: string | null;
   groupName?: string | null;
@@ -39,6 +42,16 @@ export type ExternalFixture = {
   homeScore90: number | null;
   awayScore90: number | null;
   venue?: string | null;
+};
+
+export type ExternalCompetition = {
+  code: string;
+  name: string;
+  externalId: string;
+  areaName?: string | null;
+  emblem?: string | null;
+  startsAt: string;
+  endsAt?: string | null;
 };
 
 type ProviderResult<T> = {
@@ -115,8 +128,8 @@ function compactCatalog(catalog: ExternalCatalog): ExternalCatalog {
   return { teams: [...teamsByName.values()], players: [...playersByNameAndTeam.values()] };
 }
 
-async function fetchFootballDataFixtures(): Promise<ExternalFixture[]> {
-  const response = await fetch(`${config.footballApiBaseUrl}/competitions/${config.worldCupCompetitionCode}/matches`, {
+async function fetchFootballDataFixtures(competitionCode = config.worldCupCompetitionCode): Promise<ExternalFixture[]> {
+  const response = await fetch(`${config.footballApiBaseUrl}/competitions/${competitionCode}/matches`, {
     headers: { "X-Auth-Token": config.footballApiKey },
     cache: "no-store"
   });
@@ -128,7 +141,10 @@ async function fetchFootballDataFixtures(): Promise<ExternalFixture[]> {
 
     return {
       id: match.id,
-      externalId: String(match.id),
+      externalId: competitionCode === config.worldCupCompetitionCode ? String(match.id) : `football-data:${match.id}`,
+      tournamentExternalId: `football-data:${competitionCode}`,
+      homeTeamExternalId: match.homeTeam?.id !== undefined && match.homeTeam?.id !== null ? String(match.homeTeam.id) : null,
+      awayTeamExternalId: match.awayTeam?.id !== undefined && match.awayTeam?.id !== null ? String(match.awayTeam.id) : null,
       matchday: match.matchday ?? null,
       stage: match.stage ?? null,
       groupName: normalizeGroupName(match.group ?? null),
@@ -189,11 +205,40 @@ async function firstWorkingProvider<T>(providers: Array<() => Promise<ProviderRe
   return null;
 }
 
+export async function fetchFootballDataCompetitionFixtures(competitionCode: string): Promise<ExternalFixture[]> {
+  if (!config.footballApiKey) return [];
+  return fetchFootballDataFixtures(competitionCode);
+}
+
 export async function fetchWorldCupFixtures(): Promise<ExternalFixture[]> {
   const providers: Array<() => Promise<ProviderResult<ExternalFixture[]>>> = [];
   if (config.wc2026ApiKey) providers.push(async () => ({ provider: "wc2026", data: await fetchWc2026ApiFixtures() }));
   if (config.footballApiKey) providers.push(async () => ({ provider: "football-data", data: await fetchFootballDataFixtures() }));
   return (await firstWorkingProvider(providers)) ?? [];
+}
+
+export async function fetchFootballDataCompetitions(): Promise<ExternalCompetition[]> {
+  if (!config.footballApiKey) return [];
+  const response = await fetch(`${config.footballApiBaseUrl}/competitions`, {
+    headers: { "X-Auth-Token": config.footballApiKey },
+    cache: "no-store"
+  });
+  if (!response.ok) throw new Error(`Football API competitions failed: ${response.status}`);
+  const payload = await response.json();
+  return unwrapArray(payload, ["competitions"]).map((competition: any) => {
+    const season = competition.currentSeason ?? {};
+    const code = competition.code ?? competition.id;
+    if (!code || !competition.name) return null;
+    return {
+      code: String(code),
+      name: String(competition.name),
+      externalId: `football-data:${code}`,
+      areaName: competition.area?.name ?? null,
+      emblem: competition.emblem ?? null,
+      startsAt: season.startDate ? `${season.startDate}T00:00:00.000Z` : new Date().toISOString(),
+      endsAt: season.endDate ? `${season.endDate}T23:59:59.000Z` : null
+    };
+  }).filter(Boolean) as ExternalCompetition[];
 }
 
 function parseTeam(raw: any): ExternalTeam | null {
