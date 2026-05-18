@@ -336,7 +336,7 @@ function AnnouncementAdminPanel({ announcements, disabled, onCreate, onUpdate, o
     <div className={panelClass}>
       <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Pop-up announcements & ads</p>
       <h2 className="mt-1 text-2xl font-black text-navy">Dashboard popups</h2>
-      <p className="mt-2 text-sm font-semibold text-slate-500">Active items are shown randomly to users once after login or their first dashboard visit. The See more button uses the configured link.</p>
+      <p className="mt-2 text-sm font-semibold text-slate-500">Active items are shown randomly to users once per UTC day after login or their first dashboard visit. The See more button uses the configured link.</p>
       <form action={onCreate} className="mt-5 space-y-3">
         <input name="title" required maxLength={120} className={inputClass} placeholder="Announcement title" />
         <input name="linkUrl" required className={inputClass} placeholder="See more link, e.g. /winners or https://sponsor.com" />
