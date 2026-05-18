@@ -257,7 +257,7 @@ export default function AdminConsole() {
       </header>
 
       <div className="mx-auto max-w-7xl space-y-6 px-8 py-8">
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4">
           <MetricCard label="Loaded users" value={users.length} />
           <MetricCard label="Competition streams" value={streams.length} />
           <MetricCard label="Restricted accounts" value={users.filter((user) => user.isBanned).length} tone="red" />
@@ -266,7 +266,7 @@ export default function AdminConsole() {
         {message && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{message}</p>}
         {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="space-y-6">
           <div className={panelClass}>
             <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -300,7 +300,7 @@ export default function AdminConsole() {
             </div>
           </div>
 
-          <aside className="space-y-6">
+          <div className="space-y-6">
             {admin.isSuperAdmin && (
               <div className={panelClass}>
                 <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Admin access</p>
@@ -370,7 +370,7 @@ export default function AdminConsole() {
                 <button disabled={isPending} className={`${buttonClass} bg-slate-800`}>Recalculate points</button>
               </form>
             </div>
-          </aside>
+          </div>
         </section>
       </div>
     </main>
