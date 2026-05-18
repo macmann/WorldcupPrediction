@@ -10,13 +10,15 @@ type PopupAnnouncement = {
   linkUrl: string;
 };
 
-function storageKey(id: string) {
-  return `ffm-announcement-seen:${id}`;
+const defaultDateKey = () => new Date().toISOString().slice(0, 10);
+
+function storageKey(dateKey: string) {
+  return `ffm-announcement-seen:${dateKey}`;
 }
 
-function markSeen(id: string) {
+function markSeen(id: string, dateKey: string) {
   try {
-    window.localStorage.setItem(storageKey(id), new Date().toISOString());
+    window.localStorage.setItem(storageKey(dateKey), new Date().toISOString());
   } catch {
     // Local storage may be unavailable in private browsing; server-side seen state still protects users.
   }
@@ -25,6 +27,7 @@ function markSeen(id: string) {
 
 export function AnnouncementPopup() {
   const [announcement, setAnnouncement] = useState<PopupAnnouncement | null>(null);
+  const [showDate, setShowDate] = useState(defaultDateKey);
 
   useEffect(() => {
     let mounted = true;
@@ -32,11 +35,13 @@ export function AnnouncementPopup() {
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
         if (!mounted || !data?.announcement) return;
+        const responseDateKey = typeof data.showDate === "string" ? data.showDate : defaultDateKey();
         try {
-          if (window.localStorage.getItem(storageKey(data.announcement.id))) return;
+          if (window.localStorage.getItem(storageKey(responseDateKey))) return;
         } catch {
           // Ignore storage failures and let the popup render from the authenticated API response.
         }
+        setShowDate(responseDateKey);
         setAnnouncement(data.announcement);
       })
       .catch(() => undefined);
@@ -46,7 +51,7 @@ export function AnnouncementPopup() {
   if (!announcement) return null;
 
   function closePopup() {
-    if (announcement) markSeen(announcement.id);
+    if (announcement) markSeen(announcement.id, showDate);
     setAnnouncement(null);
   }
 
