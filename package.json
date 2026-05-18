@@ -20,7 +20,8 @@
     "prisma:push": "prisma db push",
     "postinstall": "prisma generate",
     "render-build": "prisma generate && next build",
-    "render-start": "next start"
+    "render-start": "next start",
+    "prisma:repair": "node scripts/repair-prisma-install.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
