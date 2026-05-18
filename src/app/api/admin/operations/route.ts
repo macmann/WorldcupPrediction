@@ -42,7 +42,7 @@ export async function GET() {
       prisma.tournament.findMany({
         orderBy: [{ isActive: "desc" }, { startsAt: "desc" }],
         take: 20,
-        select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, isActive: true }
+        select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, isActive: true, externalId: true }
       }),
       prisma.outrightSettlement.findMany({
         orderBy: { settledAt: "desc" },
