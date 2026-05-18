@@ -6,6 +6,8 @@ import { PlatformLogo } from "@/components/Icons";
 const panelClass = "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm";
 const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 const buttonClass = "rounded-xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:opacity-70";
+const maxAnnouncementImageBytes = 6 * 1024 * 1024;
+
 
 type AdminSession = { id: string; username: string; displayName: string; isSuperAdmin: boolean };
 type AdminAccount = { id: string; username: string; displayName: string; isSuperAdmin: boolean; createdAt: string };
@@ -31,11 +33,15 @@ type OpsPayload = {
 };
 type JobStatus = { key: string; label: string; lastRunAt?: string | null; lastSuccessAt?: string | null; lastError?: string | null; lastPayload?: unknown };
 type AuditPayload = { user: { email: string; displayName: string; registrationTimestamp: string; isBanned: boolean; banReason?: string | null }; predictions: Array<{ id: string; matchId: number; predictedOutcome?: string | null; predictedHomeScore?: number | null; predictedAwayScore?: number | null; pointsAwarded?: number | null; isLocked: boolean; submittedAt: string; updatedAt: string; scoredAt?: string | null; match: { homeTeam: string; awayTeam: string; kickoffTime: string; status: string; homeScore90?: number | null; awayScore90?: number | null } }> };
+type AdminTab = "overview" | "users" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
 
 async function adminJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error ?? "Admin request failed");
+  if (!response.ok) {
+    const details = data.details?.fieldErrors ? Object.entries(data.details.fieldErrors).flatMap(([field, messages]) => Array.isArray(messages) ? messages.map((detail) => `${field}: ${detail}`) : []).join("; ") : "";
+    throw new Error(details ? `${data.error ?? "Admin request failed"}: ${details}` : data.error ?? "Admin request failed");
+  }
   return data;
 }
 
@@ -65,6 +71,7 @@ export default function AdminConsole() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
   function loadAdminData(search = query, currentAdmin = admin) {
     setError(null);
@@ -149,6 +156,8 @@ export default function AdminConsole() {
     const image = formData.get("image");
     setError(null); setMessage(null);
     if (!(image instanceof File) || image.size === 0) { setError("Announcement image is required."); return; }
+    if (!image.type.startsWith("image/")) { setError("Please upload a valid image file for the announcement."); return; }
+    if (image.size > maxAnnouncementImageBytes) { setError("Announcement image must be 6 MB or smaller."); return; }
     try {
       const payload = { title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? ""), linkUrl: String(formData.get("linkUrl") ?? ""), imageUrl: await fileToDataUrl(image), isActive: formData.get("isActive") === "on" };
       startTransition(async () => { try { const data = await adminJson<{ announcement: AdminAnnouncement }>("/api/admin/announcements", { method: "POST", body: JSON.stringify(payload) }); setOps((current) => current ? { ...current, announcements: [data.announcement, ...current.announcements] } : current); setMessage(`Announcement ${data.announcement.title} created.`); loadAdminData(); } catch (announcementError) { setError(announcementError instanceof Error ? announcementError.message : "Could not create announcement"); } });
@@ -203,51 +212,67 @@ export default function AdminConsole() {
         {message && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{message}</p>}
         {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
 
-        <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-          <div className="space-y-6">
-            <div className={panelClass}>
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Matches & Operations</p><h2 className="mt-1 text-2xl font-black text-navy">API sync status dashboard</h2>
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <StatusCard title="Fixture ingestion" status={ops?.syncStatus.fixtureIngestion} />
-                <StatusCard title="Live score poll" status={ops?.syncStatus.liveScorePoll} />
-                <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-400">Latest match sync</p><p className="mt-2 font-black text-navy">{formatDate(ops?.syncStatus.latestSyncedMatch?.lastSyncedAt)}</p><p className="text-xs font-semibold text-slate-500">{ops?.syncStatus.latestSyncedMatch ? `#${ops.syncStatus.latestSyncedMatch.id} ${ops.syncStatus.latestSyncedMatch.homeTeam} vs ${ops.syncStatus.latestSyncedMatch.awayTeam}` : "No synced fixture yet"}</p></div>
+        <AdminTabs activeTab={activeTab} isSuperAdmin={admin.isSuperAdmin} onChange={setActiveTab} />
+
+        <section className="space-y-6">
+          {activeTab === "overview" && (
+            <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+              <div className={panelClass}>
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Operations overview</p><h2 className="mt-1 text-2xl font-black text-navy">API sync status dashboard</h2>
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
+                  <StatusCard title="Fixture ingestion" status={ops?.syncStatus.fixtureIngestion} />
+                  <StatusCard title="Live score poll" status={ops?.syncStatus.liveScorePoll} />
+                  <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-400">Latest match sync</p><p className="mt-2 font-black text-navy">{formatDate(ops?.syncStatus.latestSyncedMatch?.lastSyncedAt)}</p><p className="text-xs font-semibold text-slate-500">{ops?.syncStatus.latestSyncedMatch ? `#${ops.syncStatus.latestSyncedMatch.id} ${ops.syncStatus.latestSyncedMatch.homeTeam} vs ${ops.syncStatus.latestSyncedMatch.awayTeam}` : "No synced fixture yet"}</p></div>
+                </div>
               </div>
+
+              <div className={panelClass}>
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Platform Analytics</p><h2 className="mt-1 text-2xl font-black text-navy">Private leagues</h2>
+                <div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">{ops?.leagues.map((league) => <div key={league.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div><p className="font-black text-navy">{league.name}</p><p className="text-xs font-bold text-slate-500">{league.joinCode} · {league.memberCount} members</p></div><button type="button" disabled={isPending} onClick={() => deleteLeague(league.id)} className="rounded-xl bg-red-600 px-3 py-2 text-xs font-black text-white disabled:bg-slate-300">Delete</button></div>)}</div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "matches" && (
+            <div className={panelClass}>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Matches & Operations</p><h2 className="mt-1 text-2xl font-black text-navy">Scores and recalculation tools</h2>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 <form action={overrideScore} className="rounded-2xl border border-red-100 bg-red-50 p-4"><h3 className="font-black text-red-700">Manual result overwrite</h3><p className="mt-1 text-xs font-semibold text-red-600/80">Inputs final 90-minute score and forces FINISHED.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_90px_90px]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><input name="homeScore" className={inputClass} placeholder="Home" type="number" min="0" required /><input name="awayScore" className={inputClass} placeholder="Away" type="number" min="0" required /></div><button disabled={isPending} className={`${buttonClass} mt-3 w-full bg-red-600`}>Override final score</button></form>
                 <form action={recalculate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Point recalculation trigger</h3><p className="mt-1 text-xs font-semibold text-slate-500">Wipes prior awards for this match and rebuilds global/private leaderboard totals.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><button disabled={isPending} className={`${buttonClass} bg-slate-800`}>Recalculate points</button></div></form>
               </div>
             </div>
+          )}
 
+          {activeTab === "users" && (
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Moderation & User Management</p><h2 className="mt-1 text-2xl font-black text-navy">Accounts, audit logs, points & bans</h2>
               <form action={() => loadAdminData(query)} className="mt-5 flex gap-2"><input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="Search user by email or display name" /><button disabled={isPending} className={`${buttonClass} bg-navy`}>Search</button></form>
               <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[920px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Exact</th><th className="px-4 py-3">Outcomes</th><th className="px-4 py-3">Status</th><th className="py-3 pl-4">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{users.map((user) => <UserRow key={user.id} user={user} disabled={isPending} onUpdate={updateUser} onAudit={loadAudit} />)}</tbody></table></div>
               {audit && <AuditPanel audit={audit} />}
             </div>
-          </div>
+          )}
 
-          <div className="space-y-6">
+          {activeTab === "announcements" && <AnnouncementAdminPanel announcements={ops?.announcements ?? []} disabled={isPending} onCreate={createAnnouncement} onUpdate={updateAnnouncement} onDelete={deleteAnnouncement} />}
+
+          {activeTab === "settings" && (
             <div className={panelClass}>
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Global Settings & Announcements</p><h2 className="mt-1 text-2xl font-black text-navy">Site controls</h2>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Global Settings</p><h2 className="mt-1 text-2xl font-black text-navy">Site controls</h2>
               <form action={saveSettings} className="mt-5 space-y-3"><textarea name="announcementText" defaultValue={ops?.settings.announcementText ?? ""} className={`${inputClass} min-h-28`} placeholder="⚠️ Notice: Group stage predictions lock in 2 hours!" /><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
             </div>
+          )}
 
-            <AnnouncementAdminPanel announcements={ops?.announcements ?? []} disabled={isPending} onCreate={createAnnouncement} onUpdate={updateAnnouncement} onDelete={deleteAnnouncement} />
-
-            <div className={panelClass}>
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Tournament outrights</p><h2 className="mt-1 text-2xl font-black text-navy">Golden Ball / Glove settlement</h2>
-              <form action={settleOutrights} className="mt-5 space-y-3"><select name="tournamentId" required className={inputClass}>{(ops?.tournaments ?? streams).map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.name}</option>)}</select><input name="goldenBallPlayerId" required className={inputClass} placeholder="Golden Ball player UUID" /><input name="goldenGlovePlayerId" required className={inputClass} placeholder="Golden Glove player UUID" /><button disabled={isPending} className={`${buttonClass} w-full bg-emerald-600`}>Settle final awards</button></form>
-              <div className="mt-4 space-y-2">{ops?.settlements.map((settlement) => <div key={settlement.id} className="rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-600">{formatDate(settlement.settledAt)} · Ball: {settlement.goldenBallPlayer.name} · Glove: {settlement.goldenGlovePlayer.name}</div>)}</div>
+          {activeTab === "tournaments" && (
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div className={panelClass}>
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Tournament outrights</p><h2 className="mt-1 text-2xl font-black text-navy">Golden Ball / Glove settlement</h2>
+                <form action={settleOutrights} className="mt-5 space-y-3"><select name="tournamentId" required className={inputClass}>{(ops?.tournaments ?? streams).map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.name}</option>)}</select><input name="goldenBallPlayerId" required className={inputClass} placeholder="Golden Ball player UUID" /><input name="goldenGlovePlayerId" required className={inputClass} placeholder="Golden Glove player UUID" /><button disabled={isPending} className={`${buttonClass} w-full bg-emerald-600`}>Settle final awards</button></form>
+                <div className="mt-4 space-y-2">{ops?.settlements.map((settlement) => <div key={settlement.id} className="rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-600">{formatDate(settlement.settledAt)} · Ball: {settlement.goldenBallPlayer.name} · Glove: {settlement.goldenGlovePlayer.name}</div>)}</div>
+              </div>
+              <StreamPanel streams={streams} disabled={isPending} onCreate={createStream} />
             </div>
+          )}
 
-            <div className={panelClass}>
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Platform Analytics</p><h2 className="mt-1 text-2xl font-black text-navy">Private leagues</h2>
-              <div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">{ops?.leagues.map((league) => <div key={league.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div><p className="font-black text-navy">{league.name}</p><p className="text-xs font-bold text-slate-500">{league.joinCode} · {league.memberCount} members</p></div><button type="button" disabled={isPending} onClick={() => deleteLeague(league.id)} className="rounded-xl bg-red-600 px-3 py-2 text-xs font-black text-white disabled:bg-slate-300">Delete</button></div>)}</div>
-            </div>
-
-            {admin.isSuperAdmin && <AdminAccountPanel admins={admins} disabled={isPending} onCreate={createAdminAccount} />}
-            <StreamPanel streams={streams} disabled={isPending} onCreate={createStream} />
-          </div>
+          {activeTab === "admins" && admin.isSuperAdmin && <AdminAccountPanel admins={admins} disabled={isPending} onCreate={createAdminAccount} />}
         </section>
       </div>
     </main>
@@ -259,6 +284,40 @@ function AdminLogin({ onLogin }: { onLogin: (admin: AdminSession) => void }) {
   const [isPending, startTransition] = useTransition();
   function login(formData: FormData) { setError(null); startTransition(async () => { try { const data = await adminJson<{ admin: AdminSession }>("/api/admin/auth/login", { method: "POST", body: JSON.stringify({ username: String(formData.get("username") ?? ""), password: String(formData.get("password") ?? "") }) }); onLogin(data.admin); } catch (loginError) { setError(loginError instanceof Error ? loginError.message : "Could not sign in"); } }); }
   return <main className="flex min-h-dvh items-center justify-center bg-slate-950 p-6 text-white"><section className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-8 text-slate-900 shadow-2xl"><div className="flex items-center gap-4"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy text-white"><PlatformLogo className="h-12 w-12" /></span><div><p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">Admin only</p><h1 className="text-3xl font-black text-navy">Admin Console</h1></div></div><p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Use the separate admin username and password. Player accounts cannot sign in here.</p>{error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}<form action={login} className="mt-6 space-y-4"><input name="username" className={inputClass} autoComplete="username" placeholder="Admin username" required /><input name="password" className={inputClass} autoComplete="current-password" placeholder="Admin password" type="password" required /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Signing in…" : "Sign in to admin"}</button></form></section></main>;
+}
+
+function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab; isSuperAdmin: boolean; onChange: (tab: AdminTab) => void }) {
+  const tabs: Array<{ id: AdminTab; label: string; description: string }> = [
+    { id: "overview", label: "Overview", description: "Health and leagues" },
+    { id: "users", label: "Users", description: "Moderation" },
+    { id: "announcements", label: "Popups", description: "Ads and notices" },
+    { id: "matches", label: "Matches", description: "Scores and points" },
+    { id: "tournaments", label: "Tournaments", description: "Streams and awards" },
+    { id: "settings", label: "Settings", description: "Site controls" }
+  ];
+  if (isSuperAdmin) tabs.push({ id: "admins", label: "Admins", description: "Access control" });
+
+  return (
+    <nav aria-label="Admin sections" className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-7">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onChange(tab.id)}
+              className={`rounded-2xl px-4 py-3 text-left transition ${isActive ? "bg-navy text-white shadow-lg shadow-slate-900/10" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <span className="block text-sm font-black">{tab.label}</span>
+              <span className={`mt-1 block text-[11px] font-bold ${isActive ? "text-white/70" : "text-slate-400"}`}>{tab.description}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
 }
 
 function MetricCard({ label, value, tone = "navy" }: { label: string; value: number; tone?: "navy" | "red" }) { return <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">{label}</p><p className={`mt-3 text-4xl font-black ${tone === "red" ? "text-red-600" : "text-navy"}`}>{value}</p></div>; }

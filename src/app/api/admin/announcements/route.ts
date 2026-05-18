@@ -7,11 +7,12 @@ import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
 const linkSchema = z.string().trim().min(1).max(2048).refine((value) => value.startsWith("/") || value.startsWith("https://") || value.startsWith("http://"), "Link must be a relative path or an http(s) URL");
+const imageUrlSchema = z.string().trim().min(1).max(10_000_000).refine((value) => value.startsWith("data:image/") || value.startsWith("https://") || value.startsWith("http://"), "Image must be an uploaded image or an http(s) URL");
 
 const announcementSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().min(1).max(1200),
-  imageUrl: z.string().trim().min(1).max(2_000_000),
+  imageUrl: imageUrlSchema,
   linkUrl: linkSchema,
   isActive: z.boolean().optional()
 }).strict();
