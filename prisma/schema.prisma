@@ -79,6 +79,7 @@ model User {
   notificationDeliveries  NotificationDelivery[]
   rankSnapshots           LeagueRankSnapshot[]
   shareCards              ShareCard[]
+  announcementViews       AnnouncementView[]
 
   @@index([globalPoints(sort: Desc), exactScoresCount(sort: Desc), registrationTimestamp(sort: Asc)], map: "leaderboard_tiebreaker_idx")
   @@index([isBanned])
@@ -364,6 +365,34 @@ model ShareCardItem {
   @@id([shareCardId, matchId])
   @@index([matchId])
   @@map("share_card_items")
+}
+
+model Announcement {
+  id          String             @id @default(uuid()) @db.Uuid
+  title       String
+  description String             @db.Text
+  imageUrl    String             @map("image_url") @db.Text
+  linkUrl     String             @map("link_url") @db.Text
+  isActive    Boolean            @default(true) @map("is_active")
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  views       AnnouncementView[]
+
+  @@index([isActive, createdAt])
+  @@map("announcements")
+}
+
+model AnnouncementView {
+  id             String       @id @default(uuid()) @db.Uuid
+  announcementId String       @map("announcement_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  seenAt         DateTime     @default(now()) @map("seen_at") @db.Timestamptz(6)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, seenAt])
+  @@map("announcement_views")
 }
 
 model AppSetting {

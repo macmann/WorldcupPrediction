@@ -18,8 +18,9 @@ export async function GET() {
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
     const nextMatchday = new Date(Date.now() + 36 * 60 * 60 * 1000);
 
-    const [settings, jobStatuses, latestSyncedMatch, totalUsers, dailyActiveUsers, predictionCount, totalPredictions, leagues, recentFinishedMatches, tournaments, settlements] = await Promise.all([
+    const [settings, announcements, jobStatuses, latestSyncedMatch, totalUsers, dailyActiveUsers, predictionCount, totalPredictions, leagues, recentFinishedMatches, tournaments, settlements] = await Promise.all([
       getAppSettings(),
+      prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 50, select: { id: true, title: true, description: true, imageUrl: true, linkUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
       prisma.adminJobStatus.findMany({ where: { key: { in: [JOB_FIXTURE_SYNC, JOB_LIVE_SCORE_POLL] } } }),
       prisma.match.findFirst({ where: { lastSyncedAt: { not: null } }, orderBy: { lastSyncedAt: "desc" }, select: { id: true, homeTeam: true, awayTeam: true, lastSyncedAt: true } }),
       prisma.user.count(),
@@ -59,6 +60,7 @@ export async function GET() {
     const statusByKey = new Map(jobStatuses.map((status) => [status.key, status]));
     return NextResponse.json({
       settings,
+      announcements,
       syncStatus: {
         fixtureIngestion: statusByKey.get(JOB_FIXTURE_SYNC) ?? null,
         liveScorePoll: statusByKey.get(JOB_LIVE_SCORE_POLL) ?? null,
