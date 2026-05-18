@@ -20,7 +20,7 @@ export async function GET() {
 
     const [settings, announcements, jobStatuses, latestSyncedMatch, totalUsers, dailyActiveUsers, predictionCount, totalPredictions, leagues, recentFinishedMatches, tournaments, settlements] = await Promise.all([
       getAppSettings(),
-      prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 50, select: { id: true, title: true, description: true, imageUrl: true, linkUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
+      prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 50, select: { id: true, title: true, description: true, imageUrl: true, linkUrl: true, isActive: true, displayFrequencyHours: true, createdAt: true, updatedAt: true } }),
       prisma.adminJobStatus.findMany({ where: { key: { in: [JOB_FIXTURE_SYNC, JOB_LIVE_SCORE_POLL] } } }),
       prisma.match.findFirst({ where: { lastSyncedAt: { not: null } }, orderBy: { lastSyncedAt: "desc" }, select: { id: true, homeTeam: true, awayTeam: true, lastSyncedAt: true } }),
       prisma.user.count(),

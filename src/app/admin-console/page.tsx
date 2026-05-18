@@ -16,7 +16,7 @@ type AdminUser = {
   exactScoresCount: number; correctOutcomesCount: number; isAdmin: boolean; isBanned: boolean; banReason?: string | null;
 };
 type AdminTournament = { id: string; name: string; slug: string; startsAt: string; endsAt?: string | null; isActive: boolean };
-type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; createdAt: string; updatedAt: string };
+type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; displayFrequencyHours: number; createdAt: string; updatedAt: string };
 type OpsPayload = {
   settings: { announcementText?: string | null; maintenanceMode: boolean; updatedAt: string };
   announcements: AdminAnnouncement[];
@@ -159,7 +159,7 @@ export default function AdminConsole() {
     if (!image.type.startsWith("image/")) { setError("Please upload a valid image file for the announcement."); return; }
     if (image.size > maxAnnouncementImageBytes) { setError("Announcement image must be 6 MB or smaller."); return; }
     try {
-      const payload = { title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? ""), linkUrl: String(formData.get("linkUrl") ?? ""), imageUrl: await fileToDataUrl(image), isActive: formData.get("isActive") === "on" };
+      const payload = { title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? ""), linkUrl: String(formData.get("linkUrl") ?? ""), imageUrl: await fileToDataUrl(image), isActive: formData.get("isActive") === "on", displayFrequencyHours: Number(formData.get("displayFrequencyHours") ?? 24) };
       startTransition(async () => { try { const data = await adminJson<{ announcement: AdminAnnouncement }>("/api/admin/announcements", { method: "POST", body: JSON.stringify(payload) }); setOps((current) => current ? { ...current, announcements: [data.announcement, ...current.announcements] } : current); setMessage(`Announcement ${data.announcement.title} created.`); loadAdminData(); } catch (announcementError) { setError(announcementError instanceof Error ? announcementError.message : "Could not create announcement"); } });
     } catch (imageError) { setError(imageError instanceof Error ? imageError.message : "Could not read image file"); }
   }
@@ -336,12 +336,16 @@ function AnnouncementAdminPanel({ announcements, disabled, onCreate, onUpdate, o
     <div className={panelClass}>
       <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Pop-up announcements & ads</p>
       <h2 className="mt-1 text-2xl font-black text-navy">Dashboard popups</h2>
-      <p className="mt-2 text-sm font-semibold text-slate-500">Active items are shown randomly to users once per UTC day after login or their first dashboard visit. The See more button uses the configured link.</p>
+      <p className="mt-2 text-sm font-semibold text-slate-500">Active items are shown randomly to users when they log in or first reach the dashboard. Each popup uses its own frequency setting to decide when it can reappear after a user closes it. The See more button uses the configured link.</p>
       <form action={onCreate} className="mt-5 space-y-3">
         <input name="title" required maxLength={120} className={inputClass} placeholder="Announcement title" />
         <input name="linkUrl" required className={inputClass} placeholder="See more link, e.g. /winners or https://sponsor.com" />
         <input name="image" required type="file" accept="image/*" className={inputClass} />
         <textarea name="description" required maxLength={1200} className={`${inputClass} min-h-28`} placeholder="Description shown below the image" />
+        <label className="block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Popup frequency
+          <input name="displayFrequencyHours" type="number" min={1} max={8760} step={1} defaultValue={24} required className={`${inputClass} mt-2 normal-case tracking-normal`} />
+          <span className="mt-1 block text-[11px] font-semibold normal-case tracking-normal text-slate-400">Hours before this popup can show again to the same user.</span>
+        </label>
         <label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="isActive" type="checkbox" defaultChecked className="h-5 w-5 rounded border-slate-300" />Active</label>
         <button disabled={disabled} className={`${buttonClass} w-full bg-emerald-600`}>Add announcement</button>
       </form>
@@ -358,8 +362,13 @@ function AnnouncementAdminPanel({ announcements, disabled, onCreate, onUpdate, o
                 </div>
                 <p className="mt-1 line-clamp-2 text-xs font-semibold text-slate-500">{announcement.description}</p>
                 <p className="mt-1 truncate text-xs font-black text-indigo-600">{announcement.linkUrl}</p>
+                <p className="mt-1 text-xs font-black text-emerald-700">Frequency: every {announcement.displayFrequencyHours} hour{announcement.displayFrequencyHours === 1 ? "" : "s"} per user</p>
               </div>
             </div>
+            <form action={(formData) => onUpdate(announcement.id, { displayFrequencyHours: Number(formData.get("displayFrequencyHours") ?? announcement.displayFrequencyHours) }, "Announcement frequency updated.")} className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+              <input name="displayFrequencyHours" type="number" min={1} max={8760} step={1} defaultValue={announcement.displayFrequencyHours} required className={inputClass} aria-label="Popup frequency in hours" />
+              <button disabled={disabled} className={`${buttonClass} bg-indigo-600`}>Save frequency</button>
+            </form>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button type="button" disabled={disabled} onClick={() => onUpdate(announcement.id, { isActive: !announcement.isActive }, announcement.isActive ? "Announcement hidden." : "Announcement activated.")} className={`${buttonClass} ${announcement.isActive ? "bg-slate-700" : "bg-emerald-600"}`}>{announcement.isActive ? "Hide" : "Activate"}</button>
               <button type="button" disabled={disabled} onClick={() => onDelete(announcement.id)} className={`${buttonClass} bg-red-600`}>Delete</button>

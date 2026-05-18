@@ -8,26 +8,61 @@ type PopupAnnouncement = {
   description: string;
   imageUrl: string;
   linkUrl: string;
+  displayFrequencyHours: number;
 };
 
-const defaultDateKey = () => new Date().toISOString().slice(0, 10);
+type StoredAnnouncementView = {
+  seenAt: string;
+  displayFrequencyHours: number;
+};
 
-function storageKey(dateKey: string) {
-  return `ffm-announcement-seen:${dateKey}`;
+const anonymousUserKey = "anonymous";
+
+function hoursToMilliseconds(hours: number) {
+  return hours * 60 * 60 * 1000;
 }
 
-function markSeen(id: string, dateKey: string) {
+function storageKey(userId: string) {
+  return `ffm-announcement-seen:${userId || anonymousUserKey}`;
+}
+
+function parseStoredView(value: string | null, fallbackFrequencyHours: number): StoredAnnouncementView | null {
+  if (!value) return null;
   try {
-    window.localStorage.setItem(storageKey(dateKey), new Date().toISOString());
+    const parsed = JSON.parse(value) as Partial<StoredAnnouncementView>;
+    if (typeof parsed.seenAt === "string" && typeof parsed.displayFrequencyHours === "number") {
+      return { seenAt: parsed.seenAt, displayFrequencyHours: parsed.displayFrequencyHours };
+    }
+  } catch {
+    // Older clients stored the timestamp as a raw ISO string. Fall back to the selected announcement frequency.
+  }
+  return { seenAt: value, displayFrequencyHours: fallbackFrequencyHours };
+}
+
+function wasSeenRecently(userId: string, nextAnnouncement: PopupAnnouncement) {
+  try {
+    const storedView = parseStoredView(window.localStorage.getItem(storageKey(userId)), nextAnnouncement.displayFrequencyHours);
+    if (!storedView) return false;
+    const seenTime = new Date(storedView.seenAt).getTime();
+    return Number.isFinite(seenTime) && Date.now() - seenTime < hoursToMilliseconds(storedView.displayFrequencyHours);
+  } catch {
+    return false;
+  }
+}
+
+function markSeen(announcement: PopupAnnouncement, userId: string) {
+  try {
+    const storedView: StoredAnnouncementView = { seenAt: new Date().toISOString(), displayFrequencyHours: announcement.displayFrequencyHours };
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(storedView));
   } catch {
     // Local storage may be unavailable in private browsing; server-side seen state still protects users.
   }
-  fetch(`/api/announcements/${id}/seen`, { method: "POST" }).catch(() => undefined);
+  fetch(`/api/announcements/${announcement.id}/seen`, { method: "POST" }).catch(() => undefined);
 }
 
 export function AnnouncementPopup() {
   const [announcement, setAnnouncement] = useState<PopupAnnouncement | null>(null);
-  const [showDate, setShowDate] = useState(defaultDateKey);
+  const [userId, setUserId] = useState(anonymousUserKey);
 
   useEffect(() => {
     let mounted = true;
@@ -35,13 +70,9 @@ export function AnnouncementPopup() {
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
         if (!mounted || !data?.announcement) return;
-        const responseDateKey = typeof data.showDate === "string" ? data.showDate : defaultDateKey();
-        try {
-          if (window.localStorage.getItem(storageKey(responseDateKey))) return;
-        } catch {
-          // Ignore storage failures and let the popup render from the authenticated API response.
-        }
-        setShowDate(responseDateKey);
+        const responseUserId = typeof data.userId === "string" ? data.userId : anonymousUserKey;
+        if (wasSeenRecently(responseUserId, data.announcement)) return;
+        setUserId(responseUserId);
         setAnnouncement(data.announcement);
       })
       .catch(() => undefined);
@@ -51,7 +82,7 @@ export function AnnouncementPopup() {
   if (!announcement) return null;
 
   function closePopup() {
-    if (announcement) markSeen(announcement.id, showDate);
+    if (announcement) markSeen(announcement, userId);
     setAnnouncement(null);
   }
 
