@@ -85,6 +85,19 @@ model User {
   @@map("users")
 }
 
+
+model AdminAccount {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  isSuperAdmin Boolean  @default(false) @map("is_super_admin")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("admin_accounts")
+}
+
 model OAuthAccount {
   id                String       @id @default(uuid()) @db.Uuid
   userId            String       @map("user_id") @db.Uuid
