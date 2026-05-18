@@ -1,4 +1,0 @@
--- This migration folder was created without a migration.sql file in some environments,
--- causing Prisma P3015 before later migrations could run.
--- Keep this migration as a no-op compatibility placeholder so Prisma can read the
--- full migration directory set consistently across development and deploys.
