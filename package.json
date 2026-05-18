@@ -48,5 +48,6 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3"
-  }
+  },
+  "packageManager": "npm@11.4.2"
 }

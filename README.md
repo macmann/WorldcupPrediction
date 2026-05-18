@@ -30,6 +30,28 @@ npm install
 
 The `postinstall` script runs `prisma generate`, so the Prisma client is generated automatically after dependencies are installed. The worker and scheduler npm scripts load `.env` with Node's built-in `--env-file=.env` flag, so use Node.js 20+ as listed in the prerequisites.
 
+### Fixing Prisma generator WASM errors on Windows
+
+If `prisma migrate dev`, `prisma db push`, or `prisma generate` applies the schema successfully but then fails with an error like `ENOENT: no such file or directory, open ... node_modules\@prisma\client\generator-build\prisma_schema_build_bg.wasm`, your local Prisma install is usually incomplete or mixed between package managers/versions. This repository is pinned to npm with a committed lockfile so Prisma CLI and `@prisma/client` resolve to the same version.
+
+From the project root, rebuild dependencies with npm only:
+
+```bash
+rm -rf node_modules
+npm ci
+npm run prisma:generate
+```
+
+On Windows PowerShell, use:
+
+```powershell
+Remove-Item -Recurse -Force node_modules
+npm ci
+npm run prisma:generate
+```
+
+Avoid running `pnpm install`, `yarn install`, or copying `node_modules` from another machine for this app, because Prisma's generated client expects the WebAssembly files from the same package installation that generated it.
+
 ### 2. Create your environment file
 
 Copy the example file and fill in your own managed service credentials:
