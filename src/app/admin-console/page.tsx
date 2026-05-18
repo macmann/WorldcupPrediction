@@ -14,8 +14,10 @@ type AdminUser = {
   exactScoresCount: number; correctOutcomesCount: number; isAdmin: boolean; isBanned: boolean; banReason?: string | null;
 };
 type AdminTournament = { id: string; name: string; slug: string; startsAt: string; endsAt?: string | null; isActive: boolean };
+type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; createdAt: string; updatedAt: string };
 type OpsPayload = {
   settings: { announcementText?: string | null; maintenanceMode: boolean; updatedAt: string };
+  announcements: AdminAnnouncement[];
   syncStatus: {
     fixtureIngestion?: JobStatus | null;
     liveScorePoll?: JobStatus | null;
@@ -40,6 +42,15 @@ async function adminJson<T>(url: string, init?: RequestInit): Promise<T> {
 function formatDate(value?: string | null) {
   if (!value) return "Never";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read image file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function AdminConsole() {
@@ -134,6 +145,26 @@ export default function AdminConsole() {
     startTransition(async () => { try { await adminJson("/api/admin/settings", { method: "PATCH", body: JSON.stringify(payload) }); setMessage("Global settings updated."); loadAdminData(); } catch (settingsError) { setError(settingsError instanceof Error ? settingsError.message : "Could not save settings"); } });
   }
 
+  async function createAnnouncement(formData: FormData) {
+    const image = formData.get("image");
+    setError(null); setMessage(null);
+    if (!(image instanceof File) || image.size === 0) { setError("Announcement image is required."); return; }
+    try {
+      const payload = { title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? ""), linkUrl: String(formData.get("linkUrl") ?? ""), imageUrl: await fileToDataUrl(image), isActive: formData.get("isActive") === "on" };
+      startTransition(async () => { try { const data = await adminJson<{ announcement: AdminAnnouncement }>("/api/admin/announcements", { method: "POST", body: JSON.stringify(payload) }); setOps((current) => current ? { ...current, announcements: [data.announcement, ...current.announcements] } : current); setMessage(`Announcement ${data.announcement.title} created.`); loadAdminData(); } catch (announcementError) { setError(announcementError instanceof Error ? announcementError.message : "Could not create announcement"); } });
+    } catch (imageError) { setError(imageError instanceof Error ? imageError.message : "Could not read image file"); }
+  }
+
+  function updateAnnouncement(id: string, payload: Partial<AdminAnnouncement>, success: string) {
+    setError(null); setMessage(null);
+    startTransition(async () => { try { const data = await adminJson<{ announcement: AdminAnnouncement }>(`/api/admin/announcements/${id}`, { method: "PATCH", body: JSON.stringify(payload) }); setOps((current) => current ? { ...current, announcements: current.announcements.map((announcement) => announcement.id === id ? data.announcement : announcement) } : current); setMessage(success); } catch (announcementError) { setError(announcementError instanceof Error ? announcementError.message : "Could not update announcement"); } });
+  }
+
+  function deleteAnnouncement(id: string) {
+    setError(null); setMessage(null);
+    startTransition(async () => { try { await adminJson(`/api/admin/announcements/${id}`, { method: "DELETE" }); setOps((current) => current ? { ...current, announcements: current.announcements.filter((announcement) => announcement.id !== id) } : current); setMessage("Announcement deleted."); } catch (announcementError) { setError(announcementError instanceof Error ? announcementError.message : "Could not delete announcement"); } });
+  }
+
   function settleOutrights(formData: FormData) {
     const payload = { tournamentId: String(formData.get("tournamentId") ?? ""), goldenBallPlayerId: String(formData.get("goldenBallPlayerId") ?? ""), goldenGlovePlayerId: String(formData.get("goldenGlovePlayerId") ?? "") };
     setError(null); setMessage(null);
@@ -201,6 +232,8 @@ export default function AdminConsole() {
               <form action={saveSettings} className="mt-5 space-y-3"><textarea name="announcementText" defaultValue={ops?.settings.announcementText ?? ""} className={`${inputClass} min-h-28`} placeholder="⚠️ Notice: Group stage predictions lock in 2 hours!" /><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
             </div>
 
+            <AnnouncementAdminPanel announcements={ops?.announcements ?? []} disabled={isPending} onCreate={createAnnouncement} onUpdate={updateAnnouncement} onDelete={deleteAnnouncement} />
+
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Tournament outrights</p><h2 className="mt-1 text-2xl font-black text-navy">Golden Ball / Glove settlement</h2>
               <form action={settleOutrights} className="mt-5 space-y-3"><select name="tournamentId" required className={inputClass}>{(ops?.tournaments ?? streams).map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.name}</option>)}</select><input name="goldenBallPlayerId" required className={inputClass} placeholder="Golden Ball player UUID" /><input name="goldenGlovePlayerId" required className={inputClass} placeholder="Golden Glove player UUID" /><button disabled={isPending} className={`${buttonClass} w-full bg-emerald-600`}>Settle final awards</button></form>
@@ -237,6 +270,47 @@ function UserRow({ user, disabled, onUpdate, onAudit }: { user: AdminUser; disab
 }
 
 function AuditPanel({ audit }: { audit: AuditPayload }) { return <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Audit trail: {audit.user.displayName} ({audit.user.email})</h3><p className="mt-1 text-xs font-semibold text-slate-500">Registered {formatDate(audit.user.registrationTimestamp)} · {audit.predictions.length} recent predictions</p><div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">{audit.predictions.map((prediction) => <div key={prediction.id} className="rounded-xl bg-white p-3 text-xs font-semibold text-slate-600"><p className="font-black text-slate-900">#{prediction.matchId} {prediction.match.homeTeam} vs {prediction.match.awayTeam} · kickoff {formatDate(prediction.match.kickoffTime)}</p><p>Pick: {prediction.predictedHomeScore ?? "—"}-{prediction.predictedAwayScore ?? "—"} ({prediction.predictedOutcome ?? "outcome not set"}) · Points {prediction.pointsAwarded ?? "pending"} · Locked {prediction.isLocked ? "yes" : "no"}</p><p>Created {formatDate(prediction.submittedAt)} · Updated {formatDate(prediction.updatedAt)} · Scored {formatDate(prediction.scoredAt)}</p></div>)}</div></div>; }
+
+
+function AnnouncementAdminPanel({ announcements, disabled, onCreate, onUpdate, onDelete }: { announcements: AdminAnnouncement[]; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void }) {
+  return (
+    <div className={panelClass}>
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Pop-up announcements & ads</p>
+      <h2 className="mt-1 text-2xl font-black text-navy">Dashboard popups</h2>
+      <p className="mt-2 text-sm font-semibold text-slate-500">Active items are shown randomly to users once after login or their first dashboard visit. The See more button uses the configured link.</p>
+      <form action={onCreate} className="mt-5 space-y-3">
+        <input name="title" required maxLength={120} className={inputClass} placeholder="Announcement title" />
+        <input name="linkUrl" required className={inputClass} placeholder="See more link, e.g. /winners or https://sponsor.com" />
+        <input name="image" required type="file" accept="image/*" className={inputClass} />
+        <textarea name="description" required maxLength={1200} className={`${inputClass} min-h-28`} placeholder="Description shown below the image" />
+        <label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="isActive" type="checkbox" defaultChecked className="h-5 w-5 rounded border-slate-300" />Active</label>
+        <button disabled={disabled} className={`${buttonClass} w-full bg-emerald-600`}>Add announcement</button>
+      </form>
+      <div className="mt-5 max-h-[34rem] space-y-3 overflow-y-auto pr-1">
+        {announcements.length === 0 && <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">No pop-up announcements yet.</p>}
+        {announcements.map((announcement) => (
+          <div key={announcement.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="flex gap-3">
+              <img src={announcement.imageUrl} alt="" className="h-20 w-20 rounded-2xl object-cover" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-black text-navy">{announcement.title}</p>
+                  <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${announcement.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{announcement.isActive ? "Active" : "Hidden"}</span>
+                </div>
+                <p className="mt-1 line-clamp-2 text-xs font-semibold text-slate-500">{announcement.description}</p>
+                <p className="mt-1 truncate text-xs font-black text-indigo-600">{announcement.linkUrl}</p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button type="button" disabled={disabled} onClick={() => onUpdate(announcement.id, { isActive: !announcement.isActive }, announcement.isActive ? "Announcement hidden." : "Announcement activated.")} className={`${buttonClass} ${announcement.isActive ? "bg-slate-700" : "bg-emerald-600"}`}>{announcement.isActive ? "Hide" : "Activate"}</button>
+              <button type="button" disabled={disabled} onClick={() => onDelete(announcement.id)} className={`${buttonClass} bg-red-600`}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function AdminAccountPanel({ admins, disabled, onCreate }: { admins: AdminAccount[]; disabled: boolean; onCreate: (formData: FormData) => void }) { return <div className={panelClass}><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Admin access</p><h2 className="mt-1 text-2xl font-black text-navy">Create admin account</h2><form action={onCreate} className="mt-5 space-y-3"><input name="username" required className={inputClass} placeholder="admin username" /><input name="displayName" required className={inputClass} placeholder="Display name" /><input name="password" required minLength={8} type="password" className={inputClass} placeholder="Password" /><label className="flex items-center gap-2 text-sm font-bold text-slate-600"><input name="isSuperAdmin" type="checkbox" className="h-4 w-4 rounded border-slate-300" />Super admin privileges</label><button disabled={disabled} className={`${buttonClass} w-full bg-indigo-600`}>Create admin</button></form><div className="mt-5 max-h-48 space-y-2 overflow-y-auto pr-1">{admins.map((account) => <div key={account.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3"><p className="font-black text-navy">{account.displayName}</p><p className="text-xs font-bold text-slate-500">{account.username} · {account.isSuperAdmin ? "Super admin" : "Admin"}</p></div>)}</div></div>; }
 function StreamPanel({ streams, disabled, onCreate }: { streams: AdminTournament[]; disabled: boolean; onCreate: (formData: FormData) => void }) { return <div className={panelClass}><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Streams</p><h2 className="mt-1 text-2xl font-black text-navy">Create competition stream</h2><form action={onCreate} className="mt-5 space-y-3"><input name="name" required className={inputClass} placeholder="World Cup 2026" /><input name="startsAt" required type="datetime-local" className={inputClass} /><input name="endsAt" type="datetime-local" className={inputClass} /><input name="hostCountries" className={inputClass} placeholder="USA, Canada, Mexico" /><button disabled={disabled} className={`${buttonClass} w-full bg-emerald-600`}>Create stream</button></form><div className="mt-5 max-h-64 space-y-2 overflow-y-auto pr-1">{streams.map((stream) => <div key={stream.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3"><p className="font-black text-navy">{stream.name}</p><p className="text-xs font-bold text-slate-500">{stream.slug} · {stream.isActive ? "Visible" : "Hidden"}</p></div>)}</div></div>; }
