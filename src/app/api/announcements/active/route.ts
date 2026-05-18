@@ -5,32 +5,36 @@ import { requireUser } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
-function startOfUtcDay(date = new Date()) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-function utcDateKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+function hoursToMilliseconds(hours: number) {
+  return hours * 60 * 60 * 1000;
 }
 
 export async function GET() {
   try {
     const user = await requireUser();
-    const todayStart = startOfUtcDay();
-    const seenToday = await prisma.announcementView.findFirst({
-      where: { userId: user.id, seenAt: { gte: todayStart } },
-      select: { id: true }
+    const now = new Date();
+    const recentView = await prisma.announcementView.findFirst({
+      where: { userId: user.id },
+      orderBy: { seenAt: "desc" },
+      select: {
+        seenAt: true,
+        announcement: { select: { displayFrequencyHours: true } }
+      }
     });
-    if (seenToday) return NextResponse.json({ announcement: null, showDate: utcDateKey(todayStart) });
+
+    if (recentView) {
+      const nextEligibleAt = new Date(recentView.seenAt.getTime() + hoursToMilliseconds(recentView.announcement.displayFrequencyHours));
+      if (nextEligibleAt > now) return NextResponse.json({ announcement: null, userId: user.id, nextEligibleAt: nextEligibleAt.toISOString() });
+    }
 
     const announcements = await prisma.announcement.findMany({
       where: { isActive: true },
-      select: { id: true, title: true, description: true, imageUrl: true, linkUrl: true },
+      select: { id: true, title: true, description: true, imageUrl: true, linkUrl: true, displayFrequencyHours: true },
       take: 50
     });
-    if (announcements.length === 0) return NextResponse.json({ announcement: null, showDate: utcDateKey(todayStart) });
+    if (announcements.length === 0) return NextResponse.json({ announcement: null, userId: user.id, nextEligibleAt: null });
     const announcement = announcements[Math.floor(Math.random() * announcements.length)];
-    return NextResponse.json({ announcement, showDate: utcDateKey(todayStart) });
+    return NextResponse.json({ announcement, userId: user.id, nextEligibleAt: now.toISOString() });
   } catch (error) {
     return jsonError(error);
   }
