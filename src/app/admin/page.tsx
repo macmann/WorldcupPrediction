@@ -1,5 +1,1 @@
-import { redirect } from "next/navigation";
-
-export default function AdminRedirect() {
-  redirect("/admin-console");
-}
+export { default } from "../admin-console/page";

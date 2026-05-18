@@ -14,7 +14,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     if (!membership) throw Object.assign(new Error("League not found"), { status: 404 });
 
     const members = await prisma.leagueMember.findMany({
-      where: { leagueId: id },
+      where: { leagueId: id, user: { isBanned: false } },
       select: {
         joinedAt: true,
         user: {

@@ -79,10 +79,23 @@ model User {
   notificationDeliveries  NotificationDelivery[]
   rankSnapshots           LeagueRankSnapshot[]
   shareCards              ShareCard[]
+  announcementViews       AnnouncementView[]
 
   @@index([globalPoints(sort: Desc), exactScoresCount(sort: Desc), registrationTimestamp(sort: Asc)], map: "leaderboard_tiebreaker_idx")
   @@index([isBanned])
   @@map("users")
+}
+
+model AdminAccount {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  isSuperAdmin Boolean  @default(false) @map("is_super_admin")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("admin_accounts")
 }
 
 model OAuthAccount {
@@ -99,33 +112,34 @@ model OAuthAccount {
 }
 
 model UserSession {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  tokenHash String   @unique @map("token_hash")
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
   @@map("user_sessions")
 }
 
 model Tournament {
-  id              String   @id @default(uuid()) @db.Uuid
-  name            String
-  slug            String   @unique
-  externalId      String?  @unique @map("external_id")
-  startsAt        DateTime @map("starts_at") @db.Timestamptz(6)
-  endsAt          DateTime? @map("ends_at") @db.Timestamptz(6)
-  hostCountries   String[] @default([]) @map("host_countries")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  teams           Team[]
-  players         Player[]
-  matches         Match[]
-  outrights       Outright[]
+  id                  String               @id @default(uuid()) @db.Uuid
+  name                String
+  slug                String               @unique
+  externalId          String?              @unique @map("external_id")
+  startsAt            DateTime             @map("starts_at") @db.Timestamptz(6)
+  endsAt              DateTime?            @map("ends_at") @db.Timestamptz(6)
+  hostCountries       String[]             @default([]) @map("host_countries")
+  isActive            Boolean              @default(true) @map("is_active")
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  teams               Team[]
+  players             Player[]
+  matches             Match[]
+  outrights           Outright[]
+  outrightSettlements OutrightSettlement[]
 
   @@index([isActive, startsAt])
   @@map("tournaments")
@@ -146,6 +160,18 @@ model Team {
   championPicks  Outright[] @relation("ChampionTeam")
   secondRunnerUpPicks Outright[] @relation("SecondRunnerUpTeam")
   fairPlayPicks Outright[] @relation("FairPlayTeam")
+  id            String     @id @default(uuid()) @db.Uuid
+  tournamentId  String     @map("tournament_id") @db.Uuid
+  externalId    String?    @map("external_id")
+  name          String
+  shortName     String?    @map("short_name")
+  flagEmoji     String?    @map("flag_emoji")
+  groupName     String?    @map("group_name")
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  players       Player[]
+  homeMatches   Match[]    @relation("HomeTeam")
+  awayMatches   Match[]    @relation("AwayTeam")
+  championPicks Outright[] @relation("ChampionTeam")
 
   @@unique([tournamentId, name])
   @@unique([tournamentId, externalId])
@@ -167,6 +193,19 @@ model Player {
   bestGoalkeeperPicks Outright[] @relation("BestGoalkeeper")
   goldenBootPicks   Outright[] @relation("GoldenBoot")
   youngPlayerPicks  Outright[] @relation("YoungPlayer")
+  id                     String               @id @default(uuid()) @db.Uuid
+  tournamentId           String               @map("tournament_id") @db.Uuid
+  teamId                 String?              @map("team_id") @db.Uuid
+  externalId             String?              @map("external_id")
+  name                   String
+  position               String?
+  isGoalkeeper           Boolean              @default(false) @map("is_goalkeeper")
+  tournament             Tournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team                   Team?                @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  bestPlayerPicks        Outright[]           @relation("BestPlayer")
+  bestGoalkeeperPicks    Outright[]           @relation("BestGoalkeeper")
+  goldenBallSettlements  OutrightSettlement[] @relation("GoldenBallWinner")
+  goldenGloveSettlements OutrightSettlement[] @relation("GoldenGloveWinner")
 
   @@unique([tournamentId, externalId])
   @@index([tournamentId, isGoalkeeper])
@@ -175,33 +214,33 @@ model Player {
 }
 
 model Match {
-  id               Int          @id
-  tournamentId     String?      @map("tournament_id") @db.Uuid
-  externalId       String?      @unique @map("external_id")
-  matchday         Int?
-  stage            StageType    @default(GROUP)
-  groupName        String?      @map("group_name")
-  homeTeam         String       @map("home_team")
-  awayTeam         String       @map("away_team")
-  homeTeamId       String?      @map("home_team_id") @db.Uuid
-  awayTeamId       String?      @map("away_team_id") @db.Uuid
-  venue            String?
-  kickoffTime      DateTime     @map("kickoff_time") @db.Timestamptz(6)
-  status           MatchStatus  @default(SCHEDULED)
-  isEnabled        Boolean      @default(true) @map("is_enabled")
-  homeScore        Int?         @map("home_score")
-  awayScore        Int?         @map("away_score")
-  homeScore90      Int?         @map("home_score_90")
-  awayScore90      Int?         @map("away_score_90")
-  lastSyncedAt     DateTime?    @map("last_synced_at") @db.Timestamptz(6)
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  tournament       Tournament?  @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
-  homeTeamRef      Team?        @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: SetNull)
-  awayTeamRef      Team?        @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: SetNull)
-  predictions      Prediction[]
+  id                     Int                    @id
+  tournamentId           String?                @map("tournament_id") @db.Uuid
+  externalId             String?                @unique @map("external_id")
+  matchday               Int?
+  stage                  StageType              @default(GROUP)
+  groupName              String?                @map("group_name")
+  homeTeam               String                 @map("home_team")
+  awayTeam               String                 @map("away_team")
+  homeTeamId             String?                @map("home_team_id") @db.Uuid
+  awayTeamId             String?                @map("away_team_id") @db.Uuid
+  venue                  String?
+  kickoffTime            DateTime               @map("kickoff_time") @db.Timestamptz(6)
+  status                 MatchStatus            @default(SCHEDULED)
+  isEnabled              Boolean                @default(true) @map("is_enabled")
+  homeScore              Int?                   @map("home_score")
+  awayScore              Int?                   @map("away_score")
+  homeScore90            Int?                   @map("home_score_90")
+  awayScore90            Int?                   @map("away_score_90")
+  lastSyncedAt           DateTime?              @map("last_synced_at") @db.Timestamptz(6)
+  createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tournament             Tournament?            @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  homeTeamRef            Team?                  @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: SetNull)
+  awayTeamRef            Team?                  @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: SetNull)
+  predictions            Prediction[]
   notificationDeliveries NotificationDelivery[]
-  shareCardItems   ShareCardItem[]
+  shareCardItems         ShareCardItem[]
 
   @@index([matchday, kickoffTime])
   @@index([status, kickoffTime])
@@ -211,21 +250,21 @@ model Match {
 }
 
 model Prediction {
-  id                 String   @id @default(uuid()) @db.Uuid
-  userId             String   @map("user_id") @db.Uuid
-  matchId            Int      @map("match_id")
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String        @map("user_id") @db.Uuid
+  matchId            Int           @map("match_id")
   predictedOutcome   MatchOutcome? @map("predicted_outcome")
-  predictedHomeScore Int?     @map("predicted_home_score")
-  predictedAwayScore Int?     @map("predicted_away_score")
-  pointsAwarded      Int?     @map("points_awarded")
-  isExactScore       Boolean  @default(false) @map("is_exact_score")
-  isCorrectOutcome   Boolean  @default(false) @map("is_correct_outcome")
-  isLocked           Boolean  @default(false) @map("is_locked")
-  submittedAt        DateTime @default(now()) @map("submitted_at") @db.Timestamptz(6)
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  scoredAt           DateTime? @map("scored_at") @db.Timestamptz(6)
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  match              Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  predictedHomeScore Int?          @map("predicted_home_score")
+  predictedAwayScore Int?          @map("predicted_away_score")
+  pointsAwarded      Int?          @map("points_awarded")
+  isExactScore       Boolean       @default(false) @map("is_exact_score")
+  isCorrectOutcome   Boolean       @default(false) @map("is_correct_outcome")
+  isLocked           Boolean       @default(false) @map("is_locked")
+  submittedAt        DateTime      @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  scoredAt           DateTime?     @map("scored_at") @db.Timestamptz(6)
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match              Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@unique([userId, matchId])
   @@index([matchId])
@@ -255,6 +294,19 @@ model Outright {
   bestGoalkeeper     Player      @relation("BestGoalkeeper", fields: [bestGkId], references: [id], onDelete: Restrict)
   goldenBoot         Player      @relation("GoldenBoot", fields: [goldenBootPlayerId], references: [id], onDelete: Restrict)
   youngPlayer        Player      @relation("YoungPlayer", fields: [youngPlayerId], references: [id], onDelete: Restrict)
+  userId         String      @id @map("user_id") @db.Uuid
+  tournamentId   String?     @map("tournament_id") @db.Uuid
+  championTeamId String      @map("champion_team_id") @db.Uuid
+  bestPlayerId   String      @map("best_player_id") @db.Uuid
+  bestGkId       String      @map("best_gk_id") @db.Uuid
+  pointsAwarded  Int?        @map("points_awarded")
+  submittedAt    DateTime    @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tournament     Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  championTeam   Team        @relation("ChampionTeam", fields: [championTeamId], references: [id], onDelete: Restrict)
+  bestPlayer     Player      @relation("BestPlayer", fields: [bestPlayerId], references: [id], onDelete: Restrict)
+  bestGoalkeeper Player      @relation("BestGoalkeeper", fields: [bestGkId], references: [id], onDelete: Restrict)
 
   @@index([tournamentId])
   @@map("outrights")
@@ -318,18 +370,18 @@ model NotificationPreference {
 }
 
 model NotificationDelivery {
-  id        String             @id @default(uuid()) @db.Uuid
-  userId    String             @map("user_id") @db.Uuid
-  matchId   Int?               @map("match_id")
-  channel   NotificationChannel
-  status    NotificationStatus @default(PENDING)
-  payload   Json
-  error     String?
-  scheduledFor DateTime        @map("scheduled_for") @db.Timestamptz(6)
-  sentAt    DateTime?          @map("sent_at") @db.Timestamptz(6)
-  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  match     Match?             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  id           String              @id @default(uuid()) @db.Uuid
+  userId       String              @map("user_id") @db.Uuid
+  matchId      Int?                @map("match_id")
+  channel      NotificationChannel
+  status       NotificationStatus  @default(PENDING)
+  payload      Json
+  error        String?
+  scheduledFor DateTime            @map("scheduled_for") @db.Timestamptz(6)
+  sentAt       DateTime?           @map("sent_at") @db.Timestamptz(6)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match        Match?              @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@index([status, scheduledFor])
   @@index([userId, createdAt])
@@ -361,4 +413,68 @@ model ShareCardItem {
   @@id([shareCardId, matchId])
   @@index([matchId])
   @@map("share_card_items")
+}
+
+model Announcement {
+  id          String             @id @default(uuid()) @db.Uuid
+  title       String
+  description String             @db.Text
+  imageUrl    String             @map("image_url") @db.Text
+  linkUrl     String             @map("link_url") @db.Text
+  isActive    Boolean            @default(true) @map("is_active")
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  views       AnnouncementView[]
+
+  @@index([isActive, createdAt])
+  @@map("announcements")
+}
+
+model AnnouncementView {
+  id             String       @id @default(uuid()) @db.Uuid
+  announcementId String       @map("announcement_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  seenAt         DateTime     @default(now()) @map("seen_at") @db.Timestamptz(6)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, seenAt])
+  @@map("announcement_views")
+}
+
+model AppSetting {
+  id               Int      @id @default(1)
+  announcementText String?  @map("announcement_text")
+  maintenanceMode  Boolean  @default(false) @map("maintenance_mode")
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("app_settings")
+}
+
+model AdminJobStatus {
+  key           String    @id
+  label         String
+  lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz(6)
+  lastSuccessAt DateTime? @map("last_success_at") @db.Timestamptz(6)
+  lastError     String?   @map("last_error")
+  lastPayload   Json?     @map("last_payload")
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("admin_job_statuses")
+}
+
+model OutrightSettlement {
+  id                  String     @id @default(uuid()) @db.Uuid
+  tournamentId        String     @unique @map("tournament_id") @db.Uuid
+  goldenBallPlayerId  String     @map("golden_ball_player_id") @db.Uuid
+  goldenGlovePlayerId String     @map("golden_glove_player_id") @db.Uuid
+  settledAt           DateTime   @default(now()) @map("settled_at") @db.Timestamptz(6)
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tournament          Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  goldenBallPlayer    Player     @relation("GoldenBallWinner", fields: [goldenBallPlayerId], references: [id], onDelete: Restrict)
+  goldenGlovePlayer   Player     @relation("GoldenGloveWinner", fields: [goldenGlovePlayerId], references: [id], onDelete: Restrict)
+
+  @@index([settledAt])
+  @@map("outright_settlements")
 }
