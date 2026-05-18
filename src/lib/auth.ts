@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "./prisma";
 import { config } from "./config";
+import { requireAdminAccount } from "./adminAuth";
 
 const secret = new TextEncoder().encode(config.jwtSecret);
 
@@ -34,7 +35,5 @@ export async function requireUser() {
 }
 
 export async function requireAdmin() {
-  const user = await requireUser();
-  if (!user.isAdmin) throw Object.assign(new Error("Administrator access required"), { status: 403 });
-  return user;
+  return requireAdminAccount();
 }
