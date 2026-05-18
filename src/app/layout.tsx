@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ViewportFrame } from "@/components/ViewportFrame";
 import { StoreProvider } from "@/store/useStore";
+import { SystemStatusGate } from "@/components/SystemStatusGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <StoreProvider>
-          <ViewportFrame>{children}</ViewportFrame>
+          <SystemStatusGate><ViewportFrame>{children}</ViewportFrame></SystemStatusGate>
         </StoreProvider>
       </body>
     </html>

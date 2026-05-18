@@ -11,6 +11,7 @@ type RankedLeagueMember = {
     exactScoresCount: number;
     correctOutcomesCount: number;
     registrationTimestamp: Date;
+    isBanned: boolean;
   };
 };
 
@@ -99,7 +100,8 @@ export async function getUserLeagues(): Promise<LeagueCard[]> {
                   globalPoints: true,
                   exactScoresCount: true,
                   correctOutcomesCount: true,
-                  registrationTimestamp: true
+                  registrationTimestamp: true,
+                  isBanned: true
                 }
               }
             }
@@ -111,7 +113,8 @@ export async function getUserLeagues(): Promise<LeagueCard[]> {
   });
 
   return memberships.map((membership) => {
-    const rankedMembers = rankMembers(membership.league.memberships);
+    const visibleMembers = membership.league.memberships.filter((member) => !member.user.isBanned || member.user.id === user.id);
+    const rankedMembers = rankMembers(visibleMembers);
     const currentUserRow = rankedMembers.find((member) => member.user.id === user.id);
     const leader = rankedMembers[0]?.user;
 
@@ -159,7 +162,8 @@ export async function getLeagueDetail(id: string): Promise<LeagueDetail | null |
               globalPoints: true,
               exactScoresCount: true,
               correctOutcomesCount: true,
-              registrationTimestamp: true
+              registrationTimestamp: true,
+              isBanned: true
             }
           }
         }
@@ -169,7 +173,8 @@ export async function getLeagueDetail(id: string): Promise<LeagueDetail | null |
 
   if (!league || !league.memberships.some((member) => member.user.id === user.id)) return null;
 
-  const rankedMembers = rankMembers(league.memberships);
+  const visibleMembers = league.memberships.filter((member) => !member.user.isBanned || member.user.id === user.id);
+  const rankedMembers = rankMembers(visibleMembers);
   const currentUserRow = rankedMembers.find((member) => member.user.id === user.id);
   const userRank = currentUserRow?.rank ?? rankedMembers.length;
   const userPoints = currentUserRow?.user.globalPoints ?? user.globalPoints;
