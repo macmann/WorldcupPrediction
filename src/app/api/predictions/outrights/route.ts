@@ -11,8 +11,12 @@ import { getOutrightOptions, syncOutrightCatalog } from "@/services/outrightCata
 const schema = z.object({
   tournamentId: z.string().uuid().optional(),
   championTeamId: z.string().uuid(),
+  secondRunnerUpTeamId: z.string().uuid(),
+  fairPlayTeamId: z.string().uuid(),
   bestPlayerId: z.string().uuid(),
-  bestGkId: z.string().uuid()
+  bestGkId: z.string().uuid(),
+  goldenBootPlayerId: z.string().uuid(),
+  youngPlayerId: z.string().uuid()
 }).strict();
 
 async function resolveOutrightLockDeadline(tournamentId: string) {
@@ -54,8 +58,12 @@ export async function GET(request: Request) {
       where: { userId: user.id },
       include: {
         championTeam: true,
+        secondRunnerUpTeam: true,
+        fairPlayTeam: true,
         bestPlayer: { include: { team: true } },
-        bestGoalkeeper: { include: { team: true } }
+        bestGoalkeeper: { include: { team: true } },
+        goldenBoot: { include: { team: true } },
+        youngPlayer: { include: { team: true } }
       }
     });
 
@@ -76,11 +84,19 @@ export async function GET(request: Request) {
       },
       outright: outright ? {
         championTeamId: outright.championTeamId,
+        secondRunnerUpTeamId: outright.secondRunnerUpTeamId,
+        fairPlayTeamId: outright.fairPlayTeamId,
         bestPlayerId: outright.bestPlayerId,
         bestGkId: outright.bestGkId,
+        goldenBootPlayerId: outright.goldenBootPlayerId,
+        youngPlayerId: outright.youngPlayerId,
         champion: optionName(outright.championTeam),
+        secondRunnerUp: optionName(outright.secondRunnerUpTeam),
+        fairPlay: optionName(outright.fairPlayTeam),
         bestPlayer: optionName(outright.bestPlayer),
-        bestGk: optionName(outright.bestGoalkeeper)
+        bestGk: optionName(outright.bestGoalkeeper),
+        goldenBoot: optionName(outright.goldenBoot),
+        youngPlayer: optionName(outright.youngPlayer)
       } : null,
       source: hasProvider ? "live-provider" : "database",
       message: options.players.length === 0 || options.goalkeepers.length === 0
@@ -99,13 +115,17 @@ export async function POST(request: Request) {
     const user = await requireUser();
     const input = schema.parse(await request.json());
 
-    const [championTeam, bestPlayer, bestGoalkeeper] = await Promise.all([
+    const [championTeam, secondRunnerUpTeam, fairPlayTeam, bestPlayer, bestGoalkeeper, goldenBootPlayer, youngPlayer] = await Promise.all([
       prisma.team.findUnique({ where: { id: input.championTeamId }, select: { tournamentId: true } }),
+      prisma.team.findUnique({ where: { id: input.secondRunnerUpTeamId }, select: { tournamentId: true } }),
+      prisma.team.findUnique({ where: { id: input.fairPlayTeamId }, select: { tournamentId: true } }),
       prisma.player.findUnique({ where: { id: input.bestPlayerId }, select: { tournamentId: true } }),
-      prisma.player.findUnique({ where: { id: input.bestGkId }, select: { tournamentId: true, isGoalkeeper: true } })
+      prisma.player.findUnique({ where: { id: input.bestGkId }, select: { tournamentId: true, isGoalkeeper: true } }),
+      prisma.player.findUnique({ where: { id: input.goldenBootPlayerId }, select: { tournamentId: true } }),
+      prisma.player.findUnique({ where: { id: input.youngPlayerId }, select: { tournamentId: true } })
     ]);
 
-    if (!championTeam || !bestPlayer || !bestGoalkeeper) {
+    if (!championTeam || !secondRunnerUpTeam || !fairPlayTeam || !bestPlayer || !bestGoalkeeper || !goldenBootPlayer || !youngPlayer) {
       throw Object.assign(new Error("One or more outright selections were not found"), { status: 400 });
     }
     if (!bestGoalkeeper.isGoalkeeper) {
@@ -115,22 +135,32 @@ export async function POST(request: Request) {
     const tournamentId = input.tournamentId ?? championTeam.tournamentId;
     if (
       championTeam.tournamentId !== tournamentId ||
+      secondRunnerUpTeam.tournamentId !== tournamentId ||
+      fairPlayTeam.tournamentId !== tournamentId ||
       bestPlayer.tournamentId !== tournamentId ||
-      bestGoalkeeper.tournamentId !== tournamentId
+      bestGoalkeeper.tournamentId !== tournamentId ||
+      goldenBootPlayer.tournamentId !== tournamentId ||
+      youngPlayer.tournamentId !== tournamentId
     ) {
       throw Object.assign(new Error("All outright selections must belong to the same tournament"), { status: 400 });
     }
 
     const outrightLockDeadline = await resolveOutrightLockDeadline(tournamentId);
     if (new Date() >= outrightLockDeadline) {
-      throw Object.assign(new Error("Tournament winner, Golden Ball, and Golden Glove picks are locked"), { status: 403 });
+      throw Object.assign(new Error("Outright picks are locked because the Round of 16 has started"), { status: 403 });
     }
 
     const outright = await prisma.$transaction(async (tx) => {
       const saved = await tx.outright.upsert({
         where: { userId: user.id },
-        create: { userId: user.id, tournamentId, championTeamId: input.championTeamId, bestPlayerId: input.bestPlayerId, bestGkId: input.bestGkId },
-        update: { tournamentId, championTeamId: input.championTeamId, bestPlayerId: input.bestPlayerId, bestGkId: input.bestGkId }
+        create: {
+          userId: user.id, tournamentId, championTeamId: input.championTeamId, secondRunnerUpTeamId: input.secondRunnerUpTeamId, fairPlayTeamId: input.fairPlayTeamId,
+          bestPlayerId: input.bestPlayerId, bestGkId: input.bestGkId, goldenBootPlayerId: input.goldenBootPlayerId, youngPlayerId: input.youngPlayerId
+        },
+        update: {
+          tournamentId, championTeamId: input.championTeamId, secondRunnerUpTeamId: input.secondRunnerUpTeamId, fairPlayTeamId: input.fairPlayTeamId,
+          bestPlayerId: input.bestPlayerId, bestGkId: input.bestGkId, goldenBootPlayerId: input.goldenBootPlayerId, youngPlayerId: input.youngPlayerId
+        }
       });
       await tx.user.update({ where: { id: user.id }, data: { onboardingCompletedAt: new Date() } });
       return saved;

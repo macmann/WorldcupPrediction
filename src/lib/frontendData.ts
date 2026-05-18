@@ -63,11 +63,19 @@ export type OutrightOptionsPayload = {
   };
   outright: {
     championTeamId: string;
+    secondRunnerUpTeamId: string;
+    fairPlayTeamId: string;
     bestPlayerId: string;
     bestGkId: string;
+    goldenBootPlayerId: string;
+    youngPlayerId: string;
     champion: string;
+    secondRunnerUp: string;
+    fairPlay: string;
     bestPlayer: string;
     bestGk: string;
+    goldenBoot: string;
+    youngPlayer: string;
   } | null;
   source: "live-provider" | "database";
   message: string | null;

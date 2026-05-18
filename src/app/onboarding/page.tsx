@@ -17,8 +17,12 @@ export default function OnboardingPage() {
   const { setOnboardingCompleted } = useStore();
   const [data, setData] = useState<OutrightOptionsPayload | null>(null);
   const [championTeamId, setChampionTeamId] = useState("");
+  const [secondRunnerUpTeamId, setSecondRunnerUpTeamId] = useState("");
+  const [fairPlayTeamId, setFairPlayTeamId] = useState("");
   const [bestPlayerId, setBestPlayerId] = useState("");
   const [bestGkId, setBestGkId] = useState("");
+  const [goldenBootPlayerId, setGoldenBootPlayerId] = useState("");
+  const [youngPlayerId, setYoungPlayerId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -35,8 +39,12 @@ export default function OnboardingPage() {
         if (!mounted) return;
         setData(payload);
         setChampionTeamId(payload.outright?.championTeamId ?? payload.options.teams[0]?.id ?? "");
+        setSecondRunnerUpTeamId(payload.outright?.secondRunnerUpTeamId ?? payload.options.teams[0]?.id ?? "");
+        setFairPlayTeamId(payload.outright?.fairPlayTeamId ?? payload.options.teams[0]?.id ?? "");
         setBestPlayerId(payload.outright?.bestPlayerId ?? payload.options.players[0]?.id ?? "");
         setBestGkId(payload.outright?.bestGkId ?? payload.options.goalkeepers[0]?.id ?? "");
+        setGoldenBootPlayerId(payload.outright?.goldenBootPlayerId ?? payload.options.players[0]?.id ?? "");
+        setYoungPlayerId(payload.outright?.youngPlayerId ?? payload.options.players[0]?.id ?? "");
       })
       .catch((caught) => {
         if (mounted) setError(caught instanceof Error ? caught.message : "Could not load live outright options");
@@ -54,7 +62,7 @@ export default function OnboardingPage() {
         const response = await fetch("/api/predictions/outrights", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ championTeamId, bestPlayerId, bestGkId, tournamentId: data?.tournament.id })
+          body: JSON.stringify({ championTeamId, secondRunnerUpTeamId, fairPlayTeamId, bestPlayerId, bestGkId, goldenBootPlayerId, youngPlayerId, tournamentId: data?.tournament.id })
         });
         if (!response.ok) throw new Error((await response.json()).error ?? "Could not save outright picks");
         window.localStorage.setItem("worldcup:onboarding-completed", "true");
@@ -85,11 +93,11 @@ export default function OnboardingPage() {
           <h1 className="mt-2 text-3xl font-black tracking-tight">Lock your tournament outrights</h1>
         </div>
       </div>
-      <p className="mt-3 text-sm font-medium text-emerald-50">Choose your Tournament Winner, Golden Ball, and Golden Glove before entering the app. These picks stay open until the Round of 16 starts.</p>
+      <p className="mt-3 text-sm font-medium text-emerald-50">Choose your tournament winner and award picks before entering the app. These picks stay open until the Round of 16 starts.</p>
 
       <Card className="mt-6 text-slate-950">
         <SectionTitle eyebrow="Required" title="Outright picks" />
-        <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{data?.canEdit === false ? "Tournament Winner, Golden Ball, and Golden Glove picks are locked because the Round of 16 has started." : statusMessage}</p>
+        <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{data?.canEdit === false ? "Outright picks are locked because the Round of 16 has started." : statusMessage}</p>
         <div className="mt-4 rounded-3xl bg-gradient-to-br from-navy to-emerald-800 p-4 text-white">
           <p className="text-xs font-black uppercase tracking-widest text-emerald-200">Selection deadline</p>
           <p className="mt-1 text-sm font-bold">Closes when the Round of 16 starts</p>
@@ -103,6 +111,11 @@ export default function OnboardingPage() {
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
+          <label className="block text-sm font-black">2nd Runner-up
+            <select value={secondRunnerUpTeamId} onChange={(event) => setSecondRunnerUpTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+              {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </label>
           <label className="block text-sm font-black">Golden Ball
             <select value={bestPlayerId} onChange={(event) => setBestPlayerId(event.target.value)} disabled={!data?.canEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
@@ -111,6 +124,21 @@ export default function OnboardingPage() {
           <label className="block text-sm font-black">Golden Glove
             <select value={bestGkId} onChange={(event) => setBestGkId(event.target.value)} disabled={!data?.canEdit || !data?.options.goalkeepers.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.goalkeepers ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm font-black">Golden Boot
+            <select value={goldenBootPlayerId} onChange={(event) => setGoldenBootPlayerId(event.target.value)} disabled={!data?.canEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+              {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm font-black">FIFA Young Player Award
+            <select value={youngPlayerId} onChange={(event) => setYoungPlayerId(event.target.value)} disabled={!data?.canEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+              {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm font-black">FIFA Fair Play Trophy
+            <select value={fairPlayTeamId} onChange={(event) => setFairPlayTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+              {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
         </div>
