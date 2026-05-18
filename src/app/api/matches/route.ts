@@ -11,7 +11,8 @@ import { ingestFixtures } from "@/services/fixtures";
 const querySchema = z.object({
   matchday: z.coerce.number().int().positive().optional(),
   stage: z.nativeEnum(StageType).optional(),
-  group: z.string().trim().min(1).max(8).optional()
+  group: z.string().trim().min(1).max(8).optional(),
+  tournamentId: z.string().uuid().optional()
 });
 
 export async function GET(request: Request) {
@@ -21,7 +22,8 @@ export async function GET(request: Request) {
     const query = querySchema.parse({
       matchday: searchParams.get("matchday") ?? undefined,
       stage: searchParams.get("stage") ?? undefined,
-      group: searchParams.get("group") ?? undefined
+      group: searchParams.get("group") ?? undefined,
+      tournamentId: searchParams.get("tournamentId") ?? undefined
     });
 
     const fixtureCount = await prisma.match.count();
@@ -35,12 +37,16 @@ export async function GET(request: Request) {
       where: {
         ...(query.matchday ? { matchday: query.matchday } : {}),
         ...(query.stage ? { stage: query.stage } : {}),
-        ...(query.group ? { groupName: query.group.toUpperCase() } : {})
+        isEnabled: true,
+        ...(query.group ? { groupName: query.group.toUpperCase() } : {}),
+        ...(query.tournamentId ? { tournamentId: query.tournamentId } : {}),
+        OR: [{ tournamentId: null }, { tournament: { isActive: true } }]
       },
       orderBy: { kickoffTime: "asc" },
       include: {
         homeTeamRef: { select: { flagEmoji: true } },
         awayTeamRef: { select: { flagEmoji: true } },
+        tournament: { select: { id: true, name: true, slug: true } },
         predictions: { where: { userId: user.id }, take: 1 }
       }
     });

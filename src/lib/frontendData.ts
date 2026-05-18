@@ -22,6 +22,8 @@ export type Match = {
   awayFlagImageUrl?: string | null;
   kickoffTime: string;
   status: string;
+  isEnabled?: boolean;
+  tournament?: { id: string; name: string; slug: string } | null;
   homeScore?: number | null;
   awayScore?: number | null;
   isLocked?: boolean;
@@ -32,6 +34,16 @@ export type MatchFilters = {
   group?: string;
   stage?: string;
   matchday?: string | number;
+  tournamentId?: string;
+};
+
+export type Stream = {
+  id: string;
+  name: string;
+  slug: string;
+  startsAt: string;
+  endsAt?: string | null;
+  isActive: boolean;
 };
 
 export type OutrightOption = {

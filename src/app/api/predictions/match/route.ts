@@ -33,8 +33,9 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const input = schema.parse(await request.json());
-    const match = await prisma.match.findUnique({ where: { id: input.matchId }, select: { kickoffTime: true } });
+    const match = await prisma.match.findUnique({ where: { id: input.matchId }, select: { kickoffTime: true, isEnabled: true, tournament: { select: { isActive: true } } } });
     if (!match) throw Object.assign(new Error("Match not found"), { status: 404 });
+    if (!match.isEnabled || match.tournament?.isActive === false) throw Object.assign(new Error("This match is not available for predictions"), { status: 403 });
     if (new Date() >= match.kickoffTime) throw Object.assign(new Error("Predictions lock at kickoff"), { status: 403 });
 
     const scoreData = input.hasScore

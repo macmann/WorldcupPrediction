@@ -5,12 +5,13 @@ import { LockIcon } from "@/components/Icons";
 import { TeamName } from "@/components/TeamName";
 import { PredictionForm } from "@/components/PredictionForm";
 import { matchLabel, type Match } from "@/lib/frontendData";
-import { fetchMatches } from "@/lib/serverMatches";
+import { fetchMatches, fetchStreams } from "@/lib/serverMatches";
 
 type MatchCenterProps = {
   searchParams?: {
     date?: string;
     group?: string;
+    stream?: string;
   };
 };
 
@@ -61,7 +62,9 @@ function dateTabLabel(tabDate: string, now: Date) {
 }
 
 export default async function MatchCenter({ searchParams }: MatchCenterProps) {
-  const allMatches = await fetchMatches();
+  const streams = await fetchStreams();
+  const requestedStream = searchParams?.stream && streams.some((stream) => stream.id === searchParams.stream) ? searchParams.stream : undefined;
+  const allMatches = await fetchMatches(requestedStream ? { tournamentId: requestedStream } : {});
   const groups = groupTabs(allMatches);
   const dates = dateTabs(allMatches);
   const now = new Date();
@@ -69,6 +72,8 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
   const requestedGroup = searchParams?.group && groups.includes(searchParams.group) ? searchParams.group : undefined;
   const selectedDate = requestedDate ?? (requestedGroup ? undefined : defaultDateTab(dates, now));
   const selectedGroup = !selectedDate ? requestedGroup ?? groups[0] : undefined;
+  const selectedStream = requestedStream ? streams.find((stream) => stream.id === requestedStream) : undefined;
+  const streamParam = requestedStream ? `&stream=${encodeURIComponent(requestedStream)}` : "";
   const matches = selectedDate
     ? allMatches.filter((match) => dateKey(match.kickoffTime) === selectedDate)
     : selectedGroup
@@ -83,10 +88,21 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-black text-navy [&::-webkit-details-marker]:hidden">
           <span>Filters</span>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-            {selectedDateLabel ? `Showing ${selectedDateLabel}` : selectedGroup ? `Showing Group ${selectedGroup}` : "All fixtures"}
+            {selectedStream ? selectedStream.name : selectedDateLabel ? `Showing ${selectedDateLabel}` : selectedGroup ? `Showing Group ${selectedGroup}` : "All fixtures"}
           </span>
         </summary>
         <div className="mt-4 space-y-3">
+          <div>
+            <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">Competition stream</p>
+            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+              <Link href="/predict" className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${!selectedStream ? "bg-navy text-white" : "bg-white text-slate-700"}`}>All streams</Link>
+              {streams.map((stream) => (
+                <Link key={stream.id} href={`/predict?stream=${encodeURIComponent(stream.id)}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${stream.id === selectedStream?.id ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
+                  {stream.name}
+                </Link>
+              ))}
+            </div>
+          </div>
           <div>
             <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">By date</p>
             <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -96,7 +112,7 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
                   const dailyMatches = allMatches.filter((match) => dateKey(match.kickoffTime) === tabDate).length;
 
                   return (
-                    <Link key={tabDate} href={`/predict?date=${encodeURIComponent(tabDate)}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
+                    <Link key={tabDate} href={`/predict?date=${encodeURIComponent(tabDate)}${streamParam}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
                       {dateTabLabel(tabDate, now)} <span className={isActive ? "text-white/70" : "text-slate-400"}>({dailyMatches})</span>
                     </Link>
                   );
@@ -114,7 +130,7 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
                   const isActive = group === selectedGroup;
 
                   return (
-                    <Link key={group} href={`/predict?group=${encodeURIComponent(group)}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
+                    <Link key={group} href={`/predict?group=${encodeURIComponent(group)}${streamParam}`} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold shadow-sm ${isActive ? "bg-navy text-white" : "bg-white text-slate-700"}`}>
                       Group {group}
                     </Link>
                   );
@@ -152,7 +168,7 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
             </Card>
           );
         }) : (
-          <Card><p className="text-sm font-semibold text-slate-500">No World Cup fixtures are available yet. Check your football API configuration and run fixture sync.</p></Card>
+          <Card><p className="text-sm font-semibold text-slate-500">No fixtures are available for this stream yet. Check your football API configuration, add matches, or run fixture sync.</p></Card>
         )}
       </div>
     </AppShell>
