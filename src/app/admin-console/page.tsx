@@ -152,6 +152,20 @@ export default function AdminConsole() {
     startTransition(async () => { try { await adminJson(`/api/admin/matches/${matchId}/override`, { method: "POST", body: JSON.stringify(payload) }); setMessage(`Match ${matchId} score overridden and queued for scoring.`); loadAdminData(); } catch (scoreError) { setError(scoreError instanceof Error ? scoreError.message : "Could not override score"); } });
   }
 
+
+  function runFixtureSyncNow() {
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        const result = await adminJson<{ upserted: number; queuedForScoring: number }>("/api/admin/matches/sync", { method: "POST" });
+        setMessage(`Fixture sync completed. Updated ${result.upserted} matches and queued ${result.queuedForScoring} for scoring.`);
+        loadAdminData();
+      } catch (syncError) {
+        setError(syncError instanceof Error ? syncError.message : "Could not run fixture sync");
+      }
+    });
+  }
+
   function recalculate(formData: FormData) {
     const matchId = String(formData.get("matchId") ?? "");
     setError(null); setMessage(null);
@@ -248,6 +262,7 @@ export default function AdminConsole() {
           {activeTab === "matches" && (
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Matches & Operations</p><h2 className="mt-1 text-2xl font-black text-navy">Scores and recalculation tools</h2>
+              <div className="mt-4"><button type="button" onClick={runFixtureSyncNow} disabled={isPending} className={`${buttonClass} bg-emerald-600`}>Fetch scores from API now</button><p className="mt-1 text-xs font-semibold text-slate-500">Runs fixture ingestion immediately (bypasses scheduler), then queues completed matches for scoring.</p></div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 <form action={overrideScore} className="rounded-2xl border border-red-100 bg-red-50 p-4"><h3 className="font-black text-red-700">Manual result overwrite</h3><p className="mt-1 text-xs font-semibold text-red-600/80">Inputs final 90-minute score and forces FINISHED.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_90px_90px]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><input name="homeScore" className={inputClass} placeholder="Home" type="number" min="0" required /><input name="awayScore" className={inputClass} placeholder="Away" type="number" min="0" required /></div><button disabled={isPending} className={`${buttonClass} mt-3 w-full bg-red-600`}>Override final score</button></form>
                 <form action={recalculate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Point recalculation trigger</h3><p className="mt-1 text-xs font-semibold text-slate-500">Wipes prior awards for this match and rebuilds global/private leaderboard totals.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><button disabled={isPending} className={`${buttonClass} bg-slate-800`}>Recalculate points</button></div></form>

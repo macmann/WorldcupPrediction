@@ -8,7 +8,7 @@ export const fixtureSyncJobName = "daily-fixture-ingestion";
 export async function scheduleFixtureSyncJob() {
   return getFixtureQueue().upsertJobScheduler(
     fixtureSyncJobName,
-    { pattern: "0 0 * * *" },
+    { pattern: "0 */4 * * *" },
     { name: fixtureSyncJobName }
   );
 }
