@@ -79,7 +79,9 @@ async function ingestFixtureBatch(fixtures: ExternalFixture[], tournamentId?: st
   for (const fixture of fixtures) {
     await upsertFixture(fixture, tournamentId);
     upserted += 1;
-    if (fixture.status === MatchStatus.FINISHED && fixture.homeScore90 !== null && fixture.awayScore90 !== null) {
+    const standardTimeHome = fixture.homeScore90 ?? fixture.homeScore;
+    const standardTimeAway = fixture.awayScore90 ?? fixture.awayScore;
+    if (fixture.status === MatchStatus.FINISHED && standardTimeHome !== null && standardTimeAway !== null) {
       await enqueueScoringJob(fixture.id);
       queuedForScoring += 1;
     }
