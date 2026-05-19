@@ -18,6 +18,7 @@ type AdminUser = {
 type AdminTournament = { id: string; name: string; slug: string; startsAt: string; endsAt?: string | null; isActive: boolean; externalId?: string | null };
 type ApiCompetition = { code: string; name: string; externalId: string; areaName?: string | null; startsAt: string; endsAt?: string | null; isAdded: boolean };
 type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; displayFrequencyHours: number; createdAt: string; updatedAt: string };
+type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
 type OpsPayload = {
   settings: { announcementText?: string | null; maintenanceMode: boolean; updatedAt: string };
   announcements: AdminAnnouncement[];
@@ -74,6 +75,9 @@ export default function AdminConsole() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [recalcMatches, setRecalcMatches] = useState<AdminMatchOption[]>([]);
+  const [recalcFilter, setRecalcFilter] = useState("");
 
   function loadAdminData(search = query, currentAdmin = admin) {
     setError(null);
@@ -167,9 +171,24 @@ export default function AdminConsole() {
   }
 
   function recalculate(formData: FormData) {
-    const matchId = String(formData.get("matchId") ?? "");
+    const selectedMatchId = String(formData.get("matchId") ?? "").trim();
+    const manualMatchId = String(formData.get("manualMatchId") ?? "").trim();
+    const matchId = manualMatchId || selectedMatchId;
     setError(null); setMessage(null);
+    if (!matchId) { setError("Select a finished match or enter a Match ID."); return; }
     startTransition(async () => { try { const result = await adminJson<{ scoredPredictions: number }>(`/api/admin/matches/${matchId}/recalculate`, { method: "POST" }); setMessage(`Match ${matchId} points recalculated for ${result.scoredPredictions} predictions.`); loadAdminData(); } catch (recalcError) { setError(recalcError instanceof Error ? recalcError.message : "Could not recalculate match"); } });
+  }
+
+  function loadRecalculateMatches(date = recalcDate) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const data = await adminJson<{ matches: AdminMatchOption[] }>(`/api/admin/matches?date=${encodeURIComponent(date)}`);
+        setRecalcMatches(data.matches);
+      } catch (recalcMatchesError) {
+        setError(recalcMatchesError instanceof Error ? recalcMatchesError.message : "Could not load finished matches");
+      }
+    });
   }
 
   function saveSettings(formData: FormData) {
@@ -216,8 +235,19 @@ export default function AdminConsole() {
     startTransition(async () => { try { setAudit(await adminJson<AuditPayload>(`/api/admin/users/${id}/audit`)); } catch (auditError) { setError(auditError instanceof Error ? auditError.message : "Could not load audit trail"); } });
   }
 
+  useEffect(() => {
+    if (activeTab === "matches" && admin) loadRecalculateMatches(recalcDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, admin]);
+
   if (!authChecked) return <main className="min-h-dvh bg-slate-950 p-8 text-white">Checking admin access…</main>;
   if (!admin) return <AdminLogin onLogin={handleLogin} />;
+
+  const filteredRecalcMatches = recalcMatches.filter((match) => {
+    const queryText = recalcFilter.trim().toLowerCase();
+    if (!queryText) return true;
+    return `${match.id} ${match.homeTeam} ${match.awayTeam}`.toLowerCase().includes(queryText);
+  });
 
   return (
     <main className="min-h-dvh bg-slate-100 text-slate-900">
@@ -265,7 +295,7 @@ export default function AdminConsole() {
               <div className="mt-4"><button type="button" onClick={runFixtureSyncNow} disabled={isPending} className={`${buttonClass} bg-emerald-600`}>Fetch scores from API now</button><p className="mt-1 text-xs font-semibold text-slate-500">Runs fixture ingestion immediately (bypasses scheduler), then queues completed matches for scoring.</p></div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 <form action={overrideScore} className="rounded-2xl border border-red-100 bg-red-50 p-4"><h3 className="font-black text-red-700">Manual result overwrite</h3><p className="mt-1 text-xs font-semibold text-red-600/80">Inputs final 90-minute score and forces FINISHED.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_90px_90px]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><input name="homeScore" className={inputClass} placeholder="Home" type="number" min="0" required /><input name="awayScore" className={inputClass} placeholder="Away" type="number" min="0" required /></div><button disabled={isPending} className={`${buttonClass} mt-3 w-full bg-red-600`}>Override final score</button></form>
-                <form action={recalculate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Point recalculation trigger</h3><p className="mt-1 text-xs font-semibold text-slate-500">Wipes prior awards for this match and rebuilds global/private leaderboard totals.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><button disabled={isPending} className={`${buttonClass} bg-slate-800`}>Recalculate points</button></div></form>
+                <form action={recalculate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Point recalculation trigger</h3><p className="mt-1 text-xs font-semibold text-slate-500">Pick a finished match by date/filter, or type a Match ID directly.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"><input type="date" value={recalcDate} onChange={(event) => setRecalcDate(event.target.value)} className={inputClass} /><button type="button" onClick={() => loadRecalculateMatches(recalcDate)} disabled={isPending || !recalcDate} className={`${buttonClass} bg-slate-600`}>Load date</button></div><input value={recalcFilter} onChange={(event) => setRecalcFilter(event.target.value)} className={`${inputClass} mt-3`} placeholder="Filter by match ID or team name" /><select name="matchId" className={`${inputClass} mt-3`}><option value="">Select finished match</option>{filteredRecalcMatches.map((match) => { const home = match.homeScore90 ?? match.homeScore ?? "–"; const away = match.awayScore90 ?? match.awayScore ?? "–"; return <option key={match.id} value={match.id}>{`#${match.id} · ${match.homeTeam} ${home}-${away} ${match.awayTeam} · ${new Date(match.kickoffTime).toUTCString()}`}</option>; })}</select><div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"><input name="manualMatchId" className={inputClass} placeholder="Or enter Match ID manually" type="number" /><button disabled={isPending} className={`${buttonClass} bg-slate-800`}>Recalculate points</button></div></form>
               </div>
             </div>
           )}
