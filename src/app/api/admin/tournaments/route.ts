@@ -14,7 +14,8 @@ const schema = z.object({
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime().optional().nullable(),
   hostCountries: z.array(z.string().trim().min(1).max(80)).max(16).optional(),
-  isActive: z.boolean().default(true)
+  isActive: z.boolean().default(true),
+  syncFromAt: z.string().datetime().optional().nullable()
 }).strict();
 
 export async function GET() {
@@ -22,7 +23,7 @@ export async function GET() {
     await requireAdmin();
     const tournaments = await prisma.tournament.findMany({
       orderBy: [{ startsAt: "desc" }, { name: "asc" }],
-      select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, hostCountries: true, isActive: true, externalId: true }
+      select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, syncFromAt: true, hostCountries: true, isActive: true, externalId: true }
     });
     return NextResponse.json({ tournaments });
   } catch (error) {
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
         startsAt: new Date(input.startsAt),
         endsAt: input.endsAt ? new Date(input.endsAt) : null,
         hostCountries: input.hostCountries ?? [],
-        isActive: input.isActive
+        isActive: input.isActive,
+        syncFromAt: input.syncFromAt ? new Date(input.syncFromAt) : null
       }
     });
     return NextResponse.json({ tournament }, { status: 201 });

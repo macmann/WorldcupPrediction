@@ -89,17 +89,20 @@ async function ingestFixtureBatch(fixtures: ExternalFixture[], tournamentId?: st
   return { upserted, queuedForScoring };
 }
 
-export async function ingestTournamentFixtures(tournament: Pick<Tournament, "id" | "externalId">) {
+export async function ingestTournamentFixtures(tournament: Pick<Tournament, "id" | "externalId" | "syncFromAt">) {
   const code = footballDataCode(tournament.externalId);
   if (!code) return { upserted: 0, queuedForScoring: 0, skipped: true, reason: "Tournament is not linked to a football-data competition" };
   const fixtures = await fetchFootballDataCompetitionFixtures(code);
-  return ingestFixtureBatch(fixtures, tournament.id);
+  const filteredFixtures = tournament.syncFromAt
+    ? fixtures.filter((fixture) => new Date(fixture.kickoffTime).getTime() >= tournament.syncFromAt!.getTime())
+    : fixtures;
+  return ingestFixtureBatch(filteredFixtures, tournament.id);
 }
 
 export async function ingestFixtures() {
   const externalTournaments = await prisma.tournament.findMany({
     where: { isActive: true, externalId: { startsWith: "football-data:" } },
-    select: { id: true, externalId: true, name: true }
+    select: { id: true, externalId: true, name: true, syncFromAt: true }
   });
 
   const results = [];

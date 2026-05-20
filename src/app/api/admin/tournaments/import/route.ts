@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchFootballDataCompetitions } from "@/services/footballApi";
 import { ingestTournamentFixtures } from "@/services/fixtures";
 
-const schema = z.object({ code: z.string().trim().min(1).max(32) }).strict();
+const schema = z.object({ code: z.string().trim().min(1).max(32), startFrom: z.string().datetime().optional().nullable() }).strict();
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
@@ -28,6 +28,7 @@ export async function POST(request: Request) {
         externalId: competition.externalId,
         startsAt: new Date(competition.startsAt),
         endsAt: competition.endsAt ? new Date(competition.endsAt) : null,
+        syncFromAt: input.startFrom ? new Date(input.startFrom) : null,
         hostCountries: competition.areaName ? [competition.areaName] : [],
         isActive: true
       },
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
         name: competition.name,
         startsAt: new Date(competition.startsAt),
         endsAt: competition.endsAt ? new Date(competition.endsAt) : null,
+        syncFromAt: input.startFrom ? new Date(input.startFrom) : null,
         hostCountries: competition.areaName ? [competition.areaName] : [],
         isActive: true
       }
