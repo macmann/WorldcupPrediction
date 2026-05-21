@@ -7,7 +7,7 @@ import { jsonError } from "@/lib/http";
 export async function GET() {
   try {
     const settings = await getAppSettings();
-    return NextResponse.json({ announcementText: settings.announcementText, maintenanceMode: settings.maintenanceMode });
+    return NextResponse.json({ announcementText: settings.announcementText, bannerImageUrl: settings.bannerImageUrl, maintenanceMode: settings.maintenanceMode });
   } catch (error) {
     return jsonError(error);
   }
