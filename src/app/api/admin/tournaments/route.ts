@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
+import { ensureTournamentSyncColumn, prisma } from "@/lib/prisma";
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
@@ -21,6 +21,7 @@ const schema = z.object({
 export async function GET() {
   try {
     await requireAdmin();
+    await ensureTournamentSyncColumn();
     const tournaments = await prisma.tournament.findMany({
       orderBy: [{ startsAt: "desc" }, { name: "asc" }],
       select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, syncFromAt: true, hostCountries: true, isActive: true, externalId: true }
@@ -34,6 +35,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await requireAdmin();
+    await ensureTournamentSyncColumn();
     const input = schema.parse(await request.json());
     const tournament = await prisma.tournament.create({
       data: {

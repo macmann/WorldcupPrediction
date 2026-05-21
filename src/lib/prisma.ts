@@ -9,3 +9,14 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+let tournamentSyncColumnEnsured: Promise<void> | null = null;
+
+export async function ensureTournamentSyncColumn() {
+  if (!tournamentSyncColumnEnsured) {
+    tournamentSyncColumnEnsured = prisma.$executeRawUnsafe(
+      'ALTER TABLE "tournaments" ADD COLUMN IF NOT EXISTS "sync_from_at" TIMESTAMPTZ(6);'
+    ).then(() => undefined);
+  }
+  await tournamentSyncColumnEnsured;
+}

@@ -1,5 +1,5 @@
 import { MatchStatus, StageType, type Tournament } from "@prisma/client";
-import { prisma } from "../lib/prisma";
+import { ensureTournamentSyncColumn, prisma } from "../lib/prisma";
 import { config } from "../lib/config";
 import { fetchFootballDataCompetitionFixtures, fetchWorldCupFixtures, type ExternalFixture } from "./footballApi";
 import { enqueueScoringJob } from "../jobs/scoringEngine.job";
@@ -100,6 +100,7 @@ export async function ingestTournamentFixtures(tournament: Pick<Tournament, "id"
 }
 
 export async function ingestFixtures() {
+  await ensureTournamentSyncColumn();
   const externalTournaments = await prisma.tournament.findMany({
     where: { isActive: true, externalId: { startsWith: "football-data:" } },
     select: { id: true, externalId: true, name: true, syncFromAt: true }
