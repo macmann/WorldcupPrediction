@@ -8,7 +8,6 @@ import { AnnouncementPopup } from "@/components/AnnouncementPopup";
 export function AppShell({ children, title = "FFM - WC2026", eyebrow = "2026 Pool" }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
   return (
     <AuthGate>
-      <AnnouncementBanner />
       <AnnouncementPopup />
       <header className="sticky top-0 z-20 bg-navy px-5 pb-8 pt-6 text-white">
         <div className="flex items-start gap-3">
@@ -22,6 +21,7 @@ export function AppShell({ children, title = "FFM - WC2026", eyebrow = "2026 Poo
           <UserProfile />
         </div>
       </header>
+      <AnnouncementBanner />
       <section className="-mt-4 min-h-[calc(100vh-8rem)] space-y-4 rounded-t-[2rem] bg-slate-50 px-4 pb-28 pt-5">{children}</section>
       <BottomNav />
     </AuthGate>
