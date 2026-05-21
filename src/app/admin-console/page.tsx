@@ -44,9 +44,12 @@ type PredictionRow = {
   matchId: number;
   homeTeam: string;
   awayTeam: string;
+  predictedOutcome?: "HOME" | "DRAW" | "AWAY" | null;
   predictedHomeScore?: number | null;
   predictedAwayScore?: number | null;
   pointsAwarded?: number | null;
+  isCorrectOutcome?: boolean;
+  isExactScore?: boolean;
   submittedAt: string;
   scoredAt?: string | null;
 };
@@ -74,6 +77,20 @@ function fileToDataUrl(file: File) {
     reader.onerror = () => reject(new Error("Could not read image file"));
     reader.readAsDataURL(file);
   });
+}
+
+function predictionOutcomeLabel(outcome?: "HOME" | "DRAW" | "AWAY" | null) {
+  if (outcome === "HOME") return "Home Win";
+  if (outcome === "AWAY") return "Away Win";
+  if (outcome === "DRAW") return "Draw";
+  return "—";
+}
+
+function awardedPointsBreakdown(prediction: PredictionRow) {
+  if (prediction.pointsAwarded === null || prediction.pointsAwarded === undefined) return "pending";
+  const outcomePoints = prediction.isCorrectOutcome ? 1 : 0;
+  const exactScorePoints = prediction.isExactScore ? 3 : 0;
+  return `${outcomePoints},${exactScorePoints}`;
 }
 
 export default function AdminConsole() {
@@ -366,7 +383,7 @@ export default function AdminConsole() {
                 </div>
                 <button disabled={isPending} className={`${buttonClass} bg-navy`}>Apply filters</button>
               </form>
-              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Prediction</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Submitted</th><th className="py-3 pl-4">Scored</th></tr></thead><tbody className="divide-y divide-slate-100">{predictionRows.map((row) => <tr key={row.id}><td className="py-3 pr-4"><p className="font-black text-navy">{row.userName}</p><p className="text-xs font-semibold text-slate-500">{row.userEmail}</p></td><td className="px-4 py-3 font-semibold text-slate-600">#{row.matchId} {row.homeTeam} vs {row.awayTeam}</td><td className="px-4 py-3 font-semibold text-slate-600">{row.predictedHomeScore ?? "—"} - {row.predictedAwayScore ?? "—"}</td><td className="px-4 py-3 font-black text-slate-900">{row.pointsAwarded ?? "pending"}</td><td className="px-4 py-3 font-semibold text-slate-600">{formatDate(row.submittedAt)}</td><td className="py-3 pl-4 font-semibold text-slate-600">{formatDate(row.scoredAt)}</td></tr>)}</tbody></table></div>
+              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Prediction</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Submitted</th><th className="py-3 pl-4">Scored</th></tr></thead><tbody className="divide-y divide-slate-100">{predictionRows.map((row) => <tr key={row.id}><td className="py-3 pr-4"><p className="font-black text-navy">{row.userName}</p><p className="text-xs font-semibold text-slate-500">{row.userEmail}</p></td><td className="px-4 py-3 font-semibold text-slate-600">#{row.matchId} {row.homeTeam} vs {row.awayTeam}</td><td className="px-4 py-3 font-semibold text-slate-600"><p>{row.predictedHomeScore ?? "—"} - {row.predictedAwayScore ?? "—"}</p><p className="text-xs text-slate-500">{predictionOutcomeLabel(row.predictedOutcome)}</p></td><td className="px-4 py-3 font-black text-slate-900"><p>{awardedPointsBreakdown(row)}</p><p className="text-xs font-semibold text-slate-500">{row.pointsAwarded ?? "pending"} total</p></td><td className="px-4 py-3 font-semibold text-slate-600">{formatDate(row.submittedAt)}</td><td className="py-3 pl-4 font-semibold text-slate-600">{formatDate(row.scoredAt)}</td></tr>)}</tbody></table></div>
             </div>
           )}
 
