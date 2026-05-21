@@ -5,19 +5,13 @@ import { Countdown } from "@/components/Countdown";
 import { TeamName } from "@/components/TeamName";
 import { getDailyWinnerSummary } from "@/lib/daily";
 import { getUserLeagues } from "@/lib/leagues";
-import { prisma } from "@/lib/prisma";
 import { fetchMatches } from "@/lib/serverMatches";
 
 export default async function Dashboard() {
-  const [matches, leagues, dailySummary, banner] = await Promise.all([
+  const [matches, leagues, dailySummary] = await Promise.all([
     fetchMatches(),
     getUserLeagues(),
-    getDailyWinnerSummary(),
-    prisma.announcement.findFirst({
-      where: { isActive: true },
-      orderBy: { updatedAt: "desc" },
-      select: { title: true, description: true, imageUrl: true, linkUrl: true }
-    })
+    getDailyWinnerSummary()
   ]);
   const now = new Date();
   const nextMatch = matches.find((match) => new Date(match.kickoffTime) > now) ?? matches[0];
@@ -25,18 +19,6 @@ export default async function Dashboard() {
   const privateLeagues = leagues.filter((league) => league.type === "PRIVATE").slice(0, 2);
   return (
     <AppShell>
-      {banner && (
-        <Card className="overflow-hidden p-0">
-          <a href={banner.linkUrl} className="block" aria-label={banner.title}>
-            <img src={banner.imageUrl} alt={banner.title} className="h-48 w-full object-cover sm:h-56" />
-            <div className="p-4">
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">Banner</p>
-              <h2 className="mt-1 text-xl font-black text-navy">{banner.title}</h2>
-              <p className="mt-2 text-sm font-semibold text-slate-600">{banner.description}</p>
-            </div>
-          </a>
-        </Card>
-      )}
       {nextMatch ? (
         <Card className="bg-gradient-to-br from-emerald-500 to-pitch-900 text-white">
           <p className="text-sm font-semibold text-emerald-100">Next upcoming match</p>
