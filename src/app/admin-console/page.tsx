@@ -426,7 +426,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
     { id: "overview", label: "Overview", description: "Health and leagues" },
     { id: "users", label: "Users", description: "Moderation" },
     { id: "predictions", label: "Predictions", description: "Points ledger" },
-    { id: "announcements", label: "Popups", description: "Ads and notices" },
+    { id: "announcements", label: "Banners & Popups", description: "Homepage and popup creatives" },
     { id: "matches", label: "Matches", description: "Scores and points" },
     { id: "tournaments", label: "Tournaments", description: "Streams and awards" },
     { id: "settings", label: "Settings", description: "Site controls" }
@@ -470,9 +470,9 @@ function AuditPanel({ audit }: { audit: AuditPayload }) { return <div className=
 function AnnouncementAdminPanel({ announcements, disabled, onCreate, onUpdate, onDelete }: { announcements: AdminAnnouncement[]; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void }) {
   return (
     <div className={panelClass}>
-      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Pop-up announcements & ads</p>
-      <h2 className="mt-1 text-2xl font-black text-navy">Dashboard popups</h2>
-      <p className="mt-2 text-sm font-semibold text-slate-500">Active items are shown randomly to users when they log in or first reach the dashboard. Each popup uses its own frequency setting to decide when it can reappear after a user closes it. The See more button uses the configured link.</p>
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Banners & pop-up announcements</p>
+      <h2 className="mt-1 text-2xl font-black text-navy">Homepage banner and dashboard popups</h2>
+      <p className="mt-2 text-sm font-semibold text-slate-500">Active creatives can appear as the homepage banner and as popup announcements. Use a landscape image (recommended 1600×600 px, 8:3 ratio, max 6 MB) so it looks sharp in the banner and popup preview. The See more button uses the configured link.</p>
       <form action={onCreate} className="mt-5 space-y-3">
         <input name="title" required maxLength={120} className={inputClass} placeholder="Announcement title" />
         <input name="linkUrl" required className={inputClass} placeholder="See more link, e.g. /winners or https://sponsor.com" />

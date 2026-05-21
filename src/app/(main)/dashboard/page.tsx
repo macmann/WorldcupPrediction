@@ -2,17 +2,22 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle, SkeletonCard } from "@/components/Cards";
 import { Countdown } from "@/components/Countdown";
-import { PredictionForm } from "@/components/PredictionForm";
 import { TeamName } from "@/components/TeamName";
 import { getDailyWinnerSummary } from "@/lib/daily";
 import { getUserLeagues } from "@/lib/leagues";
+import { prisma } from "@/lib/prisma";
 import { fetchMatches } from "@/lib/serverMatches";
 
 export default async function Dashboard() {
-  const [matches, leagues, dailySummary] = await Promise.all([
+  const [matches, leagues, dailySummary, banner] = await Promise.all([
     fetchMatches(),
     getUserLeagues(),
-    getDailyWinnerSummary()
+    getDailyWinnerSummary(),
+    prisma.announcement.findFirst({
+      where: { isActive: true },
+      orderBy: { updatedAt: "desc" },
+      select: { title: true, description: true, imageUrl: true, linkUrl: true }
+    })
   ]);
   const now = new Date();
   const nextMatch = matches.find((match) => new Date(match.kickoffTime) > now) ?? matches[0];
@@ -20,15 +25,28 @@ export default async function Dashboard() {
   const privateLeagues = leagues.filter((league) => league.type === "PRIVATE").slice(0, 2);
   return (
     <AppShell>
+      {banner && (
+        <Card className="overflow-hidden p-0">
+          <a href={banner.linkUrl} className="block" aria-label={banner.title}>
+            <img src={banner.imageUrl} alt={banner.title} className="h-48 w-full object-cover sm:h-56" />
+            <div className="p-4">
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">Banner</p>
+              <h2 className="mt-1 text-xl font-black text-navy">{banner.title}</h2>
+              <p className="mt-2 text-sm font-semibold text-slate-600">{banner.description}</p>
+            </div>
+          </a>
+        </Card>
+      )}
       {nextMatch ? (
         <Card className="bg-gradient-to-br from-emerald-500 to-pitch-900 text-white">
           <p className="text-sm font-semibold text-emerald-100">Next upcoming match</p>
           <h2 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-black"><TeamName name={nextMatch.homeTeam} flagEmoji={nextMatch.homeFlagEmoji} flagImageUrl={nextMatch.homeFlagImageUrl} flagClassName="ring-white/30" /><span className="text-emerald-100">vs</span><TeamName name={nextMatch.awayTeam} flagEmoji={nextMatch.awayFlagEmoji} flagImageUrl={nextMatch.awayFlagImageUrl} flagClassName="ring-white/30" /></h2>
           <p className="mt-1 text-xs font-semibold text-emerald-100">{new Date(nextMatch.kickoffTime).toUTCString()}</p>
           <div className="mt-4"><Countdown target={nextMatch.kickoffTime} /></div>
-          <div className="mt-4 rounded-3xl bg-white p-3 text-slate-950">
-            <PredictionForm match={nextMatch} serverNowIso={now.toISOString()} />
-          </div>
+          <p className="mt-4 text-sm font-semibold text-emerald-50">Prediction for this match is available in the Predict tab.</p>
+          <Link href="/predict" className="mt-4 inline-flex rounded-2xl bg-white px-4 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-50">
+            Go to Predict
+          </Link>
         </Card>
       ) : <SkeletonCard />}
 
