@@ -7,6 +7,7 @@ const panelClass = "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm";
 const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 const buttonClass = "rounded-xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:opacity-70";
 const maxAnnouncementImageBytes = 6 * 1024 * 1024;
+const maxBannerImageBytes = 6 * 1024 * 1024;
 
 
 type AdminSession = { id: string; username: string; displayName: string; isSuperAdmin: boolean };
@@ -20,7 +21,7 @@ type ApiCompetition = { code: string; name: string; externalId: string; areaName
 type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; displayFrequencyHours: number; createdAt: string; updatedAt: string };
 type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
 type OpsPayload = {
-  settings: { announcementText?: string | null; maintenanceMode: boolean; updatedAt: string };
+  settings: { announcementText?: string | null; bannerImageUrl?: string | null; maintenanceMode: boolean; updatedAt: string };
   announcements: AdminAnnouncement[];
   syncStatus: {
     fixtureIngestion?: JobStatus | null;
@@ -228,10 +229,22 @@ export default function AdminConsole() {
     });
   }
 
-  function saveSettings(formData: FormData) {
-    const payload = { announcementText: String(formData.get("announcementText") ?? ""), maintenanceMode: formData.get("maintenanceMode") === "on" };
+  async function saveSettings(formData: FormData) {
     setError(null); setMessage(null);
-    startTransition(async () => { try { await adminJson("/api/admin/settings", { method: "PATCH", body: JSON.stringify(payload) }); setMessage("Global settings updated."); loadAdminData(); } catch (settingsError) { setError(settingsError instanceof Error ? settingsError.message : "Could not save settings"); } });
+    try {
+      let bannerImageUrl: string | null | undefined;
+      const bannerImage = formData.get("bannerImage");
+      const clearBanner = formData.get("clearBanner") === "on";
+      if (clearBanner) {
+        bannerImageUrl = null;
+      } else if (bannerImage instanceof File && bannerImage.size > 0) {
+        if (!bannerImage.type.startsWith("image/")) { setError("Please upload a valid image file for the homepage banner."); return; }
+        if (bannerImage.size > maxBannerImageBytes) { setError("Homepage banner image must be 6 MB or smaller."); return; }
+        bannerImageUrl = await fileToDataUrl(bannerImage);
+      }
+      const payload = { announcementText: String(formData.get("announcementText") ?? ""), bannerImageUrl, maintenanceMode: formData.get("maintenanceMode") === "on" };
+      startTransition(async () => { try { await adminJson("/api/admin/settings", { method: "PATCH", body: JSON.stringify(payload) }); setMessage("Global settings updated."); loadAdminData(); } catch (settingsError) { setError(settingsError instanceof Error ? settingsError.message : "Could not save settings"); } });
+    } catch (imageError) { setError(imageError instanceof Error ? imageError.message : "Could not read image file"); }
   }
 
   async function createAnnouncement(formData: FormData) {
@@ -392,7 +405,7 @@ export default function AdminConsole() {
           {activeTab === "settings" && (
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Global Settings</p><h2 className="mt-1 text-2xl font-black text-navy">Site controls</h2>
-              <form action={saveSettings} className="mt-5 space-y-3"><textarea name="announcementText" defaultValue={ops?.settings.announcementText ?? ""} className={`${inputClass} min-h-28`} placeholder="⚠️ Notice: Group stage predictions lock in 2 hours!" /><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
+              <form action={saveSettings} className="mt-5 space-y-3"><textarea name="announcementText" defaultValue={ops?.settings.announcementText ?? ""} className={`${inputClass} min-h-28`} placeholder="⚠️ Notice: Group stage predictions lock in 2 hours!" /><label className="block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Homepage banner image<input name="bannerImage" type="file" accept="image/*" className={`${inputClass} mt-2 normal-case tracking-normal`} /><span className="mt-1 block text-[11px] font-semibold normal-case tracking-normal text-slate-400">Upload a dedicated homepage banner (recommended 1600×600, max 6 MB). This is separate from popup announcements.</span></label>{ops?.settings.bannerImageUrl && <img src={ops.settings.bannerImageUrl} alt="Current homepage banner" className="w-full rounded-2xl object-cover" />}<label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="clearBanner" type="checkbox" className="h-5 w-5 rounded border-slate-300" />Remove current homepage banner</label><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
             </div>
           )}
 
@@ -471,8 +484,8 @@ function AnnouncementAdminPanel({ announcements, disabled, onCreate, onUpdate, o
   return (
     <div className={panelClass}>
       <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Banners & pop-up announcements</p>
-      <h2 className="mt-1 text-2xl font-black text-navy">Homepage banner and dashboard popups</h2>
-      <p className="mt-2 text-sm font-semibold text-slate-500">Active creatives can appear as the homepage banner and as popup announcements. Use a landscape image (recommended 1600×600 px, 8:3 ratio, max 6 MB) so it looks sharp in the banner and popup preview. The See more button uses the configured link.</p>
+      <h2 className="mt-1 text-2xl font-black text-navy">Dashboard popup announcements</h2>
+      <p className="mt-2 text-sm font-semibold text-slate-500">These announcements are used for popup announcements only. Use a landscape image (recommended 1600×600 px, 8:3 ratio, max 6 MB) so it looks sharp in the popup preview. The See more button uses the configured link.</p>
       <form action={onCreate} className="mt-5 space-y-3">
         <input name="title" required maxLength={120} className={inputClass} placeholder="Announcement title" />
         <input name="linkUrl" required className={inputClass} placeholder="See more link, e.g. /winners or https://sponsor.com" />

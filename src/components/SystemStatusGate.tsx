@@ -5,6 +5,7 @@ import { PlatformLogo } from "@/components/Icons";
 
 type PublicSettings = {
   announcementText?: string | null;
+  bannerImageUrl?: string | null;
   maintenanceMode?: boolean;
 };
 
@@ -39,17 +40,28 @@ export function SystemStatusGate({ children }: { children: React.ReactNode }) {
 }
 
 export function AnnouncementBanner() {
-  const [announcementText, setAnnouncementText] = useState<string | null>(null);
+  const [banner, setBanner] = useState<{ announcementText: string | null; bannerImageUrl: string | null }>({ announcementText: null, bannerImageUrl: null });
 
   useEffect(() => {
     let mounted = true;
     fetch("/api/settings/public", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
-      .then((data) => { if (mounted) setAnnouncementText(data?.announcementText ?? null); })
+      .then((data) => {
+        if (mounted) {
+          setBanner({ announcementText: data?.announcementText ?? null, bannerImageUrl: data?.bannerImageUrl ?? null });
+        }
+      })
       .catch(() => undefined);
     return () => { mounted = false; };
   }, []);
 
-  if (!announcementText) return null;
-  return <div className="bg-amber-100 px-4 py-3 text-center text-sm font-black text-amber-900">{announcementText}</div>;
+  if (banner.bannerImageUrl) {
+    return (
+      <div className="bg-slate-100 px-4 py-3">
+        <img src={banner.bannerImageUrl} alt="Homepage banner" className="mx-auto w-full max-w-6xl rounded-2xl object-cover" />
+      </div>
+    );
+  }
+  if (!banner.announcementText) return null;
+  return <div className="bg-amber-100 px-4 py-3 text-center text-sm font-black text-amber-900">{banner.announcementText}</div>;
 }
