@@ -56,7 +56,18 @@ export default function LoginPage() {
   }
 
   if (checkingSession) {
-    return <main className="grid min-h-dvh place-items-center bg-gradient-to-b from-navy to-emerald-950 p-4 text-white"><p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-200">Loading</p></main>;
+    return (
+      <main className="grid min-h-dvh place-items-center bg-gradient-to-b from-navy to-emerald-950 p-4 text-white">
+        <div className="flex flex-col items-center gap-5">
+          <div className="relative grid h-24 w-24 place-items-center">
+            <span className="absolute inset-0 rounded-full border-2 border-emerald-200/40 border-t-emerald-400 animate-spin" />
+            <span className="absolute inset-2 rounded-full bg-white/10 animate-pulse" />
+            <PlatformLogo className="relative h-14 w-14 animate-pulse" />
+          </div>
+          <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-200">Loading</p>
+        </div>
+      </main>
+    );
   }
 
   return (
