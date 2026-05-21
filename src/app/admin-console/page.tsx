@@ -35,7 +35,22 @@ type OpsPayload = {
 };
 type JobStatus = { key: string; label: string; lastRunAt?: string | null; lastSuccessAt?: string | null; lastError?: string | null; lastPayload?: unknown };
 type AuditPayload = { user: { email: string; displayName: string; registrationTimestamp: string; isBanned: boolean; banReason?: string | null }; predictions: Array<{ id: string; matchId: number; predictedOutcome?: string | null; predictedHomeScore?: number | null; predictedAwayScore?: number | null; pointsAwarded?: number | null; isLocked: boolean; submittedAt: string; updatedAt: string; scoredAt?: string | null; match: { homeTeam: string; awayTeam: string; kickoffTime: string; status: string; homeScore90?: number | null; awayScore90?: number | null } }> };
-type AdminTab = "overview" | "users" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
+type PredictionFilter = "all" | "awarded" | "notAwarded";
+type PredictionRow = {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  matchId: number;
+  homeTeam: string;
+  awayTeam: string;
+  predictedHomeScore?: number | null;
+  predictedAwayScore?: number | null;
+  pointsAwarded?: number | null;
+  submittedAt: string;
+  scoredAt?: string | null;
+};
+type AdminTab = "overview" | "users" | "predictions" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
 
 async function adminJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -79,6 +94,10 @@ export default function AdminConsole() {
   const [recalcMatches, setRecalcMatches] = useState<AdminMatchOption[]>([]);
   const [recalcFilter, setRecalcFilter] = useState("");
   const [importStartFrom, setImportStartFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const [predictionRows, setPredictionRows] = useState<PredictionRow[]>([]);
+  const [predictionFilter, setPredictionFilter] = useState<PredictionFilter>("all");
+  const [predictionUserId, setPredictionUserId] = useState("");
+  const [predictionUserSearch, setPredictionUserSearch] = useState("");
 
   function loadAdminData(search = query, currentAdmin = admin) {
     setError(null);
@@ -240,9 +259,27 @@ export default function AdminConsole() {
     setError(null);
     startTransition(async () => { try { setAudit(await adminJson<AuditPayload>(`/api/admin/users/${id}/audit`)); } catch (auditError) { setError(auditError instanceof Error ? auditError.message : "Could not load audit trail"); } });
   }
+  function loadPredictions(filter = predictionFilter, userId = predictionUserId) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const params = new URLSearchParams();
+        if (filter !== "all") params.set("filter", filter);
+        if (userId) params.set("userId", userId);
+        const data = await adminJson<{ predictions: PredictionRow[] }>(`/api/admin/predictions${params.toString() ? `?${params.toString()}` : ""}`);
+        setPredictionRows(data.predictions);
+      } catch (predictionError) {
+        setError(predictionError instanceof Error ? predictionError.message : "Could not load predictions");
+      }
+    });
+  }
 
   useEffect(() => {
     if (activeTab === "matches" && admin) loadRecalculateMatches(recalcDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, admin]);
+  useEffect(() => {
+    if (activeTab === "predictions" && admin) loadPredictions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, admin]);
 
@@ -314,6 +351,24 @@ export default function AdminConsole() {
               {audit && <AuditPanel audit={audit} />}
             </div>
           )}
+          {activeTab === "predictions" && (
+            <div className={panelClass}>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Prediction Audit</p><h2 className="mt-1 text-2xl font-black text-navy">All user predictions and awarded points</h2>
+              <form action={() => loadPredictions()} className="mt-5 grid gap-3 md:grid-cols-3">
+                <select value={predictionFilter} onChange={(event) => setPredictionFilter(event.target.value as PredictionFilter)} className={inputClass}>
+                  <option value="all">All predictions</option>
+                  <option value="awarded">Awarded points only</option>
+                  <option value="notAwarded">Not awarded yet</option>
+                </select>
+                <div>
+                  <input list="prediction-user-options" value={predictionUserSearch} onChange={(event) => { const selected = users.find((user) => `${user.displayName} (${user.email})` === event.target.value); setPredictionUserSearch(event.target.value); setPredictionUserId(selected?.id ?? ""); }} className={inputClass} placeholder="Type to search user name" />
+                  <datalist id="prediction-user-options">{users.map((user) => <option key={user.id} value={`${user.displayName} (${user.email})`} />)}</datalist>
+                </div>
+                <button disabled={isPending} className={`${buttonClass} bg-navy`}>Apply filters</button>
+              </form>
+              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Prediction</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Submitted</th><th className="py-3 pl-4">Scored</th></tr></thead><tbody className="divide-y divide-slate-100">{predictionRows.map((row) => <tr key={row.id}><td className="py-3 pr-4"><p className="font-black text-navy">{row.userName}</p><p className="text-xs font-semibold text-slate-500">{row.userEmail}</p></td><td className="px-4 py-3 font-semibold text-slate-600">#{row.matchId} {row.homeTeam} vs {row.awayTeam}</td><td className="px-4 py-3 font-semibold text-slate-600">{row.predictedHomeScore ?? "—"} - {row.predictedAwayScore ?? "—"}</td><td className="px-4 py-3 font-black text-slate-900">{row.pointsAwarded ?? "pending"}</td><td className="px-4 py-3 font-semibold text-slate-600">{formatDate(row.submittedAt)}</td><td className="py-3 pl-4 font-semibold text-slate-600">{formatDate(row.scoredAt)}</td></tr>)}</tbody></table></div>
+            </div>
+          )}
 
           {activeTab === "announcements" && <AnnouncementAdminPanel announcements={ops?.announcements ?? []} disabled={isPending} onCreate={createAnnouncement} onUpdate={updateAnnouncement} onDelete={deleteAnnouncement} />}
 
@@ -353,6 +408,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
   const tabs: Array<{ id: AdminTab; label: string; description: string }> = [
     { id: "overview", label: "Overview", description: "Health and leagues" },
     { id: "users", label: "Users", description: "Moderation" },
+    { id: "predictions", label: "Predictions", description: "Points ledger" },
     { id: "announcements", label: "Popups", description: "Ads and notices" },
     { id: "matches", label: "Matches", description: "Scores and points" },
     { id: "tournaments", label: "Tournaments", description: "Streams and awards" },
@@ -362,7 +418,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
 
   return (
     <nav aria-label="Admin sections" className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-7">
+      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-8">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
