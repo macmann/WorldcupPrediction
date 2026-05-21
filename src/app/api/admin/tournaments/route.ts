@@ -24,9 +24,9 @@ export async function GET() {
     await ensureTournamentSyncColumn();
     const tournaments = await prisma.tournament.findMany({
       orderBy: [{ startsAt: "desc" }, { name: "asc" }],
-      select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, syncFromAt: true, hostCountries: true, isActive: true, externalId: true }
+      select: { id: true, name: true, slug: true, startsAt: true, endsAt: true, hostCountries: true, isActive: true, externalId: true }
     });
-    return NextResponse.json({ tournaments });
+    return NextResponse.json({ tournaments: tournaments.map((tournament) => ({ ...tournament, syncFromAt: null })) });
   } catch (error) {
     return jsonError(error);
   }
@@ -44,8 +44,7 @@ export async function POST(request: Request) {
         startsAt: new Date(input.startsAt),
         endsAt: input.endsAt ? new Date(input.endsAt) : null,
         hostCountries: input.hostCountries ?? [],
-        isActive: input.isActive,
-        syncFromAt: input.syncFromAt ? new Date(input.syncFromAt) : null
+        isActive: input.isActive
       }
     });
     return NextResponse.json({ tournament }, { status: 201 });
