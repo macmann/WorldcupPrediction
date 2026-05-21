@@ -9,7 +9,7 @@
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:worker\"",
     "build": "next build",
     "clean:next": "node -e \"require('node:fs').rmSync('.next',{recursive:true,force:true})\"",
-    "start": "next start",
+    "start": "node --env-file=.env --import tsx src/server.ts",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
@@ -20,7 +20,7 @@
     "prisma:push": "prisma db push",
     "postinstall": "prisma generate",
     "render-build": "prisma generate && next build",
-    "render-start": "next start",
+    "render-start": "node --env-file=.env --import tsx src/server.ts",
     "prisma:repair": "node scripts/repair-prisma-install.mjs"
   },
   "dependencies": {
