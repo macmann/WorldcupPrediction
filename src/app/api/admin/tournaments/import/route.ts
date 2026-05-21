@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
+import { ensureTournamentSyncColumn, prisma } from "@/lib/prisma";
 import { fetchFootballDataCompetitions } from "@/services/footballApi";
 import { ingestTournamentFixtures } from "@/services/fixtures";
 
@@ -15,6 +15,7 @@ function slugify(value: string) {
 export async function POST(request: Request) {
   try {
     await requireAdmin();
+    await ensureTournamentSyncColumn();
     const input = schema.parse(await request.json());
     const competitions = await fetchFootballDataCompetitions();
     const competition = competitions.find((item) => item.code.toUpperCase() === input.code.toUpperCase());
