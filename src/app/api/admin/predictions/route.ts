@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         userId: true,
+        predictedOutcome: true,
         predictedHomeScore: true,
         predictedAwayScore: true,
         pointsAwarded: true,
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
         matchId: prediction.matchId,
         homeTeam: prediction.match.homeTeam,
         awayTeam: prediction.match.awayTeam,
+        predictedOutcome: prediction.predictedOutcome,
         predictedHomeScore: prediction.predictedHomeScore,
         predictedAwayScore: prediction.predictedAwayScore,
         pointsAwarded: prediction.pointsAwarded,

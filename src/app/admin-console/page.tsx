@@ -44,6 +44,7 @@ type PredictionRow = {
   matchId: number;
   homeTeam: string;
   awayTeam: string;
+  predictedOutcome?: string | null;
   predictedHomeScore?: number | null;
   predictedAwayScore?: number | null;
   pointsAwarded?: number | null;
@@ -366,7 +367,7 @@ export default function AdminConsole() {
                 </div>
                 <button disabled={isPending} className={`${buttonClass} bg-navy`}>Apply filters</button>
               </form>
-              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Prediction</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Submitted</th><th className="py-3 pl-4">Scored</th></tr></thead><tbody className="divide-y divide-slate-100">{predictionRows.map((row) => <tr key={row.id}><td className="py-3 pr-4"><p className="font-black text-navy">{row.userName}</p><p className="text-xs font-semibold text-slate-500">{row.userEmail}</p></td><td className="px-4 py-3 font-semibold text-slate-600">#{row.matchId} {row.homeTeam} vs {row.awayTeam}</td><td className="px-4 py-3 font-semibold text-slate-600">{row.predictedHomeScore ?? "—"} - {row.predictedAwayScore ?? "—"}</td><td className="px-4 py-3 font-black text-slate-900">{row.pointsAwarded ?? "pending"}</td><td className="px-4 py-3 font-semibold text-slate-600">{formatDate(row.submittedAt)}</td><td className="py-3 pl-4 font-semibold text-slate-600">{formatDate(row.scoredAt)}</td></tr>)}</tbody></table></div>
+              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Prediction</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Submitted</th><th className="py-3 pl-4">Scored</th></tr></thead><tbody className="divide-y divide-slate-100">{predictionRows.map((row) => <tr key={row.id}><td className="py-3 pr-4"><p className="font-black text-navy">{row.userName}</p><p className="text-xs font-semibold text-slate-500">{row.userEmail}</p></td><td className="px-4 py-3 font-semibold text-slate-600">#{row.matchId} {row.homeTeam} vs {row.awayTeam}</td><td className="px-4 py-3 font-semibold text-slate-600">{row.predictedHomeScore ?? "—"} - {row.predictedAwayScore ?? "—"} <span className="text-xs text-slate-500">({row.predictedOutcome ?? "outcome not set"})</span></td><td className="px-4 py-3 font-black text-slate-900">{row.pointsAwarded ?? "pending"}</td><td className="px-4 py-3 font-semibold text-slate-600">{formatDate(row.submittedAt)}</td><td className="py-3 pl-4 font-semibold text-slate-600">{formatDate(row.scoredAt)}</td></tr>)}</tbody></table></div>
             </div>
           )}
 
