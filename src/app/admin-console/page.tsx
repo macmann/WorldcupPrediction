@@ -400,12 +400,12 @@ export default function AdminConsole() {
             </div>
           )}
 
-          {activeTab === "announcements" && <AnnouncementAdminPanel announcements={ops?.announcements ?? []} disabled={isPending} onCreate={createAnnouncement} onUpdate={updateAnnouncement} onDelete={deleteAnnouncement} />}
+          {activeTab === "announcements" && <AnnouncementAdminPanel announcements={ops?.announcements ?? []} settings={ops?.settings} disabled={isPending} onCreate={createAnnouncement} onUpdate={updateAnnouncement} onDelete={deleteAnnouncement} onSaveSettings={saveSettings} />}
 
           {activeTab === "settings" && (
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Global Settings</p><h2 className="mt-1 text-2xl font-black text-navy">Site controls</h2>
-              <form action={saveSettings} className="mt-5 space-y-3"><textarea name="announcementText" defaultValue={ops?.settings.announcementText ?? ""} className={`${inputClass} min-h-28`} placeholder="⚠️ Notice: Group stage predictions lock in 2 hours!" /><label className="block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Homepage banner image<input name="bannerImage" type="file" accept="image/*" className={`${inputClass} mt-2 normal-case tracking-normal`} /><span className="mt-1 block text-[11px] font-semibold normal-case tracking-normal text-slate-400">Upload a dedicated homepage banner (recommended 1600×600, max 6 MB). This is separate from popup announcements.</span></label>{ops?.settings.bannerImageUrl && <img src={ops.settings.bannerImageUrl} alt="Current homepage banner" className="w-full rounded-2xl object-cover" />}<label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="clearBanner" type="checkbox" className="h-5 w-5 rounded border-slate-300" />Remove current homepage banner</label><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
+              <form action={saveSettings} className="mt-5 space-y-3"><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
             </div>
           )}
 
@@ -480,12 +480,27 @@ function UserRow({ user, disabled, onUpdate, onAudit }: { user: AdminUser; disab
 function AuditPanel({ audit }: { audit: AuditPayload }) { return <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Audit trail: {audit.user.displayName} ({audit.user.email})</h3><p className="mt-1 text-xs font-semibold text-slate-500">Registered {formatDate(audit.user.registrationTimestamp)} · {audit.predictions.length} recent predictions</p><div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">{audit.predictions.map((prediction) => <div key={prediction.id} className="rounded-xl bg-white p-3 text-xs font-semibold text-slate-600"><p className="font-black text-slate-900">#{prediction.matchId} {prediction.match.homeTeam} vs {prediction.match.awayTeam} · kickoff {formatDate(prediction.match.kickoffTime)}</p><p>Pick: {prediction.predictedHomeScore ?? "—"}-{prediction.predictedAwayScore ?? "—"} ({prediction.predictedOutcome ?? "outcome not set"}) · Points {prediction.pointsAwarded ?? "pending"} · Locked {prediction.isLocked ? "yes" : "no"}</p><p>Created {formatDate(prediction.submittedAt)} · Updated {formatDate(prediction.updatedAt)} · Scored {formatDate(prediction.scoredAt)}</p></div>)}</div></div>; }
 
 
-function AnnouncementAdminPanel({ announcements, disabled, onCreate, onUpdate, onDelete }: { announcements: AdminAnnouncement[]; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void }) {
+function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, onUpdate, onDelete, onSaveSettings }: { announcements: AdminAnnouncement[]; settings?: { announcementText?: string | null; bannerImageUrl?: string | null; maintenanceMode: boolean }; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void; onSaveSettings: (formData: FormData) => void }) {
   return (
     <div className={panelClass}>
       <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Banners & pop-up announcements</p>
       <h2 className="mt-1 text-2xl font-black text-navy">Dashboard popup announcements</h2>
       <p className="mt-2 text-sm font-semibold text-slate-500">These announcements are used for popup announcements only. Use a landscape image (recommended 1600×600 px, 8:3 ratio, max 6 MB) so it looks sharp in the popup preview. The See more button uses the configured link.</p>
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Homepage banner</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">Upload a dedicated home page banner and optional text strip. This is separate from popup announcements.</p>
+        <form action={onSaveSettings} className="mt-4 space-y-3">
+          <textarea name="announcementText" defaultValue={settings?.announcementText ?? ""} className={`${inputClass} min-h-24`} placeholder="Optional text banner message" />
+          <label className="block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Banner image
+            <input name="bannerImage" type="file" accept="image/*" className={`${inputClass} mt-2 normal-case tracking-normal`} />
+          </label>
+          {settings?.bannerImageUrl && <img src={settings.bannerImageUrl} alt="Current homepage banner" className="w-full rounded-2xl object-cover" />}
+          <label className="flex items-center gap-3 rounded-2xl bg-white p-4 text-sm font-black text-slate-700"><input name="clearBanner" type="checkbox" className="h-5 w-5 rounded border-slate-300" />Remove current homepage banner</label>
+          <input type="hidden" name="maintenanceMode" value={settings?.maintenanceMode ? "on" : "off"} />
+          <button disabled={disabled} className={`${buttonClass} w-full bg-amber-600`}>Save homepage banner</button>
+        </form>
+      </div>
+
       <form action={onCreate} className="mt-5 space-y-3">
         <input name="title" required maxLength={120} className={inputClass} placeholder="Announcement title" />
         <input name="linkUrl" required className={inputClass} placeholder="See more link, e.g. /winners or https://sponsor.com" />
