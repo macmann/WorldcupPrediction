@@ -8,6 +8,7 @@ const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-4 py-3
 const buttonClass = "rounded-xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:opacity-70";
 const maxAnnouncementImageBytes = 6 * 1024 * 1024;
 const maxBannerImageBytes = 6 * 1024 * 1024;
+const maxLoginBackgroundImageBytes = 6 * 1024 * 1024;
 
 
 type AdminSession = { id: string; username: string; displayName: string; isSuperAdmin: boolean };
@@ -21,7 +22,7 @@ type ApiCompetition = { code: string; name: string; externalId: string; areaName
 type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; displayFrequencyHours: number; createdAt: string; updatedAt: string };
 type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
 type OpsPayload = {
-  settings: { announcementText?: string | null; bannerImageUrl?: string | null; maintenanceMode: boolean; updatedAt: string };
+  settings: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean; updatedAt: string };
   announcements: AdminAnnouncement[];
   syncStatus: {
     fixtureIngestion?: JobStatus | null;
@@ -233,8 +234,11 @@ export default function AdminConsole() {
     setError(null); setMessage(null);
     try {
       let bannerImageUrl: string | null | undefined;
+      let loginBackgroundImageUrl: string | null | undefined;
       const bannerImage = formData.get("bannerImage");
+      const loginBackgroundImage = formData.get("loginBackgroundImage");
       const clearBanner = formData.get("clearBanner") === "on";
+      const clearLoginBackground = formData.get("clearLoginBackground") === "on";
       if (clearBanner) {
         bannerImageUrl = null;
       } else if (bannerImage instanceof File && bannerImage.size > 0) {
@@ -242,7 +246,14 @@ export default function AdminConsole() {
         if (bannerImage.size > maxBannerImageBytes) { setError("Homepage banner image must be 6 MB or smaller."); return; }
         bannerImageUrl = await fileToDataUrl(bannerImage);
       }
-      const payload = { announcementText: String(formData.get("announcementText") ?? ""), bannerImageUrl, maintenanceMode: formData.get("maintenanceMode") === "on" };
+      if (clearLoginBackground) {
+        loginBackgroundImageUrl = null;
+      } else if (loginBackgroundImage instanceof File && loginBackgroundImage.size > 0) {
+        if (!loginBackgroundImage.type.startsWith("image/")) { setError("Please upload a valid image file for the login background."); return; }
+        if (loginBackgroundImage.size > maxLoginBackgroundImageBytes) { setError("Login background image must be 6 MB or smaller."); return; }
+        loginBackgroundImageUrl = await fileToDataUrl(loginBackgroundImage);
+      }
+      const payload = { announcementText: String(formData.get("announcementText") ?? ""), bannerImageUrl, loginBackgroundImageUrl, maintenanceMode: formData.get("maintenanceMode") === "on" };
       startTransition(async () => { try { await adminJson("/api/admin/settings", { method: "PATCH", body: JSON.stringify(payload) }); setMessage("Global settings updated."); loadAdminData(); } catch (settingsError) { setError(settingsError instanceof Error ? settingsError.message : "Could not save settings"); } });
     } catch (imageError) { setError(imageError instanceof Error ? imageError.message : "Could not read image file"); }
   }
@@ -480,7 +491,7 @@ function UserRow({ user, disabled, onUpdate, onAudit }: { user: AdminUser; disab
 function AuditPanel({ audit }: { audit: AuditPayload }) { return <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Audit trail: {audit.user.displayName} ({audit.user.email})</h3><p className="mt-1 text-xs font-semibold text-slate-500">Registered {formatDate(audit.user.registrationTimestamp)} · {audit.predictions.length} recent predictions</p><div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">{audit.predictions.map((prediction) => <div key={prediction.id} className="rounded-xl bg-white p-3 text-xs font-semibold text-slate-600"><p className="font-black text-slate-900">#{prediction.matchId} {prediction.match.homeTeam} vs {prediction.match.awayTeam} · kickoff {formatDate(prediction.match.kickoffTime)}</p><p>Pick: {prediction.predictedHomeScore ?? "—"}-{prediction.predictedAwayScore ?? "—"} ({prediction.predictedOutcome ?? "outcome not set"}) · Points {prediction.pointsAwarded ?? "pending"} · Locked {prediction.isLocked ? "yes" : "no"}</p><p>Created {formatDate(prediction.submittedAt)} · Updated {formatDate(prediction.updatedAt)} · Scored {formatDate(prediction.scoredAt)}</p></div>)}</div></div>; }
 
 
-function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, onUpdate, onDelete, onSaveSettings }: { announcements: AdminAnnouncement[]; settings?: { announcementText?: string | null; bannerImageUrl?: string | null; maintenanceMode: boolean }; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void; onSaveSettings: (formData: FormData) => void }) {
+function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, onUpdate, onDelete, onSaveSettings }: { announcements: AdminAnnouncement[]; settings?: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean }; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void; onSaveSettings: (formData: FormData) => void }) {
   return (
     <div className={panelClass}>
       <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Banners & pop-up announcements</p>
@@ -496,6 +507,12 @@ function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, o
           </label>
           {settings?.bannerImageUrl && <img src={settings.bannerImageUrl} alt="Current homepage banner" className="w-full rounded-2xl object-cover" />}
           <label className="flex items-center gap-3 rounded-2xl bg-white p-4 text-sm font-black text-slate-700"><input name="clearBanner" type="checkbox" className="h-5 w-5 rounded border-slate-300" />Remove current homepage banner</label>
+          <label className="block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Login background image
+            <input name="loginBackgroundImage" type="file" accept="image/*" className={`${inputClass} mt-2 normal-case tracking-normal`} />
+          </label>
+          {settings?.loginBackgroundImageUrl && <img src={settings.loginBackgroundImageUrl} alt="Current login background" className="w-full rounded-2xl object-cover" />}
+          <label className="flex items-center gap-3 rounded-2xl bg-white p-4 text-sm font-black text-slate-700"><input name="clearLoginBackground" type="checkbox" className="h-5 w-5 rounded border-slate-300" />Remove current login background image</label>
+
           <input type="hidden" name="maintenanceMode" value={settings?.maintenanceMode ? "on" : "off"} />
           <button disabled={disabled} className={`${buttonClass} w-full bg-amber-600`}>Save homepage banner</button>
         </form>

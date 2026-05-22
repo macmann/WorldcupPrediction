@@ -413,6 +413,7 @@ model AppSetting {
   id               Int      @id @default(1)
   announcementText String?  @map("announcement_text")
   bannerImageUrl   String?  @map("banner_image_url")
+  loginBackgroundImageUrl String? @map("login_background_image_url")
   maintenanceMode  Boolean  @default(false) @map("maintenance_mode")
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

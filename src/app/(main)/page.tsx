@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [loginBackgroundImageUrl, setLoginBackgroundImageUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -34,6 +35,20 @@ export default function LoginPage() {
       });
     return () => { mounted = false; };
   }, [router, setUser]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/settings/public", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!mounted) return;
+        setLoginBackgroundImageUrl(data?.loginBackgroundImageUrl ?? null);
+      })
+      .catch(() => {
+        if (mounted) setLoginBackgroundImageUrl(null);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,7 +86,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-navy to-emerald-950 px-4 py-8 text-white">
+    <main
+      className="relative min-h-dvh bg-gradient-to-b from-navy to-emerald-950 px-4 py-8 text-white"
+      style={loginBackgroundImageUrl ? { backgroundImage: `linear-gradient(rgba(2, 6, 23, 0.62), rgba(2, 6, 23, 0.78)), url(${loginBackgroundImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+    >
       <div className="flex items-center gap-4">
         <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/10 shadow-lg shadow-emerald-950/30 ring-1 ring-white/15">
           <PlatformLogo className="h-14 w-14" />
