@@ -26,6 +26,8 @@ services:
         value: https://api.football-data.org/v4
       - key: FOOTBALL_API_KEY
         sync: false
+      - key: ENABLE_BACKGROUND_JOBS
+        value: "false"
 
   - type: worker
     name: worldcup-predictor-worker
@@ -52,3 +54,5 @@ services:
         value: https://api.football-data.org/v4
       - key: FOOTBALL_API_KEY
         sync: false
+      - key: ENABLE_BACKGROUND_JOBS
+        value: "true"
