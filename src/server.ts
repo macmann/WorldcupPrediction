@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
+import type { UrlWithParsedQuery } from "node:url";
 import next from "next";
-import { parse } from "node:url";
 import { startBackgroundJobs, stopBackgroundJobs } from "./jobs/runtime";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -16,13 +16,40 @@ async function main() {
 
   const server = createServer(async (request, response) => {
     try {
-      const parsedUrl = parse(request.url ?? "/", true);
-      await handle(request, response, parsedUrl);
+      const origin = request.headers.host ? `http://${request.headers.host}` : `http://${hostname}:${port}`;
+      const parsedUrl = new URL(request.url ?? "/", origin);
+      const nextUrl: UrlWithParsedQuery = {
+        auth: null,
+        hash: parsedUrl.hash,
+        host: parsedUrl.host,
+        hostname: parsedUrl.hostname,
+        href: parsedUrl.href,
+        pathname: parsedUrl.pathname,
+        path: `${parsedUrl.pathname}${parsedUrl.search}`,
+        port: parsedUrl.port,
+        protocol: parsedUrl.protocol,
+        query: Object.fromEntries(parsedUrl.searchParams.entries()),
+        search: parsedUrl.search,
+        slashes: true
+      };
+      await handle(request, response, nextUrl);
     } catch (error) {
+      if (response.headersSent || response.writableEnded || response.destroyed) {
+        return;
+      }
+
       console.error("Unhandled request error", error);
       response.statusCode = 500;
       response.end("Internal server error");
     }
+  });
+
+  server.on("clientError", (error: NodeJS.ErrnoException, socket) => {
+    if (error.code === "ECONNRESET" || !socket.writable) {
+      return;
+    }
+
+    socket.end("HTTP/1.1 400 Bad Request\\r\\n\\r\\n");
   });
 
   const shutdown = async () => {
