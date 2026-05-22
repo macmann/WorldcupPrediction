@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { PlatformLogo } from "@/components/Icons";
 
 type PublicSettings = {
@@ -40,6 +41,7 @@ export function SystemStatusGate({ children }: { children: React.ReactNode }) {
 }
 
 export function AnnouncementBanner() {
+  const pathname = usePathname();
   const [banner, setBanner] = useState<{ announcementText: string | null; bannerImageUrl: string | null }>({ announcementText: null, bannerImageUrl: null });
 
   useEffect(() => {
@@ -54,6 +56,8 @@ export function AnnouncementBanner() {
       .catch(() => undefined);
     return () => { mounted = false; };
   }, []);
+
+  if (pathname !== "/dashboard") return null;
 
   if (banner.bannerImageUrl) {
     return (
