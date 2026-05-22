@@ -1,5 +1,4 @@
 import { createServer } from "node:http";
-import type { UrlWithParsedQuery } from "node:url";
 import next from "next";
 import { startBackgroundJobs, stopBackgroundJobs } from "./jobs/runtime";
 
@@ -16,23 +15,7 @@ async function main() {
 
   const server = createServer(async (request, response) => {
     try {
-      const origin = request.headers.host ? `http://${request.headers.host}` : `http://${hostname}:${port}`;
-      const parsedUrl = new URL(request.url ?? "/", origin);
-      const nextUrl: UrlWithParsedQuery = {
-        auth: null,
-        hash: parsedUrl.hash,
-        host: parsedUrl.host,
-        hostname: parsedUrl.hostname,
-        href: parsedUrl.href,
-        pathname: parsedUrl.pathname,
-        path: `${parsedUrl.pathname}${parsedUrl.search}`,
-        port: parsedUrl.port,
-        protocol: parsedUrl.protocol,
-        query: Object.fromEntries(parsedUrl.searchParams.entries()),
-        search: parsedUrl.search,
-        slashes: true
-      };
-      await handle(request, response, nextUrl);
+      await handle(request, response);
     } catch (error) {
       if (response.headersSent || response.writableEnded || response.destroyed) {
         return;
