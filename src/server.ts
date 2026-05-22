@@ -4,7 +4,9 @@ import { parse } from "node:url";
 import { startBackgroundJobs, stopBackgroundJobs } from "./jobs/runtime";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = process.env.HOSTNAME ?? "0.0.0.0";
+// Render and other platforms set HOSTNAME to an internal container name.
+// Binding Next.js to that value can make the server unreachable from the public edge.
+const hostname = process.env.APP_HOST ?? "0.0.0.0";
 const port = Number(process.env.PORT ?? 3000);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
