@@ -29,7 +29,7 @@ export async function recordAdminJobStatus(key: string, label: string, outcome: 
 export async function getAppSettings() {
   return prisma.appSetting.upsert({
     where: { id: 1 },
-    create: { id: 1, announcementText: null, bannerImageUrl: null, maintenanceMode: false },
+    create: { id: 1, announcementText: null, bannerImageUrl: null, loginBackgroundImageUrl: null, maintenanceMode: false },
     update: {}
   });
 }
