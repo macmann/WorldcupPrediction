@@ -14,10 +14,6 @@ const handle = app.getRequestHandler();
 async function main() {
   await app.prepare();
 
-  if (process.env.ENABLE_BACKGROUND_JOBS !== "false") {
-    await startBackgroundJobs();
-  }
-
   const server = createServer(async (request, response) => {
     try {
       const parsedUrl = parse(request.url ?? "/", true);
@@ -41,6 +37,12 @@ async function main() {
   server.listen(port, hostname, () => {
     console.log(`Football Fantasy Myanmar - WC 2026 ready on http://${hostname}:${port}`);
   });
+
+  if (process.env.ENABLE_BACKGROUND_JOBS !== "false") {
+    startBackgroundJobs().catch((error) => {
+      console.error("Background jobs failed to start in web process. Web server will continue running.", error);
+    });
+  }
 }
 
 main().catch((error) => {
