@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "FFM - WC2026",
+  "short_name": "FFM WC2026",
+  "description": "Predict scores, join private leagues, and climb the World Cup leaderboard.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#06142e",
+  "theme_color": "#06142e",
+  "categories": ["sports", "games", "entertainment"],
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
