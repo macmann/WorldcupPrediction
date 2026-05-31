@@ -3,18 +3,88 @@
   "name": "FFM - WC2026",
   "short_name": "FFM WC2026",
   "description": "Predict scores, join private leagues, and climb the World Cup leaderboard.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
+  "orientation": "portrait",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "tabbed", "standalone", "minimal-ui"],
   "background_color": "#06142e",
   "theme_color": "#06142e",
   "categories": ["sports", "games", "entertainment"],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
   "icons": [
     {
       "src": "/logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-dashboard.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard with World Cup predictions and league standings"
+    },
+    {
+      "src": "/screenshot-predict.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Prediction screen for upcoming matches"
+    },
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Wide screen view of FFM WC2026"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Make predictions",
+      "short_name": "Predict",
+      "description": "Jump straight to upcoming match predictions.",
+      "url": "/predict",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "View leagues",
+      "short_name": "Leagues",
+      "description": "Open private leagues and leaderboards.",
+      "url": "/leagues",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Daily picks",
+      "short_name": "Daily",
+      "description": "Open daily World Cup prediction tasks.",
+      "url": "/daily",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ViewportFrame } from "@/components/ViewportFrame";
 import { StoreProvider } from "@/store/useStore";
 import { SystemStatusGate } from "@/components/SystemStatusGate";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
   description: "Predict scores, join private leagues, and climb the World Cup leaderboard.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg"
+    icon: ["/logo.svg", "/icon-192.png", "/icon-512.png"],
+    apple: "/icon-192.png"
   }
 };
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <ServiceWorkerRegistration />
         <StoreProvider>
           <SystemStatusGate><ViewportFrame>{children}</ViewportFrame></SystemStatusGate>
         </StoreProvider>
