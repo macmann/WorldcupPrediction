@@ -14,7 +14,10 @@ export const config = {
   wc2026ApiBaseUrl: process.env.WC2026_API_BASE_URL ?? "https://api.wc2026api.com",
   wc2026ApiKey: process.env.WC2026_API_KEY ?? "",
   worldCupCompetitionCode: process.env.WORLD_CUP_COMPETITION_CODE ?? "WC",
-  redisUrl: normalizeRedisUrl(process.env.REDIS_URL ?? "redis://localhost:6379")
+  redisUrl: normalizeRedisUrl(process.env.REDIS_URL ?? "redis://localhost:6379"),
+  appBaseUrl: process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_BASE_URL ?? "http://localhost:3000",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  passwordResetFromEmail: process.env.PASSWORD_RESET_FROM_EMAIL ?? ""
 };
 
 export const GLOBAL_LEAGUE_NAME = "Global World Cup Standings";
