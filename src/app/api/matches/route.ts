@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { teamFlagEmoji, teamFlagImageUrl } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
+import { dedupeMatchesByFixture, matchGroupNameCandidates, normalizeMatchGroupName } from "@/lib/matchIdentity";
 import { prisma } from "@/lib/prisma";
 import { ingestFixtures } from "@/services/fixtures";
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
         ...(query.matchday ? { matchday: query.matchday } : {}),
         ...(query.stage ? { stage: query.stage } : {}),
         isEnabled: true,
-        ...(query.group ? { groupName: query.group.toUpperCase() } : {}),
+        ...(query.group ? { groupName: { in: matchGroupNameCandidates(query.group) } } : {}),
         ...(query.tournamentId ? { tournamentId: query.tournamentId } : {}),
         OR: [{ tournamentId: null }, { tournament: { isActive: true } }]
       },
@@ -52,9 +53,12 @@ export async function GET(request: Request) {
     });
 
     const now = new Date();
+    const uniqueMatches = dedupeMatchesByFixture(matches);
+
     return NextResponse.json({
-      matches: matches.map(({ predictions, homeTeamRef, awayTeamRef, ...match }) => ({
+      matches: uniqueMatches.map(({ predictions, homeTeamRef, awayTeamRef, ...match }) => ({
         ...match,
+        groupName: normalizeMatchGroupName(match.groupName),
         homeFlagEmoji: teamFlagEmoji(match.homeTeam, homeTeamRef?.flagEmoji),
         awayFlagEmoji: teamFlagEmoji(match.awayTeam, awayTeamRef?.flagEmoji),
         homeFlagImageUrl: teamFlagImageUrl(match.homeTeam),

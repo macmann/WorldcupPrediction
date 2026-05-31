@@ -1,6 +1,7 @@
 import { MatchStatus } from "@prisma/client";
 import { config } from "../lib/config";
 import { countryNameToFlagEmoji } from "../lib/countryFlags";
+import { normalizeMatchGroupName } from "../lib/matchIdentity";
 
 export type ExternalTeam = {
   externalId?: string;
@@ -81,8 +82,7 @@ function parseScore(value: unknown) {
 }
 
 function normalizeGroupName(groupName?: string | null) {
-  if (!groupName) return null;
-  return groupName.replace(/^GROUP\s+/i, "").trim().toUpperCase();
+  return normalizeMatchGroupName(groupName);
 }
 
 function unwrapArray(payload: any, keys: string[]) {
