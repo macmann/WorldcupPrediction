@@ -109,6 +109,7 @@ export default function LoginPage() {
           <label className="block text-sm font-black">Password
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold" />
           </label>
+          <div className="text-right text-sm font-semibold"><Link href="/forgot-password" className="font-black text-indigo-700">Forgot password?</Link></div>
           {error && <p className="rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
           <button disabled={isPending} className="w-full rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300">{isPending ? "Signing in…" : "Sign in"}</button>
         </form>
