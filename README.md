@@ -178,6 +178,10 @@ npm run dev:web:clean
 | `npm run typecheck` | Runs TypeScript type checking. |
 | `npm test` | Runs the test suite. |
 
+## Architecture blueprint
+
+See [Application Design Blueprint Architecture](docs/architecture-blueprint.md) for the system context, runtime topology, module boundaries, core data model, request/job flows, security architecture, and deployment checklist.
+
 ## Background jobs
 
 The worker process in `src/jobs/worker.ts` starts the BullMQ runtime, which includes:
