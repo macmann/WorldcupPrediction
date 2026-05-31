@@ -5,8 +5,10 @@ import { SystemStatusGate } from "@/components/SystemStatusGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  applicationName: "FFM - WC2026",
   title: "FFM - WC2026",
   description: "Predict scores, join private leagues, and climb the World Cup leaderboard.",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/logo.svg",
     apple: "/logo.svg"
