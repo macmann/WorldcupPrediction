@@ -33,7 +33,7 @@ function HistoryMatchCard({ match, missed }: { match: Match; missed?: boolean })
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-center">
         <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">W/D/W Pick</p><p className="text-sm font-black">{missed ? "Missed" : outcomeText(match.prediction?.predictedOutcome, match.homeTeam, match.awayTeam, match.homeFlagEmoji, match.awayFlagEmoji)}</p></div>
-        <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">Score Pick</p><p className="text-xl font-black">{missed ? "Missed" : scorePickText(match.prediction)}</p></div>
+        <div className="rounded-2xl bg-slate-100 p-3"><p className="text-xs text-slate-500">Score Pick</p><p className={`${missed ? "text-sm" : "text-xl"} font-black`}>{missed ? "Missed" : scorePickText(match.prediction)}</p></div>
         <div className="rounded-2xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Actual Score</p><p className="text-xl font-black text-emerald-800">{match.homeScore ?? "–"}-{match.awayScore ?? "–"}</p></div>
       </div>
     </Card>
