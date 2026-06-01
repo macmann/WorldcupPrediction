@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LockIcon } from "@/components/Icons";
 import { TeamName, teamNameWithFlag } from "@/components/TeamName";
+import { scoreMatchesOutcome } from "@/lib/matchPrediction";
 import { useStore } from "@/store/useStore";
 import type { Match, MatchOutcome } from "@/lib/frontendData";
 
@@ -43,33 +44,24 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
     if (!response.ok) throw new Error((await response.json()).error ?? "Could not save prediction");
   }
 
-  function saveOutcome(nextOutcome = selectedOutcome) {
-    if (!nextOutcome) return;
+  const hasCompleteScore = home !== "" && away !== "";
+  const predictedHomeScore = hasCompleteScore ? Number(home) : null;
+  const predictedAwayScore = hasCompleteScore ? Number(away) : null;
+  const hasValidScoreNumbers = predictedHomeScore !== null && predictedAwayScore !== null && !Number.isNaN(predictedHomeScore) && !Number.isNaN(predictedAwayScore);
+  const scoreOutcomeMismatch = selectedOutcome && hasValidScoreNumbers && !scoreMatchesOutcome(selectedOutcome, predictedHomeScore, predictedAwayScore);
+  const canSavePrediction = Boolean(selectedOutcome && hasValidScoreNumbers && !scoreOutcomeMismatch);
+  const selectedOutcomeLabel = selectedOutcome ? outcomeLabel(selectedOutcome, match) : "the selected Win / Draw / Win result";
 
-    setSelectedOutcome(nextOutcome);
-    setOptimisticPrediction({ matchId: match.id, predictedOutcome: nextOutcome, status: "saving" });
+  function savePrediction() {
+    if (!selectedOutcome || !hasValidScoreNumbers || scoreOutcomeMismatch) return;
+
+    setOptimisticPrediction({ matchId: match.id, predictedOutcome: selectedOutcome, predictedHomeScore, predictedAwayScore, status: "saving" });
     startTransition(async () => {
       try {
-        await postPrediction({ predicted_outcome: nextOutcome });
+        await postPrediction({ predicted_outcome: selectedOutcome, predicted_home_score: predictedHomeScore, predicted_away_score: predictedAwayScore });
         markPredictionStatus(match.id, "saved");
       } catch (error) {
-        markPredictionStatus(match.id, "error", error instanceof Error ? error.message : "Could not save result prediction");
-      }
-    });
-  }
-
-  function saveScore() {
-    const predictedHomeScore = Number(home);
-    const predictedAwayScore = Number(away);
-    if (Number.isNaN(predictedHomeScore) || Number.isNaN(predictedAwayScore)) return;
-
-    setOptimisticPrediction({ matchId: match.id, predictedHomeScore, predictedAwayScore, status: "saving" });
-    startTransition(async () => {
-      try {
-        await postPrediction({ predicted_home_score: predictedHomeScore, predicted_away_score: predictedAwayScore });
-        markPredictionStatus(match.id, "saved");
-      } catch (error) {
-        markPredictionStatus(match.id, "error", error instanceof Error ? error.message : "Could not save score prediction");
+        markPredictionStatus(match.id, "error", error instanceof Error ? error.message : "Could not save prediction");
       }
     });
   }
@@ -104,11 +96,6 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
             );
           })}
         </div>
-        {!locked && (
-          <button type="button" onClick={() => saveOutcome()} disabled={isPending || !selectedOutcome} className={`mt-3 w-full rounded-2xl py-3 font-black text-white shadow-lg shadow-navy/20 transition active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none ${optimistic?.status === "saved" ? "bg-navy" : "bg-indigo-600"}`}>
-            {optimistic?.status === "saved" ? "Saved ✓" : optimistic?.status === "saving" ? "Saving…" : "Save result prediction"}
-          </button>
-        )}
       </section>
 
       <section className="rounded-3xl border border-slate-100 bg-slate-50 p-3">
@@ -125,12 +112,18 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
             <input aria-label={`${match.awayTeam} score`} type="number" min="0" inputMode="numeric" disabled={locked} value={away} onChange={(event) => setAway(event.target.value)} className={inputClass} />
           </label>
         </div>
-        {!locked && (
-          <button type="button" onClick={saveScore} disabled={isPending || home === "" || away === ""} className={`mt-3 w-full rounded-2xl py-3 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none ${optimistic?.status === "saved" ? "bg-emerald-700" : "bg-emerald-600"}`}>
-            {optimistic?.status === "saved" ? "Saved ✓" : optimistic?.status === "saving" ? "Saving…" : "Save score prediction"}
-          </button>
+        {scoreOutcomeMismatch && (
+          <p className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-center text-xs font-bold text-red-600">
+            The score must match {selectedOutcomeLabel}. Update Win / Draw / Win or the score before saving.
+          </p>
         )}
       </section>
+
+      {!locked && (
+        <button type="button" onClick={savePrediction} disabled={isPending || !canSavePrediction} className={`w-full rounded-2xl py-3 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none ${optimistic?.status === "saved" ? "bg-emerald-700" : "bg-emerald-600"}`}>
+          {optimistic?.status === "saved" ? "Saved ✓" : optimistic?.status === "saving" ? "Saving…" : "Save prediction"}
+        </button>
+      )}
 
       {locked && (
         <div className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 py-3 text-sm font-black text-slate-600"><LockIcon className="h-4 w-4" /> Locked at kickoff</div>

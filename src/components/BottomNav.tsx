@@ -2,16 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BallIcon, CalendarIcon, HistoryIcon, HomeIcon, TrophyIcon, UsersIcon } from "@/components/Icons";
+import { BallIcon, CalendarIcon, HistoryIcon, HomeIcon, UsersIcon } from "@/components/Icons";
 
 const tabs = [
   { href: "/dashboard", label: "Home", icon: HomeIcon },
   { href: "/predict", label: "Predict", icon: BallIcon },
   { href: "/leagues", label: "Leagues", icon: UsersIcon },
-  { href: "/winners", label: "Winners", icon: TrophyIcon },
+  { href: "/winners", label: "WC26", icon: WC26Icon },
   { href: "/daily", label: "Daily", icon: CalendarIcon },
   { href: "/history", label: "History", icon: HistoryIcon }
 ] as const;
+
+function WC26Icon({ className }: { className?: string }) {
+  return (
+    <img
+      src="https://i.ibb.co/Q7pgQJ6R/viber-image-2026-06-01-14-13-33-275.jpg"
+      alt=""
+      className={`rounded-md object-cover ${className ?? ""}`}
+      loading="lazy"
+    />
+  );
+}
 
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === "/dashboard";
