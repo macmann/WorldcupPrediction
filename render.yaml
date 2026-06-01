@@ -26,6 +26,10 @@ services:
         value: https://api.football-data.org/v4
       - key: FOOTBALL_API_KEY
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: PASSWORD_RESET_FROM_EMAIL
+        sync: false
       - key: ENABLE_BACKGROUND_JOBS
         value: "false"
 

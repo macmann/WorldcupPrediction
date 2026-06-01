@@ -77,6 +77,9 @@ JWT_SECRET="replace-with-a-strong-secret"
 FOOTBALL_API_KEY="replace-with-your-football-api-key"
 # Optional preferred 2026-specific fixture provider. If set, this is used before football-data.org.
 WC2026_API_KEY="replace-with-your-wc2026-api-key"
+# Required for forgot-password email delivery. Without these, reset links are logged on the server only.
+RESEND_API_KEY="replace-with-your-resend-api-key"
+PASSWORD_RESET_FROM_EMAIL="FFM WC2026 <noreply@your-domain.com>"
 ```
 
 Notes:
@@ -90,6 +93,18 @@ openssl rand -base64 32
 ```
 
 - Fixture sync and outright-pick option sync use `WC2026_API_KEY` first when present, then fall back to the football-data.org-compatible `FOOTBALL_API_KEY`. The Champion, Best Player, and Best Goalkeeper dropdowns are loaded from synced tournament teams/squads instead of hard-coded mock options; if your provider does not expose squad/player data, those player dropdowns stay disabled until real players are available in the database.
+
+#### Password reset email setup
+
+The forgot-password API already creates a secure reset token. Email delivery uses [Resend](https://resend.com) through the following environment variables:
+
+| Variable | Required for email? | Description |
+| --- | --- | --- |
+| `NEXT_PUBLIC_APP_URL` | Yes | Public base URL used to build `/reset-password?token=...` links. Use `http://localhost:3000` locally and your deployed `https://...` URL in production. |
+| `RESEND_API_KEY` | Yes | API key from Resend. |
+| `PASSWORD_RESET_FROM_EMAIL` | Yes | Verified sender address or sender name/address, for example `FFM WC2026 <noreply@your-domain.com>`. |
+
+If `RESEND_API_KEY` or `PASSWORD_RESET_FROM_EMAIL` is blank, the app does **not** send an email. Instead, it prints the reset link to the web service logs as `Password reset link for user@example.com: ...`; this is useful for local development but not enough for production.
 
 ### 3. Apply the Prisma schema to your hosted database
 
@@ -236,6 +251,8 @@ npm run render-start
    - `FOOTBALL_API_KEY`
    - `WORLD_CUP_COMPETITION_CODE`
    - `TOURNAMENT_START_TIME`
+   - `RESEND_API_KEY`
+   - `PASSWORD_RESET_FROM_EMAIL`
 
 ### 3. Create the Background Worker
 
@@ -256,7 +273,7 @@ npm install --include=dev && npm run prisma:generate
 npm run worker
 ```
 
-6. Add the same environment variables as the Web Service, especially `DATABASE_URL`, `REDIS_URL`, `NEXTAUTH_SECRET`, `JWT_SECRET`, and `FOOTBALL_API_KEY`.
+6. Add the same environment variables as the Web Service, especially `DATABASE_URL`, `REDIS_URL`, `NEXTAUTH_SECRET`, `JWT_SECRET`, and `FOOTBALL_API_KEY`. The worker does not send password reset emails, so `RESEND_API_KEY` and `PASSWORD_RESET_FROM_EMAIL` are only required on the Web Service.
 
 ### 4. Run production migrations
 
