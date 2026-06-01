@@ -1,4 +1,5 @@
 import { countryCodeFromName } from "./countryFlags";
+import { appDateKey } from "./dateTime";
 
 export type MatchIdentityInput = {
   id: number;
@@ -8,6 +9,7 @@ export type MatchIdentityInput = {
   awayTeam: string;
   kickoffTime: string | Date;
   groupName?: string | null;
+  stage?: string | null;
   predictions?: unknown[];
 };
 
@@ -20,6 +22,10 @@ function normalizeTeamName(teamName: string) {
 
 function kickoffIdentity(kickoffTime: string | Date) {
   return new Date(kickoffTime).toISOString();
+}
+
+function normalizeStageName(stage?: string | null) {
+  return stage?.trim().replace(/[\s-]+/g, "_").toUpperCase() || null;
 }
 
 function duplicatePriority(match: MatchIdentityInput) {
@@ -66,11 +72,24 @@ export function matchDeduplicationKey(match: Pick<MatchIdentityInput, "homeTeam"
   return [kickoffIdentity(match.kickoffTime), normalizeTeamName(match.homeTeam), normalizeTeamName(match.awayTeam)].join("::");
 }
 
+function fuzzyMatchDeduplicationKey(match: Pick<MatchIdentityInput, "homeTeam" | "awayTeam" | "kickoffTime" | "groupName" | "stage">) {
+  const normalizedGroupName = normalizeMatchGroupName(match.groupName);
+  const normalizedStage = normalizeStageName(match.stage) ?? (normalizedGroupName ? "GROUP" : "UNKNOWN_STAGE");
+
+  return [
+    appDateKey(match.kickoffTime),
+    normalizedStage,
+    normalizedGroupName ?? "UNKNOWN_GROUP",
+    normalizeTeamName(match.homeTeam),
+    normalizeTeamName(match.awayTeam)
+  ].join("::");
+}
+
 export function dedupeMatchesByFixture<T extends MatchIdentityInput>(matches: T[]) {
   const dedupedMatches = new Map<string, T>();
 
   for (const match of matches) {
-    const key = matchDeduplicationKey(match);
+    const key = fuzzyMatchDeduplicationKey(match);
     const currentMatch = dedupedMatches.get(key);
 
     if (!currentMatch || isPreferredMatch(match, currentMatch)) {
