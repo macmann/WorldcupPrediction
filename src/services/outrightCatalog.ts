@@ -1,12 +1,13 @@
 import { config } from "@/lib/config";
 import { countryNameToFlagEmoji } from "@/lib/countryFlags";
 import { isGoalkeeperPosition } from "@/lib/playerMaster";
-import { prisma } from "@/lib/prisma";
+import { ensurePlayerSequenceNumberColumn, prisma } from "@/lib/prisma";
 import { fetchWorldCupCatalog, type ExternalCatalog } from "@/services/footballApi";
 
 export const WORLD_CUP_2026_SLUG = "world-cup-2026";
 
 export async function getOrCreateCurrentTournament() {
+  await ensurePlayerSequenceNumberColumn();
   return prisma.tournament.upsert({
     where: { slug: WORLD_CUP_2026_SLUG },
     create: {
