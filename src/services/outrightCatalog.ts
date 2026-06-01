@@ -1,5 +1,6 @@
 import { config } from "@/lib/config";
 import { countryNameToFlagEmoji } from "@/lib/countryFlags";
+import { isGoalkeeperPosition } from "@/lib/playerMaster";
 import { prisma } from "@/lib/prisma";
 import { fetchWorldCupCatalog, type ExternalCatalog } from "@/services/footballApi";
 
@@ -20,12 +21,6 @@ export async function getOrCreateCurrentTournament() {
       externalId: config.worldCupCompetitionCode
     }
   });
-}
-
-function isGoalkeeperPosition(position?: string | null) {
-  if (!position) return false;
-  const normalized = position.toUpperCase();
-  return normalized === "GK" || normalized === "G" || normalized.includes("GOALKEEPER") || normalized.includes("KEEPER");
 }
 
 async function upsertCatalog(catalog: ExternalCatalog) {
@@ -134,11 +129,12 @@ export async function syncOutrightCatalog() {
 
 export async function getOutrightOptions() {
   const tournament = await getOrCreateCurrentTournament();
-  const [teams, players, goalkeepers] = await Promise.all([
+  const [teams, players, goalkeepers, goldenBootPlayers] = await Promise.all([
     prisma.team.findMany({ where: { tournamentId: tournament.id }, orderBy: [{ groupName: "asc" }, { name: "asc" }] }),
     prisma.player.findMany({ where: { tournamentId: tournament.id }, include: { team: true }, orderBy: [{ name: "asc" }] }),
-    prisma.player.findMany({ where: { tournamentId: tournament.id, isGoalkeeper: true }, include: { team: true }, orderBy: [{ name: "asc" }] })
+    prisma.player.findMany({ where: { tournamentId: tournament.id, isGoalkeeper: true }, include: { team: true }, orderBy: [{ team: { name: "asc" } }, { name: "asc" }] }),
+    prisma.player.findMany({ where: { tournamentId: tournament.id, isGoalkeeper: false }, include: { team: true }, orderBy: [{ team: { name: "asc" } }, { name: "asc" }] })
   ]);
 
-  return { tournament, teams, players, goalkeepers };
+  return { tournament, teams, players, goalkeepers, goldenBootPlayers };
 }

@@ -51,6 +51,8 @@ export type OutrightOption = {
   name: string;
   groupName?: string | null;
   teamName?: string | null;
+  position?: string | null;
+  isGoalkeeper?: boolean;
 };
 
 export type OutrightOptionsPayload = {
@@ -60,6 +62,7 @@ export type OutrightOptionsPayload = {
     teams: OutrightOption[];
     players: OutrightOption[];
     goalkeepers: OutrightOption[];
+    goldenBootPlayers: OutrightOption[];
   };
   outright: {
     championTeamId: string;

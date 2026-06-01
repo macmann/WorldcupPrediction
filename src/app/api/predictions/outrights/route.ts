@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { teamFlagEmoji } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
+import { isEligibleForAward } from "@/lib/playerMaster";
 import { prisma } from "@/lib/prisma";
 import { getOutrightOptions, syncOutrightCatalog } from "@/services/outrightCatalog";
 
@@ -79,8 +80,9 @@ export async function GET(request: Request) {
       canEdit: new Date() < outrightLockDeadline,
       options: {
         teams: options.teams.map((team) => ({ id: team.id, name: optionName(team), groupName: team.groupName })),
-        players: options.players.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null })),
-        goalkeepers: options.goalkeepers.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null }))
+        players: options.players.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
+        goalkeepers: options.goalkeepers.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
+        goldenBootPlayers: options.goldenBootPlayers.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null }))
       },
       outright: outright ? {
         championTeamId: outright.championTeamId,
@@ -120,16 +122,19 @@ export async function POST(request: Request) {
       prisma.team.findUnique({ where: { id: input.secondRunnerUpTeamId }, select: { tournamentId: true } }),
       prisma.team.findUnique({ where: { id: input.fairPlayTeamId }, select: { tournamentId: true } }),
       prisma.player.findUnique({ where: { id: input.bestPlayerId }, select: { tournamentId: true } }),
-      prisma.player.findUnique({ where: { id: input.bestGkId }, select: { tournamentId: true, isGoalkeeper: true } }),
-      prisma.player.findUnique({ where: { id: input.goldenBootPlayerId }, select: { tournamentId: true } }),
+      prisma.player.findUnique({ where: { id: input.bestGkId }, select: { tournamentId: true, position: true, isGoalkeeper: true } }),
+      prisma.player.findUnique({ where: { id: input.goldenBootPlayerId }, select: { tournamentId: true, position: true, isGoalkeeper: true } }),
       prisma.player.findUnique({ where: { id: input.youngPlayerId }, select: { tournamentId: true } })
     ]);
 
     if (!championTeam || !secondRunnerUpTeam || !fairPlayTeam || !bestPlayer || !bestGoalkeeper || !goldenBootPlayer || !youngPlayer) {
       throw Object.assign(new Error("One or more outright selections were not found"), { status: 400 });
     }
-    if (!bestGoalkeeper.isGoalkeeper) {
-      throw Object.assign(new Error("Best goalkeeper pick must reference a goalkeeper"), { status: 400 });
+    if (!isEligibleForAward("goldenGlove", bestGoalkeeper)) {
+      throw Object.assign(new Error("Golden Glove pick must reference a goalkeeper"), { status: 400 });
+    }
+    if (!isEligibleForAward("goldenBoot", goldenBootPlayer)) {
+      throw Object.assign(new Error("Golden Boot pick cannot reference a goalkeeper"), { status: 400 });
     }
 
     const tournamentId = input.tournamentId ?? championTeam.tournamentId;
