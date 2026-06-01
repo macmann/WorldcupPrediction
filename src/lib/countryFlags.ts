@@ -139,6 +139,8 @@ const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   slovenia: "SI",
   "south africa": "ZA",
   "south korea": "KR",
+  "korea republic": "KR",
+  "republic of korea": "KR",
   korea: "KR",
   spain: "ES",
   sudan: "SD",
