@@ -16,6 +16,7 @@ type AdminAccount = { id: string; username: string; displayName: string; isSuper
 type AdminUser = {
   id: string; email: string; displayName: string; avatarUrl?: string | null; globalPoints: number;
   exactScoresCount: number; correctOutcomesCount: number; isAdmin: boolean; isBanned: boolean; banReason?: string | null;
+  isGlobalLeagueMember: boolean;
 };
 type AdminTournament = { id: string; name: string; slug: string; startsAt: string; endsAt?: string | null; syncFromAt?: string | null; isActive: boolean; externalId?: string | null };
 type ApiCompetition = { code: string; name: string; externalId: string; areaName?: string | null; startsAt: string; endsAt?: string | null; isAdded: boolean };
@@ -158,9 +159,51 @@ export default function AdminConsole() {
     startTransition(async () => {
       try {
         const data = await adminJson<{ user: AdminUser }>(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-        setUsers((current) => current.map((user) => user.id === id ? data.user : user));
+        setUsers((current) => current.map((user) => user.id === id ? { ...user, ...data.user } : user));
         setMessage(success);
       } catch (updateError) { setError(updateError instanceof Error ? updateError.message : "Could not update user"); }
+    });
+  }
+
+  function deleteUser(id: string, label: string) {
+    if (!window.confirm(`Delete ${label}? This permanently removes their account, sessions, predictions, league memberships, notifications, and share cards.`)) return;
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        await adminJson(`/api/admin/users/${id}`, { method: "DELETE" });
+        setUsers((current) => current.filter((user) => user.id !== id));
+        setAudit(null);
+        setMessage(`${label} deleted.`);
+        loadAdminData();
+      } catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete user"); }
+    });
+  }
+
+  function removeFromGlobalLeague(id: string, label: string) {
+    if (!window.confirm(`Remove ${label} from the global league? Their account and points will remain, but they will no longer appear in the global standings.`)) return;
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        await adminJson(`/api/admin/users/${id}/global-league`, { method: "DELETE" });
+        setUsers((current) => current.map((user) => user.id === id ? { ...user, isGlobalLeagueMember: false } : user));
+        setMessage(`${label} removed from the global league.`);
+        loadAdminData();
+      } catch (globalLeagueError) { setError(globalLeagueError instanceof Error ? globalLeagueError.message : "Could not remove user from global league"); }
+    });
+  }
+
+  function hardResetDatabase(formData: FormData) {
+    const confirmation = String(formData.get("confirmation") ?? "").trim();
+    if (confirmation !== "HARD RESET") { setError("Type HARD RESET to confirm the database reset."); return; }
+    if (!window.confirm("Hard reset the database now? This deletes all players, predictions, leagues, tournaments, matches, announcements, sessions, and settings. Admin accounts are kept.")) return;
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        await adminJson("/api/admin/database/reset", { method: "POST", body: JSON.stringify({ confirmation }) });
+        setUsers([]); setStreams([]); setOps(null); setAudit(null); setPredictionRows([]); setApiCompetitions([]); setRecalcMatches([]);
+        setMessage("Database hard reset complete. Admin accounts were kept.");
+        loadAdminData();
+      } catch (resetError) { setError(resetError instanceof Error ? resetError.message : "Could not hard reset database"); }
     });
   }
 
@@ -388,7 +431,7 @@ export default function AdminConsole() {
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Moderation & User Management</p><h2 className="mt-1 text-2xl font-black text-navy">Accounts, audit logs, points & bans</h2>
               <form action={() => loadAdminData(query)} className="mt-5 flex gap-2"><input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="Search user by email or display name" /><button disabled={isPending} className={`${buttonClass} bg-navy`}>Search</button></form>
-              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[920px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Exact</th><th className="px-4 py-3">Outcomes</th><th className="px-4 py-3">Status</th><th className="py-3 pl-4">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{users.map((user) => <UserRow key={user.id} user={user} disabled={isPending} onUpdate={updateUser} onAudit={loadAudit} />)}</tbody></table></div>
+              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[920px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-4">User</th><th className="px-4 py-3">Points</th><th className="px-4 py-3">Exact</th><th className="px-4 py-3">Outcomes</th><th className="px-4 py-3">Status</th><th className="py-3 pl-4">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{users.map((user) => <UserRow key={user.id} user={user} disabled={isPending} onUpdate={updateUser} onAudit={loadAudit} onDelete={deleteUser} onRemoveFromGlobalLeague={removeFromGlobalLeague} />)}</tbody></table></div>
               {audit && <AuditPanel audit={audit} />}
             </div>
           )}
@@ -417,6 +460,7 @@ export default function AdminConsole() {
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Global Settings</p><h2 className="mt-1 text-2xl font-black text-navy">Site controls</h2>
               <form action={saveSettings} className="mt-5 space-y-3"><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
+              {admin.isSuperAdmin && <form action={hardResetDatabase} className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4"><h3 className="font-black text-red-700">Hard reset database</h3><p className="mt-1 text-sm font-semibold text-red-700/80">Deletes all player accounts, predictions, leagues, tournaments, matches, announcements, sessions, job status, and app settings. Admin accounts are kept so you can sign back in.</p><input name="confirmation" className={`${inputClass} mt-4 border-red-200`} placeholder="Type HARD RESET" autoComplete="off" /><button disabled={isPending} className={`${buttonClass} mt-3 w-full bg-red-700`}>Hard reset database</button></form>}
             </div>
           )}
 
@@ -483,9 +527,10 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
 function MetricCard({ label, value, tone = "navy" }: { label: string; value: number; tone?: "navy" | "red" }) { return <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">{label}</p><p className={`mt-3 text-4xl font-black ${tone === "red" ? "text-red-600" : "text-navy"}`}>{value}</p></div>; }
 function StatusCard({ title, status }: { title: string; status?: JobStatus | null }) { return <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-400">{title}</p><p className={`mt-2 font-black ${status?.lastError ? "text-red-600" : "text-emerald-700"}`}>{status?.lastError ? "Needs attention" : status?.lastSuccessAt ? "Healthy" : "No run yet"}</p><p className="text-xs font-semibold text-slate-500">Success: {formatDate(status?.lastSuccessAt)}</p>{status?.lastError && <p className="mt-1 text-xs font-bold text-red-600">{status.lastError}</p>}</div>; }
 
-function UserRow({ user, disabled, onUpdate, onAudit }: { user: AdminUser; disabled: boolean; onUpdate: (id: string, payload: Record<string, unknown>, success: string) => void; onAudit: (id: string) => void }) {
+function UserRow({ user, disabled, onUpdate, onAudit, onDelete, onRemoveFromGlobalLeague }: { user: AdminUser; disabled: boolean; onUpdate: (id: string, payload: Record<string, unknown>, success: string) => void; onAudit: (id: string) => void; onDelete: (id: string, label: string) => void; onRemoveFromGlobalLeague: (id: string, label: string) => void }) {
   const [displayName, setDisplayName] = useState(user.displayName); const [email, setEmail] = useState(user.email); const [globalPoints, setGlobalPoints] = useState(String(user.globalPoints)); const [exactScoresCount, setExactScoresCount] = useState(String(user.exactScoresCount)); const [correctOutcomesCount, setCorrectOutcomesCount] = useState(String(user.correctOutcomesCount)); const [banReason, setBanReason] = useState(user.banReason ?? ""); const [password, setPassword] = useState("");
-  return <tr className="align-top"><td className="py-4 pr-4"><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className={inputClass} placeholder="Display name" /><input value={email} onChange={(event) => setEmail(event.target.value)} className={`${inputClass} mt-2`} placeholder="Email" />{user.isAdmin && <span className="mt-2 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">Legacy admin</span>}</td><td className="px-4 py-4"><input value={globalPoints} onChange={(event) => setGlobalPoints(event.target.value)} className={inputClass} type="number" /></td><td className="px-4 py-4"><input value={exactScoresCount} onChange={(event) => setExactScoresCount(event.target.value)} className={inputClass} type="number" min="0" /></td><td className="px-4 py-4"><input value={correctOutcomesCount} onChange={(event) => setCorrectOutcomesCount(event.target.value)} className={inputClass} type="number" min="0" /></td><td className="px-4 py-4"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${user.isBanned ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>{user.isBanned ? "Banned" : "Active"}</span><textarea value={banReason} onChange={(event) => setBanReason(event.target.value)} className={`${inputClass} mt-3 min-h-20`} placeholder="Ban reason" /></td><td className="py-4 pl-4"><div className="grid min-w-[260px] gap-2"><button type="button" disabled={disabled} onClick={() => onUpdate(user.id, { displayName, email, globalPoints: Number(globalPoints), exactScoresCount: Number(exactScoresCount), correctOutcomesCount: Number(correctOutcomesCount) }, "User details and manual points updated.")} className={`${buttonClass} bg-indigo-600`}>Save details & points</button><button type="button" disabled={disabled} onClick={() => onUpdate(user.id, { isBanned: !user.isBanned, banReason: user.isBanned ? null : banReason }, user.isBanned ? "User restriction removed." : "User restricted from leaderboards.")} className={`${buttonClass} ${user.isBanned ? "bg-emerald-600" : "bg-red-600"}`}>{user.isBanned ? "Unban user" : "Ban / flag user"}</button><button type="button" disabled={disabled} onClick={() => onAudit(user.id)} className={`${buttonClass} bg-slate-700`}>View audit trail</button><input value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass} placeholder="New password" type="password" /><button type="button" disabled={disabled || password.length < 8} onClick={() => { onUpdate(user.id, { password }, "Password reset."); setPassword(""); }} className={`${buttonClass} bg-slate-800`}>Reset password</button></div></td></tr>;
+  const label = `${user.displayName} (${user.email})`;
+  return <tr className="align-top"><td className="py-4 pr-4"><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className={inputClass} placeholder="Display name" /><input value={email} onChange={(event) => setEmail(event.target.value)} className={`${inputClass} mt-2`} placeholder="Email" />{user.isAdmin && <span className="mt-2 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">Legacy admin</span>}{!user.isGlobalLeagueMember && <span className="mt-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">Not in global league</span>}</td><td className="px-4 py-4"><input value={globalPoints} onChange={(event) => setGlobalPoints(event.target.value)} className={inputClass} type="number" /></td><td className="px-4 py-4"><input value={exactScoresCount} onChange={(event) => setExactScoresCount(event.target.value)} className={inputClass} type="number" min="0" /></td><td className="px-4 py-4"><input value={correctOutcomesCount} onChange={(event) => setCorrectOutcomesCount(event.target.value)} className={inputClass} type="number" min="0" /></td><td className="px-4 py-4"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${user.isBanned ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>{user.isBanned ? "Banned" : "Active"}</span><textarea value={banReason} onChange={(event) => setBanReason(event.target.value)} className={`${inputClass} mt-3 min-h-20`} placeholder="Ban reason" /></td><td className="py-4 pl-4"><div className="grid min-w-[260px] gap-2"><button type="button" disabled={disabled} onClick={() => onUpdate(user.id, { displayName, email, globalPoints: Number(globalPoints), exactScoresCount: Number(exactScoresCount), correctOutcomesCount: Number(correctOutcomesCount) }, "User details and manual points updated.")} className={`${buttonClass} bg-indigo-600`}>Save details & points</button><button type="button" disabled={disabled} onClick={() => onUpdate(user.id, { isBanned: !user.isBanned, banReason: user.isBanned ? null : banReason }, user.isBanned ? "User restriction removed." : "User restricted from leaderboards.")} className={`${buttonClass} ${user.isBanned ? "bg-emerald-600" : "bg-red-600"}`}>{user.isBanned ? "Unban user" : "Ban / flag user"}</button><button type="button" disabled={disabled || !user.isGlobalLeagueMember} onClick={() => onRemoveFromGlobalLeague(user.id, label)} className={`${buttonClass} bg-orange-600`}>Remove from global league</button><button type="button" disabled={disabled} onClick={() => onAudit(user.id)} className={`${buttonClass} bg-slate-700`}>View audit trail</button><input value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass} placeholder="New password" type="password" /><button type="button" disabled={disabled || password.length < 8} onClick={() => { onUpdate(user.id, { password }, "Password reset."); setPassword(""); }} className={`${buttonClass} bg-slate-800`}>Reset password</button><button type="button" disabled={disabled} onClick={() => onDelete(user.id, label)} className={`${buttonClass} bg-red-800`}>Delete user</button></div></td></tr>;
 }
 
 function AuditPanel({ audit }: { audit: AuditPayload }) { return <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Audit trail: {audit.user.displayName} ({audit.user.email})</h3><p className="mt-1 text-xs font-semibold text-slate-500">Registered {formatDate(audit.user.registrationTimestamp)} · {audit.predictions.length} recent predictions</p><div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">{audit.predictions.map((prediction) => <div key={prediction.id} className="rounded-xl bg-white p-3 text-xs font-semibold text-slate-600"><p className="font-black text-slate-900">#{prediction.matchId} {prediction.match.homeTeam} vs {prediction.match.awayTeam} · kickoff {formatDate(prediction.match.kickoffTime)}</p><p>Pick: {prediction.predictedHomeScore ?? "—"}-{prediction.predictedAwayScore ?? "—"} ({prediction.predictedOutcome ?? "outcome not set"}) · Points {prediction.pointsAwarded ?? "pending"} · Locked {prediction.isLocked ? "yes" : "no"}</p><p>Created {formatDate(prediction.submittedAt)} · Updated {formatDate(prediction.updatedAt)} · Scored {formatDate(prediction.scoredAt)}</p></div>)}</div></div>; }

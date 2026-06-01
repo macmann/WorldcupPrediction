@@ -69,3 +69,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return jsonError(error);
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    await requireAdmin();
+    const { id } = paramsSchema.parse(params);
+    await prisma.user.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return jsonError(error);
+  }
+}

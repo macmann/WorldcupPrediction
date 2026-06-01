@@ -34,10 +34,18 @@ export async function GET(request: Request) {
         isBanned: true,
         banReason: true,
         bannedAt: true,
-        registrationTimestamp: true
+        registrationTimestamp: true,
+        leagueMemberships: {
+          where: { league: { type: "GLOBAL" } },
+          select: { leagueId: true },
+          take: 1
+        }
       }
     });
-    return NextResponse.json({ users });
+    return NextResponse.json({ users: users.map((user) => {
+      const { leagueMemberships, ...rest } = user;
+      return { ...rest, isGlobalLeagueMember: leagueMemberships.length > 0 };
+    }) });
   } catch (error) {
     return jsonError(error);
   }
