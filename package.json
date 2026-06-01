@@ -19,7 +19,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
     "postinstall": "prisma generate",
-    "render-build": "prisma generate && next build",
+    "render-build": "prisma migrate deploy && prisma generate && next build",
     "render-start": "node --import tsx src/server.ts",
     "prisma:repair": "node scripts/repair-prisma-install.mjs"
   },

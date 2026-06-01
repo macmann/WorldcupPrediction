@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { countryNameToFlagEmoji } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
 import { isGoalkeeperPosition, PLAYER_POSITIONS } from "@/lib/playerMaster";
-import { prisma } from "@/lib/prisma";
+import { ensurePlayerSequenceNumberColumn, prisma } from "@/lib/prisma";
 
 const schema = z.object({
   sequenceNumber: z.number().int().positive(),
@@ -18,6 +18,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   try {
     await requireAdmin();
     const input = schema.parse(await request.json());
+    await ensurePlayerSequenceNumberColumn();
     const player = await prisma.player.findUnique({ where: { id: params.id }, select: { id: true, tournamentId: true } });
     if (!player) throw Object.assign(new Error("Player not found"), { status: 404 });
     const team = await prisma.team.upsert({
