@@ -1,3 +1,4 @@
+import { formatErrorWithCause } from "./errorFormatting";
 import { prisma } from "./prisma";
 
 export const JOB_FIXTURE_SYNC = "fixture-sync";
@@ -5,7 +6,7 @@ export const JOB_LIVE_SCORE_POLL = "live-score-poll";
 
 export async function recordAdminJobStatus(key: string, label: string, outcome: { success: boolean; payload?: unknown; error?: unknown }) {
   const now = new Date();
-  const lastError = outcome.success ? null : outcome.error instanceof Error ? outcome.error.message : String(outcome.error ?? "Unknown error");
+  const lastError = outcome.success ? null : formatErrorWithCause(outcome.error);
   return prisma.adminJobStatus.upsert({
     where: { key },
     create: {
