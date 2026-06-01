@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { FormEvent } from "react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useStore } from "@/store/useStore";
 
@@ -22,6 +23,10 @@ export function UserProfile() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"profile" | "settings" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [isPasswordPending, setIsPasswordPending] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -49,6 +54,53 @@ export function UserProfile() {
   }, [isOpen]);
 
   if (!user) return null;
+
+  function updatePasswordField(field: keyof typeof passwordForm, value: string) {
+    setPasswordForm((current) => ({ ...current, [field]: value }));
+    setPasswordError(null);
+    setPasswordSuccess(null);
+  }
+
+  function changePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    setIsPasswordPending(true);
+    void (async () => {
+      try {
+        const response = await fetch("/api/auth/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentPassword: passwordForm.currentPassword,
+            newPassword: passwordForm.newPassword
+          })
+        });
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+
+        if (!response.ok) {
+          setPasswordError(payload?.error || "Could not update password. Please try again.");
+          return;
+        }
+
+        setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        setPasswordSuccess("Password updated successfully.");
+      } finally {
+        setIsPasswordPending(false);
+      }
+    })();
+  }
 
   function logout() {
     setError(null);
@@ -127,9 +179,63 @@ export function UserProfile() {
               </span>
             </button>
             {activeSection === "settings" && (
-              <div className="rounded-2xl bg-indigo-50 px-3 py-3 text-xs font-bold text-indigo-950">
-                <p>Onboarding: {user.onboardingCompleted ? "Completed" : "Needs setup"}</p>
-                <p className="mt-1 text-indigo-700">More account settings can be added here.</p>
+              <div className="space-y-3 rounded-2xl bg-indigo-50 px-3 py-3 text-xs font-bold text-indigo-950">
+                <div>
+                  <p>Onboarding: {user.onboardingCompleted ? "Completed" : "Needs setup"}</p>
+                </div>
+                <form onSubmit={changePassword} className="space-y-2 rounded-2xl bg-white/70 p-3 ring-1 ring-indigo-100">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-700">Change password</p>
+                    <p className="mt-1 text-[11px] font-semibold text-indigo-700">Use at least 8 characters for your new password.</p>
+                  </div>
+                  <label className="block">
+                    <span className="text-[11px] font-black text-indigo-950">Current password</span>
+                    <input
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(event) => updatePasswordField("currentPassword", event.target.value)}
+                      autoComplete="current-password"
+                      required
+                      disabled={isPasswordPending}
+                      className="mt-1 w-full rounded-xl border border-indigo-100 bg-white px-3 py-2 text-sm font-semibold text-slate-950 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-black text-indigo-950">New password</span>
+                    <input
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(event) => updatePasswordField("newPassword", event.target.value)}
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                      disabled={isPasswordPending}
+                      className="mt-1 w-full rounded-xl border border-indigo-100 bg-white px-3 py-2 text-sm font-semibold text-slate-950 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-black text-indigo-950">Confirm new password</span>
+                    <input
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(event) => updatePasswordField("confirmPassword", event.target.value)}
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                      disabled={isPasswordPending}
+                      className="mt-1 w-full rounded-xl border border-indigo-100 bg-white px-3 py-2 text-sm font-semibold text-slate-950 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={isPasswordPending}
+                    className="w-full rounded-xl bg-indigo-700 px-3 py-2 text-xs font-black text-white shadow-lg shadow-indigo-950/10 transition hover:bg-indigo-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                  >
+                    {isPasswordPending ? "Updating password…" : "Update password"}
+                  </button>
+                  {passwordError && <p className="rounded-xl bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700">{passwordError}</p>}
+                  {passwordSuccess && <p className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700">{passwordSuccess}</p>}
+                </form>
               </div>
             )}
             <button
