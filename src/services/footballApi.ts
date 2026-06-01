@@ -1,7 +1,7 @@
 import { MatchStatus } from "@prisma/client";
 import { config } from "../lib/config";
 import { formatErrorWithCause } from "../lib/errorFormatting";
-import { countryNameToFlagEmoji } from "../lib/countryFlags";
+import { canonicalCountryName, countryNameToFlagEmoji } from "../lib/countryFlags";
 import { normalizeMatchGroupName } from "../lib/matchIdentity";
 
 export type ExternalTeam = {
@@ -104,7 +104,7 @@ function compactCatalog(catalog: ExternalCatalog): ExternalCatalog {
     const current = teamsByName.get(key);
     teamsByName.set(key, {
       externalId: current?.externalId ?? team.externalId,
-      name: current?.name ?? team.name,
+      name: canonicalCountryName(current?.name ?? team.name) ?? (current?.name ?? team.name),
       shortName: current?.shortName ?? team.shortName,
       flagEmoji: current?.flagEmoji ?? team.flagEmoji,
       groupName: current?.groupName ?? team.groupName
@@ -122,7 +122,7 @@ function compactCatalog(catalog: ExternalCatalog): ExternalCatalog {
       position: current?.position ?? player.position,
       isGoalkeeper: Boolean(current?.isGoalkeeper || player.isGoalkeeper),
       teamExternalId: current?.teamExternalId ?? player.teamExternalId,
-      teamName: current?.teamName ?? player.teamName
+      teamName: canonicalCountryName(current?.teamName ?? player.teamName)
     });
   }
 
@@ -255,7 +255,7 @@ function parseTeam(raw: any): ExternalTeam | null {
   const externalId = raw?.id ?? raw?._id ?? raw?.team_id ?? raw?.teamId ?? raw?.external_id ?? raw?.code ?? raw?.fifa_code ?? raw?.team?.id;
   return {
     externalId: externalId !== undefined && externalId !== null ? String(externalId) : undefined,
-    name: String(name),
+    name: canonicalCountryName(String(name)) ?? String(name),
     shortName: raw?.shortName ?? raw?.short_name ?? raw?.tla ?? raw?.code ?? raw?.fifa_code ?? null,
     flagEmoji: raw?.flagEmoji ?? raw?.flag_emoji ?? raw?.flag ?? countryNameToFlagEmoji(String(name)),
     groupName: normalizeGroupName(raw?.groupName ?? raw?.group_name ?? raw?.group ?? null)
@@ -281,7 +281,7 @@ function parsePlayer(raw: any, team?: ExternalTeam | null): ExternalPlayer | nul
     position,
     isGoalkeeper: Boolean(raw?.isGoalkeeper ?? raw?.is_goalkeeper) || normalizedPosition.includes("KEEPER") || normalizedPosition === "GK" || normalizedPosition === "G",
     teamExternalId: teamExternalId !== undefined && teamExternalId !== null ? String(teamExternalId) : null,
-    teamName: teamName ? String(teamName) : null
+    teamName: canonicalCountryName(teamName ? String(teamName) : null)
   };
 }
 

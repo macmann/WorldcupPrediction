@@ -6,6 +6,7 @@ import { TeamName } from "@/components/TeamName";
 import { getDailyWinnerSummary } from "@/lib/daily";
 import { getUserLeagues } from "@/lib/leagues";
 import { fetchMatches } from "@/lib/serverMatches";
+import { formatAppDateTime } from "@/lib/dateTime";
 
 export default async function Dashboard() {
   const [matches, leagues, dailySummary] = await Promise.all([
@@ -23,7 +24,7 @@ export default async function Dashboard() {
         <Card className="bg-gradient-to-br from-emerald-500 to-pitch-900 text-white">
           <p className="text-sm font-semibold text-emerald-100">Next upcoming match</p>
           <h2 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-black"><TeamName name={nextMatch.homeTeam} flagEmoji={nextMatch.homeFlagEmoji} flagImageUrl={nextMatch.homeFlagImageUrl} flagClassName="ring-white/30" /><span className="text-emerald-100">vs</span><TeamName name={nextMatch.awayTeam} flagEmoji={nextMatch.awayFlagEmoji} flagImageUrl={nextMatch.awayFlagImageUrl} flagClassName="ring-white/30" /></h2>
-          <p className="mt-1 text-xs font-semibold text-emerald-100">{new Date(nextMatch.kickoffTime).toUTCString()}</p>
+          <p className="mt-1 text-xs font-semibold text-emerald-100">{formatAppDateTime(nextMatch.kickoffTime)}</p>
           <div className="mt-4"><Countdown target={nextMatch.kickoffTime} /></div>
           <p className="mt-4 text-sm font-semibold text-emerald-50">Prediction for this match is available in the Predict tab.</p>
           <Link href="/predict" className="mt-4 inline-flex rounded-2xl bg-white px-4 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-50">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Card, SectionTitle } from "@/components/Cards";
 import { Countdown } from "@/components/Countdown";
+import { formatAppDateTime } from "@/lib/dateTime";
 import type { OutrightOptionsPayload } from "@/lib/frontendData";
 import { useStore } from "@/store/useStore";
 
@@ -130,7 +131,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
   const isLocked = data?.canEdit === false || (!isLoading && !liveCanEdit);
   const lockTarget = data?.tournament.outrightLockAt;
   const lockLabel = lockTarget
-    ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(lockTarget))
+    ? formatAppDateTime(lockTarget)
     : "the Round of 16";
   const statusMessage = useMemo(() => {
     if (isLoading) return "Loading live tournament options…";
@@ -152,7 +153,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
             <p className="text-xs font-black uppercase tracking-widest text-emerald-200">Selection deadline</p>
             <p className="mt-1 text-sm font-bold">Closes when the Round of 16 starts</p>
           </div>
-          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-black text-emerald-50">{lockLabel} UTC</span>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-black text-emerald-50">{lockLabel}</span>
         </div>
         {lockTarget ? <Countdown target={lockTarget} /> : <p className="text-sm font-bold text-emerald-50">Deadline syncing…</p>}
       </div>

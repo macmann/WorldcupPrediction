@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { appDateKey, appDayRange } from "@/lib/dateTime";
 import { teamFlagEmoji, teamFlagImageUrl } from "@/lib/countryFlags";
 import { prisma } from "@/lib/prisma";
 
@@ -52,10 +53,8 @@ export type DailyWinnerSummary = {
   shareText: string;
 };
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 function dateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return appDateKey(date);
 }
 
 function parseDateKey(value: string | undefined) {
@@ -65,8 +64,7 @@ function parseDateKey(value: string | undefined) {
 }
 
 function dayRange(key: string) {
-  const start = new Date(`${key}T00:00:00.000Z`);
-  return { start, end: new Date(start.getTime() + MS_PER_DAY) };
+  return appDayRange(key);
 }
 
 function percentage(numerator: number, denominator: number) {

@@ -4,9 +4,10 @@ import { Card, SectionTitle } from "@/components/Cards";
 import { DailyShareActions } from "@/components/DailyShareActions";
 import { TeamName, teamNameWithFlag } from "@/components/TeamName";
 import { getDailyWinnerSummary } from "@/lib/daily";
+import { formatAppDate, formatAppDateTime } from "@/lib/dateTime";
 
 function formatDate(date: string) {
-  return new Date(`${date}T00:00:00.000Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return formatAppDate(`${date}T00:00:00.000Z`, { month: "short", day: "numeric" });
 }
 
 function resultText(match: { homeScore: number | null; awayScore: number | null }) {
@@ -106,7 +107,7 @@ export default async function DailyWinnerPage({ searchParams }: { searchParams: 
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="flex flex-wrap items-center gap-2 font-black"><TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} flagImageUrl={match.homeFlagImageUrl} /><span className="text-slate-400">vs</span><TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} flagImageUrl={match.awayFlagImageUrl} /></h3>
-                  <p className="text-xs font-semibold text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
+                  <p className="text-xs font-semibold text-slate-500">{formatAppDateTime(match.kickoffTime)}</p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-black ${pointsClass(match.prediction?.pointsAwarded)}`}>+{match.prediction?.pointsAwarded ?? 0}</span>
               </div>

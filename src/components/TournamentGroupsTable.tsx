@@ -12,7 +12,7 @@ const tournamentGroups = [
   { group: "E", teams: ["Germany", "Ecuador", "Ivory Coast", "Curaçao"] },
   { group: "F", teams: ["Netherlands", "Japan", "Tunisia", "Sweden"] },
   { group: "G", teams: ["Belgium", "Iran", "Egypt", "New Zealand"] },
-  { group: "H", teams: ["Spain", "Uruguay", "Saudi Arabia", "Cape Verde"] },
+  { group: "H", teams: ["Spain", "Uruguay", "Saudi Arabia", "Cabo Verde"] },
   { group: "I", teams: ["France", "Senegal", "Norway", "Iraq"] },
   { group: "J", teams: ["Argentina", "Austria", "Algeria", "Jordan"] },
   { group: "K", teams: ["Portugal", "Colombia", "Uzbekistan", "DR Congo"] },
