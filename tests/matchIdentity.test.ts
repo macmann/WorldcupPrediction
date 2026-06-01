@@ -77,3 +77,34 @@ test("dedupes duplicate fixtures while preferring the user's predicted copy", ()
 
   assert.deepEqual(dedupedMatches.map((match) => match.id), [2, 3]);
 });
+
+test("dedupes the same group fixture when stored with slightly different kickoff times", () => {
+  const matches = [
+    {
+      id: 101,
+      tournamentId: null,
+      externalId: "manual:brazil-haiti",
+      homeTeam: "Brazil",
+      awayTeam: "Haiti",
+      kickoffTime: "2026-06-20T00:30:00.000Z",
+      groupName: "GROUP_C",
+      stage: "GROUP",
+      predictions: []
+    },
+    {
+      id: 102,
+      tournamentId: "11111111-1111-1111-1111-111111111111",
+      externalId: "football-data:102",
+      homeTeam: "Brazil",
+      awayTeam: "Haiti",
+      kickoffTime: "2026-06-20T01:00:00.000Z",
+      groupName: "C",
+      stage: "GROUP",
+      predictions: []
+    }
+  ];
+
+  const dedupedMatches = dedupeMatchesByFixture(matches);
+
+  assert.deepEqual(dedupedMatches.map((match) => match.id), [102]);
+});
