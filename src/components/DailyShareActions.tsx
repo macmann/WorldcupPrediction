@@ -20,7 +20,7 @@ export function DailyShareActions({
   copiedLabel = "Copied share text",
 }: DailyShareActionsProps) {
   const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
-  const sharePath = path ?? `/daily?date=${date}`;
+  const sharePath = path ?? `/history?section=daily${date ? `&date=${date}` : ""}`;
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") return sharePath;
     return `${window.location.origin}${sharePath}`;

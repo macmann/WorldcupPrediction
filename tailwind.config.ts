@@ -8,7 +8,7 @@ const config: Config = {
         pitch: { 50: "#f0fdf4", 500: "#22c55e", 900: "#052e16" },
         navy: "#06142e"
       },
-      boxShadow: { card: "0 16px 40px rgba(6, 20, 46, 0.14)" },
+      boxShadow: { card: "0 12px 30px rgba(6, 20, 46, 0.08)" },
       keyframes: {
         "bounce-subtle": { "0%, 100%": { transform: "translateX(-50%) translateY(0)" }, "50%": { transform: "translateX(-50%) translateY(2px)" } }
       },
