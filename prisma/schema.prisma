@@ -192,6 +192,7 @@ model Player {
   sequenceNumber         Int?                 @map("sequence_number")
   position               String?
   isGoalkeeper           Boolean              @default(false) @map("is_goalkeeper")
+  source                 String               @default("API")
   tournament             Tournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   team                   Team?                @relation(fields: [teamId], references: [id], onDelete: SetNull)
   bestPlayerPicks        Outright[]           @relation("BestPlayer")
@@ -204,6 +205,7 @@ model Player {
   @@unique([tournamentId, externalId])
   @@index([tournamentId, isGoalkeeper])
   @@index([tournamentId, sequenceNumber])
+  @@index([tournamentId, source])
   @@index([teamId])
   @@map("players")
 }
@@ -432,6 +434,7 @@ model AppSetting {
   bannerImageUrl   String?  @map("banner_image_url")
   loginBackgroundImageUrl String? @map("login_background_image_url")
   maintenanceMode  Boolean  @default(false) @map("maintenance_mode")
+  playerCatalogSource String @default("API") @map("player_catalog_source")
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("app_settings")

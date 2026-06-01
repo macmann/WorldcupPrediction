@@ -1,7 +1,7 @@
 import { config } from "@/lib/config";
 import { countryNameToFlagEmoji } from "@/lib/countryFlags";
-import { isGoalkeeperPosition } from "@/lib/playerMaster";
-import { ensurePlayerSequenceNumberColumn, prisma } from "@/lib/prisma";
+import { isGoalkeeperPosition, normalizePlayerCatalogSource } from "@/lib/playerMaster";
+import { ensurePlayerCatalogColumns, ensurePlayerSequenceNumberColumn, prisma } from "@/lib/prisma";
 import { fetchWorldCupCatalog, type ExternalCatalog } from "@/services/footballApi";
 
 export const WORLD_CUP_2026_SLUG = "world-cup-2026";
@@ -65,7 +65,8 @@ async function upsertCatalog(catalog: ExternalCatalog) {
       teamId,
       name: player.name,
       position: player.position,
-      isGoalkeeper: player.isGoalkeeper || isGoalkeeperPosition(player.position)
+      isGoalkeeper: player.isGoalkeeper || isGoalkeeperPosition(player.position),
+      source: "API"
     };
 
     if (player.externalId) {
@@ -129,13 +130,17 @@ export async function syncOutrightCatalog() {
 }
 
 export async function getOutrightOptions() {
+  await ensurePlayerCatalogColumns();
   const tournament = await getOrCreateCurrentTournament();
+  const settings = await prisma.appSetting.findUnique({ where: { id: 1 }, select: { playerCatalogSource: true } }).catch(() => null);
+  const playerSource = normalizePlayerCatalogSource(settings?.playerCatalogSource);
+  const playerWhere = { tournamentId: tournament.id, source: playerSource };
   const [teams, players, goalkeepers, goldenBootPlayers] = await Promise.all([
     prisma.team.findMany({ where: { tournamentId: tournament.id }, orderBy: [{ groupName: "asc" }, { name: "asc" }] }),
-    prisma.player.findMany({ where: { tournamentId: tournament.id }, include: { team: true }, orderBy: [{ name: "asc" }] }),
-    prisma.player.findMany({ where: { tournamentId: tournament.id, isGoalkeeper: true }, include: { team: true }, orderBy: [{ team: { name: "asc" } }, { name: "asc" }] }),
-    prisma.player.findMany({ where: { tournamentId: tournament.id, isGoalkeeper: false }, include: { team: true }, orderBy: [{ team: { name: "asc" } }, { name: "asc" }] })
+    prisma.player.findMany({ where: playerWhere, include: { team: true }, orderBy: [{ sequenceNumber: "asc" }, { name: "asc" }] }),
+    prisma.player.findMany({ where: { ...playerWhere, isGoalkeeper: true }, include: { team: true }, orderBy: [{ team: { name: "asc" } }, { sequenceNumber: "asc" }, { name: "asc" }] }),
+    prisma.player.findMany({ where: { ...playerWhere, isGoalkeeper: false }, include: { team: true }, orderBy: [{ team: { name: "asc" } }, { sequenceNumber: "asc" }, { name: "asc" }] })
   ]);
 
-  return { tournament, teams, players, goalkeepers, goldenBootPlayers };
+  return { tournament, teams, players, goalkeepers, goldenBootPlayers, playerSource };
 }

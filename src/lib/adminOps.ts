@@ -1,5 +1,5 @@
 import { formatErrorWithCause } from "./errorFormatting";
-import { prisma } from "./prisma";
+import { ensurePlayerCatalogColumns, prisma } from "./prisma";
 
 export const JOB_FIXTURE_SYNC = "fixture-sync";
 export const JOB_LIVE_SCORE_POLL = "live-score-poll";
@@ -28,9 +28,10 @@ export async function recordAdminJobStatus(key: string, label: string, outcome: 
 }
 
 export async function getAppSettings() {
+  await ensurePlayerCatalogColumns();
   return prisma.appSetting.upsert({
     where: { id: 1 },
-    create: { id: 1, announcementText: null, bannerImageUrl: null, loginBackgroundImageUrl: null, maintenanceMode: false },
+    create: { id: 1, announcementText: null, bannerImageUrl: null, loginBackgroundImageUrl: null, maintenanceMode: false, playerCatalogSource: "API" },
     update: {}
   });
 }
