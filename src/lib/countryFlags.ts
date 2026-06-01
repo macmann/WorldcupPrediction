@@ -47,6 +47,7 @@ const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   "czech republic": "CZ",
   denmark: "DK",
   "dominican republic": "DO",
+  "dr congo": "CD",
   ecuador: "EC",
   egypt: "EG",
   "el salvador": "SV",
@@ -75,6 +76,7 @@ const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   iceland: "IS",
   india: "IN",
   indonesia: "ID",
+  "ivory coast": "CI",
   iran: "IR",
   iraq: "IQ",
   ireland: "IE",
@@ -185,6 +187,8 @@ function normalizeCountryName(countryName: string) {
   return countryName
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/^the\s+/, "")
     .replace(/\s+\(.*\)$/, "")
     .replace(/\s+/g, " ");
