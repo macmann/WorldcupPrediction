@@ -1,3 +1,5 @@
+import { countryCodeFromName } from "./countryFlags";
+
 export type MatchIdentityInput = {
   id: number;
   tournamentId?: string | null;
@@ -10,6 +12,9 @@ export type MatchIdentityInput = {
 };
 
 function normalizeTeamName(teamName: string) {
+  const countryCode = countryCodeFromName(teamName);
+  if (countryCode) return `country:${countryCode}`;
+
   return teamName.trim().replace(/\s+/g, " ").toLowerCase();
 }
 

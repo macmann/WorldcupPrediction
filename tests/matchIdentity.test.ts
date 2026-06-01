@@ -21,6 +21,13 @@ test("builds the same duplicate key for the same fixture", () => {
   );
 });
 
+test("builds the same duplicate key for provider country-name aliases", () => {
+  assert.equal(
+    matchDeduplicationKey({ homeTeam: "Korea Republic", awayTeam: "Czechia", kickoffTime: "2026-06-12T02:00:00.000Z" }),
+    matchDeduplicationKey({ homeTeam: "South Korea", awayTeam: "Czech Republic", kickoffTime: new Date("2026-06-12T02:00:00.000Z") })
+  );
+});
+
 test("dedupes duplicate fixtures while preferring the user's predicted copy", () => {
   const matches = [
     {
