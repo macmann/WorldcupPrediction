@@ -21,6 +21,7 @@ type AdminUser = {
 type AdminTournament = { id: string; name: string; slug: string; startsAt: string; endsAt?: string | null; syncFromAt?: string | null; isActive: boolean; externalId?: string | null };
 type ApiCompetition = { code: string; name: string; externalId: string; areaName?: string | null; startsAt: string; endsAt?: string | null; isAdded: boolean };
 type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; displayFrequencyHours: number; createdAt: string; updatedAt: string };
+type PlayerCatalogSource = "API" | "MANUAL";
 type AdminPlayer = { id: string; sequenceNumber?: number | null; name: string; nationalTeam: string; position: string; groupName: string };
 type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
 type OpsPayload = {
@@ -512,17 +513,30 @@ function playerPayload(formData: FormData) {
 
 function PlayerMasterPanel({ disabled, onError, onMessage }: { disabled: boolean; onError: (message: string | null) => void; onMessage: (message: string | null) => void }) {
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
+  const [playerCatalogSource, setPlayerCatalogSource] = useState<PlayerCatalogSource>("API");
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   async function loadPlayers() {
     setIsLoading(true);
     try {
-      const data = await adminJson<{ players: AdminPlayer[] }>("/api/admin/players");
+      const data = await adminJson<{ players: AdminPlayer[]; playerCatalogSource: PlayerCatalogSource; counts: Record<string, number> }>("/api/admin/players");
       setPlayers(data.players);
+      setPlayerCatalogSource(data.playerCatalogSource);
+      setCounts(data.counts ?? {});
     } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not load player master"); }
     finally { setIsLoading(false); }
   }
   useEffect(() => { void loadPlayers(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function changePlayerCatalogSource(source: PlayerCatalogSource) {
+    onError(null); onMessage(null);
+    try {
+      const data = await adminJson<{ playerCatalogSource: PlayerCatalogSource }>("/api/admin/players", { method: "PATCH", body: JSON.stringify({ playerCatalogSource: source }) });
+      setPlayerCatalogSource(data.playerCatalogSource);
+      onMessage(data.playerCatalogSource === "API" ? "Award player options now use the API-synced player list." : "Award player options now use the manual player master list.");
+    } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not update player source"); }
+  }
 
   async function upload(file?: File) {
     if (!file) return;
@@ -551,9 +565,16 @@ function PlayerMasterPanel({ disabled, onError, onMessage }: { disabled: boolean
   }
 
   return <div className={panelClass}>
-    <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">WC26 player master</p><h2 className="mt-1 text-2xl font-black text-navy">Upload and maintain award candidates</h2>
-    <p className="mt-2 text-sm font-semibold text-slate-500">Upload CSV columns: No., Player Name, National Team, Position, Group. Allowed positions are Goalkeeper, Defender, Midfielder, and Forward.</p>
-    <label className="mt-5 block rounded-2xl border border-dashed border-emerald-300 bg-emerald-50 p-4 text-sm font-black text-emerald-800">Upload player master CSV<input type="file" accept=".csv,text/csv" disabled={disabled} onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} className="mt-3 block w-full text-xs font-semibold" /></label>
+    <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">WC26 player master</p><h2 className="mt-1 text-2xl font-black text-navy">Choose API or manual award candidates</h2>
+    <p className="mt-2 text-sm font-semibold text-slate-500">Golden Ball, Golden Glove, Golden Boot, and FIFA Young Player Award options can come from the API-synced list or from the manual CSV master below.</p>
+    <div className="mt-5 grid gap-3 md:grid-cols-2">
+      {(["API", "MANUAL"] as PlayerCatalogSource[]).map((source) => <button key={source} type="button" disabled={disabled || playerCatalogSource === source} onClick={() => void changePlayerCatalogSource(source)} className={`rounded-2xl border p-4 text-left transition ${playerCatalogSource === source ? "border-emerald-500 bg-emerald-50 shadow-sm" : "border-slate-200 bg-slate-50 hover:border-emerald-200"}`}>
+        <span className="text-sm font-black text-navy">{source === "API" ? "Use player list from API" : "Use manual upload"}</span>
+        <span className="mt-1 block text-xs font-bold text-slate-500">{source === "API" ? `${counts.API ?? 0} API-synced rows available` : `${counts.MANUAL ?? 0} manual rows available`}</span>
+      </button>)}
+    </div>
+    <p className="mt-4 text-sm font-semibold text-slate-500">Manual upload CSV columns: No., Player Name, National Team, Position, Group. Allowed positions are Goalkeeper, Defender, Midfielder, and Forward.</p>
+    <label className="mt-5 block rounded-2xl border border-dashed border-emerald-300 bg-emerald-50 p-4 text-sm font-black text-emerald-800">Upload manual player master CSV<input type="file" accept=".csv,text/csv" disabled={disabled} onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} className="mt-3 block w-full text-xs font-semibold" /></label>
     <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-2">No.</th><th className="px-2 py-3">Player name</th><th className="px-2 py-3">National team</th><th className="px-2 py-3">Position</th><th className="px-2 py-3">Group</th><th className="py-3 pl-2">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{players.map((player) => <tr key={player.id}><td colSpan={6} className="py-2"><form action={(formData) => save(player.id, formData)} className="grid grid-cols-[70px_1.4fr_1fr_160px_80px_150px] gap-2"><input name="sequenceNumber" type="number" min="1" required defaultValue={player.sequenceNumber ?? ""} className={inputClass} /><input name="name" required defaultValue={player.name} className={inputClass} /><input name="nationalTeam" required defaultValue={player.nationalTeam} className={inputClass} /><select name="position" required defaultValue={player.position} className={inputClass}><option>Goalkeeper</option><option>Defender</option><option>Midfielder</option><option>Forward</option></select><input name="groupName" required defaultValue={player.groupName} className={inputClass} /><div className="flex gap-2"><button disabled={disabled} className={`${buttonClass} bg-emerald-600`}>Save</button><button type="button" disabled={disabled} onClick={() => void remove(player.id)} className={`${buttonClass} bg-red-600`}>Delete</button></div></form></td></tr>)}</tbody></table></div>
     {isLoading && <p className="mt-4 text-sm font-bold text-slate-500">Loading player master…</p>}{!isLoading && players.length === 0 && <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm font-bold text-slate-500">No player master rows uploaded yet.</p>}
   </div>;

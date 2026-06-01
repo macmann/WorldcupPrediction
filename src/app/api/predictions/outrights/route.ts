@@ -5,8 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { teamFlagEmoji } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
-import { isEligibleForAward } from "@/lib/playerMaster";
-import { prisma } from "@/lib/prisma";
+import { isEligibleForAward, normalizePlayerCatalogSource } from "@/lib/playerMaster";
+import { ensurePlayerCatalogColumns, prisma } from "@/lib/prisma";
 import { getOutrightOptions, syncOutrightCatalog } from "@/services/outrightCatalog";
 
 const schema = z.object({
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     const shouldRefresh = searchParams.get("refresh") === "1";
     const hasProvider = Boolean(config.wc2026ApiKey || config.footballApiKey);
 
-    if (shouldRefresh || options.teams.length === 0 || (hasProvider && (options.players.length === 0 || options.goalkeepers.length === 0))) {
+    if (shouldRefresh || options.teams.length === 0 || (options.playerSource === "API" && hasProvider && (options.players.length === 0 || options.goalkeepers.length === 0))) {
       await syncOutrightCatalog();
       options = await getOutrightOptions();
     }
@@ -100,11 +100,13 @@ export async function GET(request: Request) {
         goldenBoot: optionName(outright.goldenBoot),
         youngPlayer: optionName(outright.youngPlayer)
       } : null,
-      source: hasProvider ? "live-provider" : "database",
+      source: options.playerSource === "API" ? "live-provider" : "database",
       message: options.players.length === 0 || options.goalkeepers.length === 0
-        ? hasProvider
-          ? "Your football provider keys are configured, but the connected provider response did not include squad/player and goalkeeper data yet."
-          : "Connect WC2026_API_KEY or FOOTBALL_API_KEY with squad/player support to populate live player and goalkeeper options."
+        ? options.playerSource === "MANUAL"
+          ? "Manual player master is selected, but no manual player and goalkeeper rows are available yet."
+          : hasProvider
+            ? "Your football provider keys are configured, but the connected provider response did not include squad/player and goalkeeper data yet."
+            : "Connect WC2026_API_KEY or FOOTBALL_API_KEY with squad/player support, or switch the admin player master to manual upload."
         : null
     });
   } catch (error) {
@@ -116,19 +118,25 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const input = schema.parse(await request.json());
+    await ensurePlayerCatalogColumns();
+    const settings = await prisma.appSetting.findUnique({ where: { id: 1 }, select: { playerCatalogSource: true } });
+    const playerCatalogSource = normalizePlayerCatalogSource(settings?.playerCatalogSource);
 
     const [championTeam, secondRunnerUpTeam, fairPlayTeam, bestPlayer, bestGoalkeeper, goldenBootPlayer, youngPlayer] = await Promise.all([
       prisma.team.findUnique({ where: { id: input.championTeamId }, select: { tournamentId: true } }),
       prisma.team.findUnique({ where: { id: input.secondRunnerUpTeamId }, select: { tournamentId: true } }),
       prisma.team.findUnique({ where: { id: input.fairPlayTeamId }, select: { tournamentId: true } }),
-      prisma.player.findUnique({ where: { id: input.bestPlayerId }, select: { tournamentId: true } }),
-      prisma.player.findUnique({ where: { id: input.bestGkId }, select: { tournamentId: true, position: true, isGoalkeeper: true } }),
-      prisma.player.findUnique({ where: { id: input.goldenBootPlayerId }, select: { tournamentId: true, position: true, isGoalkeeper: true } }),
-      prisma.player.findUnique({ where: { id: input.youngPlayerId }, select: { tournamentId: true } })
+      prisma.player.findUnique({ where: { id: input.bestPlayerId }, select: { tournamentId: true, source: true } }),
+      prisma.player.findUnique({ where: { id: input.bestGkId }, select: { tournamentId: true, position: true, isGoalkeeper: true, source: true } }),
+      prisma.player.findUnique({ where: { id: input.goldenBootPlayerId }, select: { tournamentId: true, position: true, isGoalkeeper: true, source: true } }),
+      prisma.player.findUnique({ where: { id: input.youngPlayerId }, select: { tournamentId: true, source: true } })
     ]);
 
     if (!championTeam || !secondRunnerUpTeam || !fairPlayTeam || !bestPlayer || !bestGoalkeeper || !goldenBootPlayer || !youngPlayer) {
       throw Object.assign(new Error("One or more outright selections were not found"), { status: 400 });
+    }
+    if ([bestPlayer, bestGoalkeeper, goldenBootPlayer, youngPlayer].some((player) => player.source !== playerCatalogSource)) {
+      throw Object.assign(new Error(`Player award selections must use the active ${playerCatalogSource === "API" ? "API-synced" : "manual"} player list`), { status: 400 });
     }
     if (!isEligibleForAward("goldenGlove", bestGoalkeeper)) {
       throw Object.assign(new Error("Golden Glove pick must reference a goalkeeper"), { status: 400 });

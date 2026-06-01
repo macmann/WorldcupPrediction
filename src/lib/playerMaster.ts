@@ -2,6 +2,13 @@ export const PLAYER_POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forwar
 
 export type PlayerPosition = typeof PLAYER_POSITIONS[number];
 export type AwardPlayerType = "goldenGlove" | "goldenBall" | "youngPlayer" | "goldenBoot";
+export type PlayerCatalogSource = "API" | "MANUAL";
+
+export const PLAYER_CATALOG_SOURCES = ["API", "MANUAL"] as const;
+
+export function normalizePlayerCatalogSource(value?: string | null): PlayerCatalogSource {
+  return value === "MANUAL" ? "MANUAL" : "API";
+}
 
 export function isGoalkeeperPosition(position?: string | null) {
   if (!position) return false;

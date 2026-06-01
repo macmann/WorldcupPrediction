@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { countryNameToFlagEmoji } from "@/lib/countryFlags";
 import { jsonError } from "@/lib/http";
 import { isGoalkeeperPosition, PLAYER_POSITIONS } from "@/lib/playerMaster";
-import { ensurePlayerSequenceNumberColumn, prisma } from "@/lib/prisma";
+import { ensurePlayerCatalogColumns, prisma } from "@/lib/prisma";
 
 const schema = z.object({
   sequenceNumber: z.number().int().positive(),
@@ -18,9 +18,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   try {
     await requireAdmin();
     const input = schema.parse(await request.json());
-    await ensurePlayerSequenceNumberColumn();
-    const player = await prisma.player.findUnique({ where: { id: params.id }, select: { id: true, tournamentId: true } });
+    await ensurePlayerCatalogColumns();
+    const player = await prisma.player.findUnique({ where: { id: params.id }, select: { id: true, tournamentId: true, source: true } });
     if (!player) throw Object.assign(new Error("Player not found"), { status: 404 });
+    if (player.source !== "MANUAL") throw Object.assign(new Error("Only manual player master rows can be edited here"), { status: 400 });
     const team = await prisma.team.upsert({
       where: { tournamentId_name: { tournamentId: player.tournamentId, name: input.nationalTeam } },
       create: { tournamentId: player.tournamentId, name: input.nationalTeam, flagEmoji: countryNameToFlagEmoji(input.nationalTeam), groupName: input.groupName },
@@ -28,7 +29,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     });
     const updated = await prisma.player.update({
       where: { id: player.id },
-      data: { sequenceNumber: input.sequenceNumber, name: input.name, teamId: team.id, position: input.position, isGoalkeeper: isGoalkeeperPosition(input.position) }
+      data: { sequenceNumber: input.sequenceNumber, name: input.name, teamId: team.id, position: input.position, isGoalkeeper: isGoalkeeperPosition(input.position), source: "MANUAL" }
     });
     return NextResponse.json({ player: updated });
   } catch (error) {
@@ -39,6 +40,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
   try {
     await requireAdmin();
+    await ensurePlayerCatalogColumns();
+    const player = await prisma.player.findUnique({ where: { id: params.id }, select: { source: true } });
+    if (!player) throw Object.assign(new Error("Player not found"), { status: 404 });
+    if (player.source !== "MANUAL") throw Object.assign(new Error("Only manual player master rows can be deleted here"), { status: 400 });
     await prisma.player.delete({ where: { id: params.id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
