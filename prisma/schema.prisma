@@ -189,6 +189,7 @@ model Player {
   teamId                 String?              @map("team_id") @db.Uuid
   externalId             String?              @map("external_id")
   name                   String
+  sequenceNumber         Int?                 @map("sequence_number")
   position               String?
   isGoalkeeper           Boolean              @default(false) @map("is_goalkeeper")
   tournament             Tournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
@@ -202,6 +203,7 @@ model Player {
 
   @@unique([tournamentId, externalId])
   @@index([tournamentId, isGoalkeeper])
+  @@index([tournamentId, sequenceNumber])
   @@index([teamId])
   @@map("players")
 }

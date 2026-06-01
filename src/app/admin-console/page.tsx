@@ -21,6 +21,7 @@ type AdminUser = {
 type AdminTournament = { id: string; name: string; slug: string; startsAt: string; endsAt?: string | null; syncFromAt?: string | null; isActive: boolean; externalId?: string | null };
 type ApiCompetition = { code: string; name: string; externalId: string; areaName?: string | null; startsAt: string; endsAt?: string | null; isAdded: boolean };
 type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; displayFrequencyHours: number; createdAt: string; updatedAt: string };
+type AdminPlayer = { id: string; sequenceNumber?: number | null; name: string; nationalTeam: string; position: string; groupName: string };
 type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
 type OpsPayload = {
   settings: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean; updatedAt: string };
@@ -56,7 +57,7 @@ type PredictionRow = {
   submittedAt: string;
   scoredAt?: string | null;
 };
-type AdminTab = "overview" | "users" | "predictions" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
+type AdminTab = "overview" | "players" | "users" | "predictions" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
 
 async function adminJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -416,6 +417,8 @@ export default function AdminConsole() {
             </div>
           )}
 
+          {activeTab === "players" && <PlayerMasterPanel disabled={isPending} onError={setError} onMessage={setMessage} />}
+
           {activeTab === "matches" && (
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Matches & Operations</p><h2 className="mt-1 text-2xl font-black text-navy">Scores and recalculation tools</h2>
@@ -482,6 +485,80 @@ export default function AdminConsole() {
   );
 }
 
+function parseCsvLine(line: string) {
+  const cells: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (character === '"' && quoted && line[index + 1] === '"') { cell += '"'; index += 1; }
+    else if (character === '"') quoted = !quoted;
+    else if (character === "," && !quoted) { cells.push(cell.trim()); cell = ""; }
+    else cell += character;
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+function playerPayload(formData: FormData) {
+  return {
+    sequenceNumber: Number(formData.get("sequenceNumber")),
+    name: String(formData.get("name") ?? ""),
+    nationalTeam: String(formData.get("nationalTeam") ?? ""),
+    position: String(formData.get("position") ?? ""),
+    groupName: String(formData.get("groupName") ?? "")
+  };
+}
+
+function PlayerMasterPanel({ disabled, onError, onMessage }: { disabled: boolean; onError: (message: string | null) => void; onMessage: (message: string | null) => void }) {
+  const [players, setPlayers] = useState<AdminPlayer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  async function loadPlayers() {
+    setIsLoading(true);
+    try {
+      const data = await adminJson<{ players: AdminPlayer[] }>("/api/admin/players");
+      setPlayers(data.players);
+    } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not load player master"); }
+    finally { setIsLoading(false); }
+  }
+  useEffect(() => { void loadPlayers(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function upload(file?: File) {
+    if (!file) return;
+    onError(null); onMessage(null);
+    try {
+      const lines = (await file.text()).split(/\r?\n/).filter((line) => line.trim());
+      const header = parseCsvLine(lines.shift() ?? "").map((cell) => cell.toLowerCase().replace(/[^a-z]/g, ""));
+      const find = (...names: string[]) => names.map((name) => header.indexOf(name)).find((index) => index !== -1) ?? -1;
+      const indexes = { sequenceNumber: find("no", "sequencenumber"), name: find("playername", "name"), nationalTeam: find("nationalteam", "team"), position: find("position"), groupName: find("group", "groupname") };
+      if (Object.values(indexes).some((index) => index < 0)) throw new Error("CSV header must include No., Player Name, National Team, Position, and Group");
+      const rows = lines.map((line) => { const cells = parseCsvLine(line); return { sequenceNumber: Number(cells[indexes.sequenceNumber]), name: cells[indexes.name], nationalTeam: cells[indexes.nationalTeam], position: cells[indexes.position], groupName: cells[indexes.groupName] }; });
+      const result = await adminJson<{ imported: number }>("/api/admin/players", { method: "POST", body: JSON.stringify({ players: rows }) });
+      onMessage(`${result.imported} WC26 player master rows imported.`); await loadPlayers();
+    } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not import player master"); }
+  }
+  async function save(id: string, formData: FormData) {
+    onError(null); onMessage(null);
+    try { await adminJson(`/api/admin/players/${id}`, { method: "PUT", body: JSON.stringify(playerPayload(formData)) }); onMessage("Player master row updated."); await loadPlayers(); }
+    catch (caught) { onError(caught instanceof Error ? caught.message : "Could not update player"); }
+  }
+  async function remove(id: string) {
+    if (!window.confirm("Delete this player master row? Existing submitted award predictions may prevent deletion.")) return;
+    onError(null); onMessage(null);
+    try { await adminJson(`/api/admin/players/${id}`, { method: "DELETE" }); onMessage("Player master row deleted."); await loadPlayers(); }
+    catch (caught) { onError(caught instanceof Error ? caught.message : "Could not delete player"); }
+  }
+
+  return <div className={panelClass}>
+    <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">WC26 player master</p><h2 className="mt-1 text-2xl font-black text-navy">Upload and maintain award candidates</h2>
+    <p className="mt-2 text-sm font-semibold text-slate-500">Upload CSV columns: No., Player Name, National Team, Position, Group. Allowed positions are Goalkeeper, Defender, Midfielder, and Forward.</p>
+    <label className="mt-5 block rounded-2xl border border-dashed border-emerald-300 bg-emerald-50 p-4 text-sm font-black text-emerald-800">Upload player master CSV<input type="file" accept=".csv,text/csv" disabled={disabled} onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} className="mt-3 block w-full text-xs font-semibold" /></label>
+    <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-2">No.</th><th className="px-2 py-3">Player name</th><th className="px-2 py-3">National team</th><th className="px-2 py-3">Position</th><th className="px-2 py-3">Group</th><th className="py-3 pl-2">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{players.map((player) => <tr key={player.id}><td colSpan={6} className="py-2"><form action={(formData) => save(player.id, formData)} className="grid grid-cols-[70px_1.4fr_1fr_160px_80px_150px] gap-2"><input name="sequenceNumber" type="number" min="1" required defaultValue={player.sequenceNumber ?? ""} className={inputClass} /><input name="name" required defaultValue={player.name} className={inputClass} /><input name="nationalTeam" required defaultValue={player.nationalTeam} className={inputClass} /><select name="position" required defaultValue={player.position} className={inputClass}><option>Goalkeeper</option><option>Defender</option><option>Midfielder</option><option>Forward</option></select><input name="groupName" required defaultValue={player.groupName} className={inputClass} /><div className="flex gap-2"><button disabled={disabled} className={`${buttonClass} bg-emerald-600`}>Save</button><button type="button" disabled={disabled} onClick={() => void remove(player.id)} className={`${buttonClass} bg-red-600`}>Delete</button></div></form></td></tr>)}</tbody></table></div>
+    {isLoading && <p className="mt-4 text-sm font-bold text-slate-500">Loading player master…</p>}{!isLoading && players.length === 0 && <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm font-bold text-slate-500">No player master rows uploaded yet.</p>}
+  </div>;
+}
+
 function AdminLogin({ onLogin }: { onLogin: (admin: AdminSession) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -493,6 +570,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
   const tabs: Array<{ id: AdminTab; label: string; description: string }> = [
     { id: "overview", label: "Overview", description: "Health and leagues" },
     { id: "users", label: "Users", description: "Moderation" },
+    { id: "players", label: "Players", description: "WC26 player master" },
     { id: "predictions", label: "Predictions", description: "Points ledger" },
     { id: "announcements", label: "Banners & Popups", description: "Homepage and popup creatives" },
     { id: "matches", label: "Matches", description: "Scores and points" },
@@ -503,7 +581,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
 
   return (
     <nav aria-label="Admin sections" className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-8">
+      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-9">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (

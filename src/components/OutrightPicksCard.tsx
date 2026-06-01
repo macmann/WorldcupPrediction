@@ -21,7 +21,25 @@ function getName(options: { id: string; name: string }[], id: string) {
 }
 
 function hasCompleteOptions(data: OutrightOptionsPayload | null) {
-  return Boolean(data?.options.teams.length && data.options.players.length && data.options.goalkeepers.length);
+  return Boolean(data?.options.teams.length && data.options.players.length && data.options.goalkeepers.length && data.options.goldenBootPlayers.length);
+}
+
+function isGoalkeeper(player: { position?: string | null; isGoalkeeper?: boolean }) {
+  const position = player.position?.trim().toUpperCase() ?? "";
+  return Boolean(player.isGoalkeeper) || position === "GK" || position === "G" || position.includes("GOALKEEPER") || position.includes("KEEPER");
+}
+
+function groupedPlayerOptions(players: OutrightOptionsPayload["options"]["players"]) {
+  const grouped = new Map<string, typeof players>();
+  for (const player of players) {
+    const teamName = player.teamName ?? "Unassigned team";
+    grouped.set(teamName, [...(grouped.get(teamName) ?? []), player]);
+  }
+  return [...grouped.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([teamName, teamPlayers]) => (
+    <optgroup key={teamName} label={teamName}>
+      {teamPlayers.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+    </optgroup>
+  ));
 }
 
 export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
@@ -56,7 +74,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
         setFairPlayTeamId(payload.outright?.fairPlayTeamId ?? payload.options.teams[0]?.id ?? "");
         setBestPlayerId(payload.outright?.bestPlayerId ?? payload.options.players[0]?.id ?? "");
         setBestGkId(payload.outright?.bestGkId ?? payload.options.goalkeepers[0]?.id ?? "");
-        setGoldenBootPlayerId(payload.outright?.goldenBootPlayerId ?? payload.options.players[0]?.id ?? "");
+        setGoldenBootPlayerId(payload.outright?.goldenBootPlayerId ?? payload.options.goldenBootPlayers[0]?.id ?? "");
         setYoungPlayerId(payload.outright?.youngPlayerId ?? payload.options.players[0]?.id ?? "");
         if (payload.outright) {
           setSavedPicks({ champion: payload.outright.champion, secondRunnerUp: payload.outright.secondRunnerUp, fairPlay: payload.outright.fairPlay, bestPlayer: payload.outright.bestPlayer, bestGk: payload.outright.bestGk, goldenBoot: payload.outright.goldenBoot, youngPlayer: payload.outright.youngPlayer });
@@ -91,7 +109,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
           fairPlay: getName(data?.options.teams ?? [], fairPlayTeamId),
           bestPlayer: getName(data?.options.players ?? [], bestPlayerId),
           bestGk: getName(data?.options.goalkeepers ?? [], bestGkId),
-          goldenBoot: getName(data?.options.players ?? [], goldenBootPlayerId),
+          goldenBoot: getName(data?.options.goldenBootPlayers ?? [], goldenBootPlayerId),
           youngPlayer: getName(data?.options.players ?? [], youngPlayerId)
         };
         setSavedPicks(nextSummary);
@@ -104,6 +122,8 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
   }
 
   const summary = savedPicks;
+  const eligibleGoalkeepers = (data?.options.goalkeepers ?? []).filter(isGoalkeeper);
+  const eligibleGoldenBootPlayers = (data?.options.goldenBootPlayers ?? []).filter((player) => !isGoalkeeper(player));
   const completed = Boolean(summary);
   const liveCanEdit = Boolean(data?.canEdit ?? canEdit);
   const canSubmit = liveCanEdit && hasCompleteOptions(data) && !isPending;
@@ -165,22 +185,22 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
           </label>
           <label className="block text-sm font-black">Golden Ball
             <select value={bestPlayerId} onChange={(event) => setBestPlayerId(event.target.value)} disabled={!liveCanEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
-              {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+              {groupedPlayerOptions(data?.options.players ?? [])}
             </select>
           </label>
           <label className="block text-sm font-black">Golden Glove
             <select value={bestGkId} onChange={(event) => setBestGkId(event.target.value)} disabled={!liveCanEdit || !data?.options.goalkeepers.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
-              {(data?.options.goalkeepers ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+              {groupedPlayerOptions(eligibleGoalkeepers)}
             </select>
           </label>
           <label className="block text-sm font-black">Golden Boot
-            <select value={goldenBootPlayerId} onChange={(event) => setGoldenBootPlayerId(event.target.value)} disabled={!liveCanEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
-              {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+            <select value={goldenBootPlayerId} onChange={(event) => setGoldenBootPlayerId(event.target.value)} disabled={!liveCanEdit || !data?.options.goldenBootPlayers.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+              {groupedPlayerOptions(eligibleGoldenBootPlayers)}
             </select>
           </label>
           <label className="block text-sm font-black">FIFA Young Player Award
             <select value={youngPlayerId} onChange={(event) => setYoungPlayerId(event.target.value)} disabled={!liveCanEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
-              {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
+              {groupedPlayerOptions(data?.options.players ?? [])}
             </select>
           </label>
           <label className="block text-sm font-black">FIFA Fair Play Trophy

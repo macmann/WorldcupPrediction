@@ -1,3 +1,4 @@
+import { isEligibleForAward } from "../lib/playerMaster";
 import { prisma } from "../lib/prisma";
 
 const GOLDEN_BALL_POINTS = 5;
@@ -12,7 +13,7 @@ export async function settleTournamentOutrights(tournamentId: string, goldenBall
       tx.player.findFirst({ where: { id: goldenGlovePlayerId, tournamentId } })
     ]);
     if (!goldenBallPlayer) throw Object.assign(new Error("Golden Ball winner must be a player in the selected tournament"), { status: 422 });
-    if (!goldenGlovePlayer?.isGoalkeeper) throw Object.assign(new Error("Golden Glove winner must be a goalkeeper in the selected tournament"), { status: 422 });
+    if (!goldenGlovePlayer || !isEligibleForAward("goldenGlove", goldenGlovePlayer)) throw Object.assign(new Error("Golden Glove winner must be a goalkeeper in the selected tournament"), { status: 422 });
 
     const settlement = await tx.outrightSettlement.upsert({
       where: { tournamentId },
