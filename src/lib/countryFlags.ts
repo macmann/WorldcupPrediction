@@ -31,7 +31,9 @@ const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   cambodia: "KH",
   cameroon: "CM",
   canada: "CA",
+  "cabo verde": "CV",
   "cape verde": "CV",
+  "cape verde islands": "CV",
   "central african republic": "CF",
   chad: "TD",
   chile: "CL",
@@ -76,8 +78,11 @@ const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   iceland: "IS",
   india: "IN",
   indonesia: "ID",
+  "cote d'ivoire": "CI",
+  "côte d'ivoire": "CI",
   "ivory coast": "CI",
   iran: "IR",
+  "ir iran": "IR",
   iraq: "IQ",
   ireland: "IE",
   israel: "IL",
@@ -171,6 +176,12 @@ const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   zimbabwe: "ZW"
 };
 
+const CANONICAL_COUNTRY_NAME_BY_CODE: Record<string, string> = {
+  CI: "Ivory Coast",
+  CV: "Cabo Verde",
+  IR: "Iran"
+};
+
 const SUBDIVISION_FLAGS: Record<string, string> = {
   "GB-ENG": "🏴\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}",
   "GB-NIR": "🇬🇧",
@@ -219,6 +230,11 @@ export function flagImageUrlFromCountryCode(countryCode?: string | null) {
   if (!/^[A-Z]{2}$/.test(normalized)) return null;
 
   return `https://flagcdn.io/flags/4x3/${normalized.toLowerCase()}.svg`;
+}
+
+export function canonicalCountryName(countryName?: string | null) {
+  const code = countryCodeFromName(countryName);
+  return code ? CANONICAL_COUNTRY_NAME_BY_CODE[code] ?? countryName ?? null : countryName ?? null;
 }
 
 export function countryNameToFlagEmoji(countryName?: string | null) {

@@ -4,6 +4,7 @@ import { Card, SectionTitle } from "@/components/Cards";
 import { TeamName, teamNameWithFlag } from "@/components/TeamName";
 import { fetchMatches } from "@/lib/serverMatches";
 import type { Match, MatchOutcome } from "@/lib/frontendData";
+import { formatAppDateTime } from "@/lib/dateTime";
 
 function pointsClass(points: number | null | undefined) {
   if ((points ?? 0) >= 3) return "bg-emerald-100 text-emerald-800";
@@ -28,7 +29,7 @@ function HistoryMatchCard({ match, missed }: { match: Match; missed?: boolean })
   return (
     <Card key={match.id}>
       <div className="flex items-center justify-between gap-3">
-        <div><h3 className="flex flex-wrap items-center gap-2 font-black"><TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} flagImageUrl={match.homeFlagImageUrl} /><span className="text-slate-400">vs</span><TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} flagImageUrl={match.awayFlagImageUrl} /></h3><p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p></div>
+        <div><h3 className="flex flex-wrap items-center gap-2 font-black"><TeamName name={match.homeTeam} flagEmoji={match.homeFlagEmoji} flagImageUrl={match.homeFlagImageUrl} /><span className="text-slate-400">vs</span><TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} flagImageUrl={match.awayFlagImageUrl} /></h3><p className="text-xs text-slate-500">{formatAppDateTime(match.kickoffTime)}</p></div>
         <span className={`rounded-full px-3 py-1 text-xs font-black ${pointsClass(points)}`}>+{points} PTS</span>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-center">

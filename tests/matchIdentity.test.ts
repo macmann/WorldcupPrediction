@@ -28,6 +28,17 @@ test("builds the same duplicate key for provider country-name aliases", () => {
   );
 });
 
+test("builds the same duplicate key for requested national-team aliases", () => {
+  assert.equal(
+    matchDeduplicationKey({ homeTeam: "Germany", awayTeam: "Côte d'Ivoire", kickoffTime: "2026-06-20T13:00:00.000Z" }),
+    matchDeduplicationKey({ homeTeam: "Germany", awayTeam: "Ivory Coast", kickoffTime: new Date("2026-06-20T13:00:00.000Z") })
+  );
+  assert.equal(
+    matchDeduplicationKey({ homeTeam: "Cape Verde Islands", awayTeam: "IR Iran", kickoffTime: "2026-06-20T16:00:00.000Z" }),
+    matchDeduplicationKey({ homeTeam: "Cabo Verde", awayTeam: "Iran", kickoffTime: new Date("2026-06-20T16:00:00.000Z") })
+  );
+});
+
 test("dedupes duplicate fixtures while preferring the user's predicted copy", () => {
   const matches = [
     {

@@ -1,5 +1,5 @@
 import { config } from "@/lib/config";
-import { countryNameToFlagEmoji } from "@/lib/countryFlags";
+import { canonicalCountryName, countryNameToFlagEmoji } from "@/lib/countryFlags";
 import { isGoalkeeperPosition, normalizePlayerCatalogSource } from "@/lib/playerMaster";
 import { ensurePlayerCatalogColumns, ensurePlayerSequenceNumberColumn, prisma } from "@/lib/prisma";
 import { fetchWorldCupCatalog, type ExternalCatalog } from "@/services/footballApi";
@@ -30,20 +30,21 @@ async function upsertCatalog(catalog: ExternalCatalog) {
   const teamIdByName = new Map<string, string>();
 
   for (const team of catalog.teams) {
+    const teamName = canonicalCountryName(team.name) ?? team.name;
     const existingTeam = await prisma.team.findFirst({
       where: {
         tournamentId: tournament.id,
         OR: [
           ...(team.externalId ? [{ externalId: team.externalId }] : []),
-          { name: team.name }
+          { name: teamName }
         ]
       }
     });
     const teamData = {
       externalId: existingTeam?.externalId ?? team.externalId,
-      name: team.name,
+      name: teamName,
       shortName: team.shortName,
-      flagEmoji: team.flagEmoji ?? countryNameToFlagEmoji(team.name),
+      flagEmoji: team.flagEmoji ?? countryNameToFlagEmoji(teamName),
       groupName: team.groupName
     };
     const savedTeam = existingTeam
@@ -52,14 +53,16 @@ async function upsertCatalog(catalog: ExternalCatalog) {
 
     if (team.externalId) teamIdByExternalId.set(team.externalId, savedTeam.id);
     if (savedTeam.externalId) teamIdByExternalId.set(savedTeam.externalId, savedTeam.id);
+    teamIdByName.set(teamName.toLowerCase(), savedTeam.id);
     teamIdByName.set(team.name.toLowerCase(), savedTeam.id);
   }
 
   for (const player of catalog.players) {
+    const playerTeamName = canonicalCountryName(player.teamName) ?? player.teamName;
     const teamId = player.teamExternalId
       ? teamIdByExternalId.get(player.teamExternalId)
-      : player.teamName
-        ? teamIdByName.get(player.teamName.toLowerCase())
+      : playerTeamName
+        ? teamIdByName.get(playerTeamName.toLowerCase()) ?? teamIdByName.get(player.teamName!.toLowerCase())
         : undefined;
     const data = {
       teamId,
@@ -102,13 +105,13 @@ async function upsertTeamsFromFixtures() {
   for (const fixture of fixtures) {
     const [homeTeam, awayTeam] = await Promise.all([
       prisma.team.upsert({
-        where: { tournamentId_name: { tournamentId: tournament.id, name: fixture.homeTeam } },
-        create: { tournamentId: tournament.id, name: fixture.homeTeam, flagEmoji: countryNameToFlagEmoji(fixture.homeTeam), groupName: fixture.groupName },
+        where: { tournamentId_name: { tournamentId: tournament.id, name: canonicalCountryName(fixture.homeTeam) ?? fixture.homeTeam } },
+        create: { tournamentId: tournament.id, name: canonicalCountryName(fixture.homeTeam) ?? fixture.homeTeam, flagEmoji: countryNameToFlagEmoji(fixture.homeTeam), groupName: fixture.groupName },
         update: { flagEmoji: countryNameToFlagEmoji(fixture.homeTeam) ?? undefined, groupName: fixture.groupName ?? undefined }
       }),
       prisma.team.upsert({
-        where: { tournamentId_name: { tournamentId: tournament.id, name: fixture.awayTeam } },
-        create: { tournamentId: tournament.id, name: fixture.awayTeam, flagEmoji: countryNameToFlagEmoji(fixture.awayTeam), groupName: fixture.groupName },
+        where: { tournamentId_name: { tournamentId: tournament.id, name: canonicalCountryName(fixture.awayTeam) ?? fixture.awayTeam } },
+        create: { tournamentId: tournament.id, name: canonicalCountryName(fixture.awayTeam) ?? fixture.awayTeam, flagEmoji: countryNameToFlagEmoji(fixture.awayTeam), groupName: fixture.groupName },
         update: { flagEmoji: countryNameToFlagEmoji(fixture.awayTeam) ?? undefined, groupName: fixture.groupName ?? undefined }
       })
     ]);

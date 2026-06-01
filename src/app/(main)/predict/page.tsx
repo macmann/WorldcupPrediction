@@ -4,6 +4,7 @@ import { Card, SectionTitle } from "@/components/Cards";
 import { LockIcon } from "@/components/Icons";
 import { TeamName } from "@/components/TeamName";
 import { PredictionForm } from "@/components/PredictionForm";
+import { addAppDays, appDateKey, formatAppDateTime, formatAppDate } from "@/lib/dateTime";
 import { matchLabel, type Match } from "@/lib/frontendData";
 import { fetchMatches, fetchStreams } from "@/lib/serverMatches";
 
@@ -26,7 +27,7 @@ function groupTabs(matches: Match[]) {
 }
 
 function dateKey(kickoffTime: string | Date) {
-  return new Date(kickoffTime).toISOString().slice(0, 10);
+  return appDateKey(kickoffTime);
 }
 
 function dateTabs(matches: Match[]) {
@@ -43,22 +44,16 @@ function defaultDateTab(dates: string[], now: Date) {
   return dates.find((tabDate) => tabDate > today) ?? dates[dates.length - 1];
 }
 
-function addUtcDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setUTCDate(nextDate.getUTCDate() + days);
-  return nextDate;
-}
-
 function dateTabLabel(tabDate: string, now: Date) {
-  if (tabDate === dateKey(now)) return "Today";
-  if (tabDate === dateKey(addUtcDays(now, 1))) return "Tomorrow";
+  const today = dateKey(now);
+  if (tabDate === today) return "Today";
+  if (tabDate === addAppDays(today, 1)) return "Tomorrow";
 
-  return new Intl.DateTimeFormat("en", {
+  return formatAppDate(`${tabDate}T00:00:00.000Z`, {
     day: "numeric",
     month: "short",
-    timeZone: "UTC",
     weekday: "short"
-  }).format(new Date(`${tabDate}T00:00:00.000Z`));
+  });
 }
 
 export default async function MatchCenter({ searchParams }: MatchCenterProps) {
@@ -156,7 +151,7 @@ export default async function MatchCenter({ searchParams }: MatchCenterProps) {
                       <span className="text-slate-400">vs</span>
                       <TeamName name={match.awayTeam} flagEmoji={match.awayFlagEmoji} flagImageUrl={match.awayFlagImageUrl} />
                     </h3>
-                    <p className="text-xs text-slate-500">{new Date(match.kickoffTime).toUTCString()}</p>
+                    <p className="text-xs text-slate-500">{formatAppDateTime(match.kickoffTime)}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {locked && <span className="flex items-center gap-1 rounded-full bg-slate-200 px-3 py-1 text-xs font-bold"><LockIcon className="h-3 w-3" /> Locked</span>}
