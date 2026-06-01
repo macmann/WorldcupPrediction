@@ -8,9 +8,9 @@ import { GLOBAL_LEAGUE_CODE, GLOBAL_LEAGUE_NAME } from "@/lib/config";
 import { jsonError } from "@/lib/http";
 
 const schema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email().transform((email) => email.toLowerCase()),
   password: z.string().min(8),
-  displayName: z.string().min(2).max(60)
+  displayName: z.string().trim().min(2).max(60)
 });
 
 export async function POST(request: Request) {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const passwordHash = await bcrypt.hash(input.password, 12);
     const user = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
-        data: { email: input.email.toLowerCase(), passwordHash, displayName: input.displayName }
+        data: { email: input.email, passwordHash, displayName: input.displayName }
       });
       const globalLeague = await tx.league.upsert({
         where: { joinCode: GLOBAL_LEAGUE_CODE },
