@@ -1,5 +1,6 @@
 import { MatchStatus } from "@prisma/client";
 import { config } from "../lib/config";
+import { formatErrorWithCause } from "../lib/errorFormatting";
 import { countryNameToFlagEmoji } from "../lib/countryFlags";
 import { normalizeMatchGroupName } from "../lib/matchIdentity";
 
@@ -55,9 +56,9 @@ export type ExternalCompetition = {
   endsAt?: string | null;
 };
 
-type ProviderResult<T> = {
-  data: T;
-  provider: string;
+type Provider<T> = {
+  name: string;
+  load: () => Promise<T>;
 };
 
 function mapStatus(status: string): MatchStatus {
@@ -193,15 +194,22 @@ async function fetchWc2026ApiFixtures(): Promise<ExternalFixture[]> {
   }).filter((match: ExternalFixture) => Number.isInteger(match.id) && Boolean(match.kickoffTime));
 }
 
-async function firstWorkingProvider<T>(providers: Array<() => Promise<ProviderResult<T>>>): Promise<T | null> {
+async function firstWorkingProvider<T>(providers: Array<Provider<T>>): Promise<T | null> {
+  const errors: string[] = [];
+
   for (const provider of providers) {
     try {
-      const result = await provider();
-      return result.data;
+      return await provider.load();
     } catch (error) {
-      console.warn(error instanceof Error ? error.message : error);
+      errors.push(`${provider.name}: ${formatErrorWithCause(error)}`);
+      console.warn(errors[errors.length - 1]);
     }
   }
+
+  if (providers.length > 0 && errors.length === providers.length) {
+    throw new Error(`All configured fixture providers failed: ${errors.join(" | ")}`);
+  }
+
   return null;
 }
 
@@ -211,9 +219,9 @@ export async function fetchFootballDataCompetitionFixtures(competitionCode: stri
 }
 
 export async function fetchWorldCupFixtures(): Promise<ExternalFixture[]> {
-  const providers: Array<() => Promise<ProviderResult<ExternalFixture[]>>> = [];
-  if (config.wc2026ApiKey) providers.push(async () => ({ provider: "wc2026", data: await fetchWc2026ApiFixtures() }));
-  if (config.footballApiKey) providers.push(async () => ({ provider: "football-data", data: await fetchFootballDataFixtures() }));
+  const providers: Array<Provider<ExternalFixture[]>> = [];
+  if (config.wc2026ApiKey) providers.push({ name: "wc2026", load: fetchWc2026ApiFixtures });
+  if (config.footballApiKey) providers.push({ name: "football-data", load: fetchFootballDataFixtures });
   return (await firstWorkingProvider(providers)) ?? [];
 }
 
