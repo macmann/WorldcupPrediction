@@ -80,9 +80,9 @@ export async function GET(request: Request) {
       canEdit: new Date() < outrightLockDeadline,
       options: {
         teams: options.teams.map((team) => ({ id: team.id, name: optionName(team), groupName: team.groupName })),
-        players: options.players.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
-        goalkeepers: options.goalkeepers.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
-        goldenBootPlayers: options.goldenBootPlayers.map((player) => ({ id: player.id, name: optionName(player), teamName: player.team?.name ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null }))
+        players: options.players.map((player) => ({ id: player.id, name: player.name, teamName: player.team?.name ?? null, teamId: player.teamId ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
+        goalkeepers: options.goalkeepers.map((player) => ({ id: player.id, name: player.name, teamName: player.team?.name ?? null, teamId: player.teamId ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
+        goldenBootPlayers: options.goldenBootPlayers.map((player) => ({ id: player.id, name: player.name, teamName: player.team?.name ?? null, teamId: player.teamId ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null }))
       },
       outright: outright ? {
         championTeamId: outright.championTeamId,

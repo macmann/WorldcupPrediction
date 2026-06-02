@@ -51,6 +51,7 @@ export type OutrightOption = {
   name: string;
   groupName?: string | null;
   teamName?: string | null;
+  teamId?: string | null;
   position?: string | null;
   isGoalkeeper?: boolean;
 };
