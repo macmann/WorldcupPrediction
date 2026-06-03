@@ -788,7 +788,7 @@ function RichTextSettingEditor({ name, label, initialHtml, disabled }: { name: s
         <button type="button" disabled={disabled} onClick={() => format("formatBlock", "h2")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Heading</button>
         <button type="button" disabled={disabled} onClick={() => format("formatBlock", "p")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Paragraph</button>
       </div>
-      <div ref={editorRef} contentEditable={!disabled} suppressContentEditableWarning onInput={syncFromEditor} onBlur={syncFromEditor} className="mt-3 min-h-48 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-relaxed text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" dangerouslySetInnerHTML={{ __html: html }} />
+      <div ref={editorRef} contentEditable={!disabled} suppressContentEditableWarning onInput={syncFromEditor} onBlur={syncFromEditor} className="mt-3 min-h-48 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-relaxed text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
       <textarea name={name} value={html} readOnly className="hidden" />
       {fileMessage && <p className="mt-2 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">{fileMessage}</p>}
     </div>
