@@ -11,3 +11,45 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .mobile-app::-webkit-scrollbar, .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 @media (max-width: 400px) { .mobile-app { max-width: 100%; } }
+.login-premium-bg {
+  background:
+    radial-gradient(circle at 52% 8%, rgba(45, 212, 191, 0.2), transparent 28%),
+    radial-gradient(circle at 0% 36%, rgba(16, 185, 129, 0.14), transparent 32%),
+    linear-gradient(155deg, #031426 0%, #07343a 48%, #02131d 100%);
+}
+
+.login-premium-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  background-image:
+    linear-gradient(90deg, transparent 9%, rgba(148, 163, 184, 0.45) 9.4%, transparent 9.8%, transparent 90.2%, rgba(148, 163, 184, 0.45) 90.6%, transparent 91%),
+    linear-gradient(0deg, transparent 14%, rgba(148, 163, 184, 0.42) 14.4%, transparent 14.8%, transparent 85.2%, rgba(148, 163, 184, 0.42) 85.6%, transparent 86%),
+    radial-gradient(ellipse at center, transparent 0 20%, rgba(148, 163, 184, 0.34) 20.5% 21.2%, transparent 21.8%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 19px);
+  background-size: 330px 460px, 330px 460px, 330px 460px, 44px 44px;
+  background-position: center 24px, center 24px, center 24px, center;
+  mix-blend-mode: screen;
+}
+
+.login-premium-bg::after {
+  content: "";
+  position: absolute;
+  inset: auto -20px 0 -20px;
+  height: 26%;
+  pointer-events: none;
+  opacity: 0.16;
+  background:
+    radial-gradient(circle at 7% 72%, #d1d5db 0 3px, transparent 3.5px),
+    radial-gradient(circle at 15% 66%, #d1d5db 0 4px, transparent 4.5px),
+    radial-gradient(circle at 24% 74%, #d1d5db 0 3px, transparent 3.5px),
+    radial-gradient(circle at 38% 67%, #d1d5db 0 4px, transparent 4.5px),
+    radial-gradient(circle at 52% 72%, #d1d5db 0 3px, transparent 3.5px),
+    radial-gradient(circle at 68% 65%, #d1d5db 0 4px, transparent 4.5px),
+    radial-gradient(circle at 82% 73%, #d1d5db 0 3px, transparent 3.5px),
+    radial-gradient(circle at 94% 67%, #d1d5db 0 4px, transparent 4.5px),
+    linear-gradient(to top, rgba(2, 6, 23, 0.78), transparent 70%);
+  filter: blur(1px);
+}
