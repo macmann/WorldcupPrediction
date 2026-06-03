@@ -13,6 +13,7 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 let tournamentSyncColumnEnsured: Promise<void> | null = null;
 let playerSequenceNumberColumnEnsured: Promise<void> | null = null;
 let playerCatalogColumnsEnsured: Promise<void> | null = null;
+let userPreferredLocaleColumnEnsured: Promise<void> | null = null;
 
 export async function ensureTournamentSyncColumn() {
   if (!tournamentSyncColumnEnsured) {
@@ -54,4 +55,11 @@ export async function ensurePlayerCatalogColumns() {
     })();
   }
   await playerCatalogColumnsEnsured;
+}
+
+export async function ensureUserPreferredLocaleColumn() {
+  if (!userPreferredLocaleColumnEnsured) {
+    userPreferredLocaleColumnEnsured = prisma.$executeRawUnsafe(`ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "preferred_locale" TEXT NOT NULL DEFAULT 'en';`).then(() => undefined);
+  }
+  await userPreferredLocaleColumnEnsured;
 }

@@ -1,13 +1,16 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { MatchOutcome } from "@/lib/frontendData";
+import { defaultLocale, normalizeLocale, translate } from "@/lib/i18n";
+import type { Locale, TranslationKey } from "@/lib/i18n";
 
 export type UserSession = {
   id?: string;
   email?: string;
   displayName: string;
   onboardingCompleted: boolean;
+  preferredLocale?: Locale;
 };
 
 export type OptimisticPrediction = {
@@ -23,18 +26,49 @@ type AppStore = {
   user: UserSession | null;
   predictions: Record<number, OptimisticPrediction>;
   setUser: (user: UserSession | null) => void;
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+  t: (key: TranslationKey) => string;
   setOnboardingCompleted: (completed: boolean) => void;
   setOptimisticPrediction: (prediction: Omit<OptimisticPrediction, "status"> & { status?: OptimisticPrediction["status"] }) => void;
   markPredictionStatus: (matchId: number, status: OptimisticPrediction["status"], error?: string) => void;
 };
 
 const StoreContext = createContext<AppStore | null>(null);
+const localeStorageKey = "worldcup:locale";
+
+function persistLocalePreference(locale: Locale) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(localeStorageKey, locale);
+  document.cookie = `worldcup_locale=${locale}; path=/; max-age=31536000; samesite=lax`;
+  document.documentElement.lang = locale;
+}
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<UserSession | null>(null);
+  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
   const [predictions, setPredictions] = useState<Record<number, OptimisticPrediction>>({});
 
-  const setUser = useCallback((nextUser: UserSession | null) => setUserState(nextUser), []);
+  useEffect(() => {
+    const storedLocale = normalizeLocale(window.localStorage.getItem(localeStorageKey));
+    setLocaleState(storedLocale);
+    persistLocalePreference(storedLocale);
+  }, []);
+
+  const setLocale = useCallback((nextLocale: Locale) => {
+    const normalizedLocale = normalizeLocale(nextLocale);
+    setLocaleState(normalizedLocale);
+    persistLocalePreference(normalizedLocale);
+  }, []);
+
+  const setUser = useCallback((nextUser: UserSession | null) => {
+    setUserState(nextUser);
+    if (nextUser?.preferredLocale) {
+      const normalizedLocale = normalizeLocale(nextUser.preferredLocale);
+      setLocaleState(normalizedLocale);
+      persistLocalePreference(normalizedLocale);
+    }
+  }, []);
 
   const setOnboardingCompleted = useCallback((completed: boolean) => {
     setUserState((current) => ({ ...(current ?? { displayName: "You" }), onboardingCompleted: completed }));
@@ -59,7 +93,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const value = useMemo(() => ({ user, predictions, setUser, setOnboardingCompleted, setOptimisticPrediction, markPredictionStatus }), [markPredictionStatus, predictions, setOnboardingCompleted, setOptimisticPrediction, setUser, user]);
+  const t = useCallback((key: TranslationKey) => translate(locale, key), [locale]);
+
+  const value = useMemo(() => ({ user, locale, predictions, setUser, setLocale, t, setOnboardingCompleted, setOptimisticPrediction, markPredictionStatus }), [locale, markPredictionStatus, predictions, setLocale, setOnboardingCompleted, setOptimisticPrediction, setUser, t, user]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

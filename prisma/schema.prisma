@@ -70,6 +70,7 @@ model User {
   banReason               String?                  @map("ban_reason")
   bannedAt                DateTime?                @map("banned_at") @db.Timestamptz(6)
   onboardingCompletedAt   DateTime?                @map("onboarding_completed_at") @db.Timestamptz(6)
+  preferredLocale         String                   @default("en") @map("preferred_locale")
   predictions             Prediction[]
   outrights               Outright?
   leagueMemberships       LeagueMember[]

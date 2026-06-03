@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
-import { prisma } from "./prisma";
+import { ensureUserPreferredLocaleColumn, prisma } from "./prisma";
 import { config } from "./config";
 import { requireAdminAccount } from "./adminAuth";
 
@@ -20,6 +20,7 @@ export async function getCurrentUser() {
   try {
     const { payload } = await jwtVerify(token, secret);
     if (!payload.sub) return null;
+    await ensureUserPreferredLocaleColumn();
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (user?.isBanned) return null;
     return user;
