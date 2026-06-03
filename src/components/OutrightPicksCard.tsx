@@ -6,6 +6,7 @@ import { Countdown } from "@/components/Countdown";
 import { formatAppDateTime } from "@/lib/dateTime";
 import type { OutrightOptionsPayload } from "@/lib/frontendData";
 import { useStore } from "@/store/useStore";
+import type { TranslationKey } from "@/lib/i18n";
 
 type PickSummary = {
   champion: string;
@@ -32,6 +33,7 @@ function isGoalkeeper(player: { position?: string | null; isGoalkeeper?: boolean
 
 type AwardPlayerSelectProps = {
   awardLabel: string;
+  t: (key: TranslationKey) => string;
   teamId: string;
   playerId: string;
   teams: OutrightOptionsPayload["options"]["teams"];
@@ -53,22 +55,22 @@ function awardSelectionIsValid(players: OutrightOptionsPayload["options"]["playe
   return Boolean(teamId && playerId) && players.some((player) => player.id === playerId && playerTeamMatches(player, teamId));
 }
 
-function AwardPlayerSelect({ awardLabel, teamId, playerId, teams, players, disabled, onTeamChange, onPlayerChange }: AwardPlayerSelectProps) {
+function AwardPlayerSelect({ awardLabel, teamId, playerId, teams, players, disabled, onTeamChange, onPlayerChange, t }: AwardPlayerSelectProps) {
   const filteredPlayers = players.filter((player) => playerTeamMatches(player, teamId));
   const playerListDisabled = disabled || !teamId || filteredPlayers.length === 0;
 
   return (
     <fieldset className="rounded-3xl border border-slate-200 p-4">
       <legend className="px-2 text-sm font-black">{awardLabel}</legend>
-      <label className="mt-1 block text-xs font-black uppercase tracking-wider text-slate-400">National Team
+      <label className="mt-1 block text-xs font-black uppercase tracking-wider text-slate-400">{t("outright.nationalTeam")}
         <select value={teamId} onChange={(event) => onTeamChange(event.target.value)} disabled={disabled || !teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-900 disabled:bg-slate-100">
-          <option value="">Select national team</option>
+          <option value="">{t("outright.selectTeam")}</option>
           {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
         </select>
       </label>
-      <label className="mt-3 block text-xs font-black uppercase tracking-wider text-slate-400">Player
+      <label className="mt-3 block text-xs font-black uppercase tracking-wider text-slate-400">{t("outright.player")}
         <select value={playerId} onChange={(event) => onPlayerChange(event.target.value)} disabled={playerListDisabled} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-900 disabled:bg-slate-100">
-          <option value="">{teamId ? filteredPlayers.length ? "Select player" : "No eligible players for this team" : "Select a national team first"}</option>
+          <option value="">{teamId ? filteredPlayers.length ? t("outright.selectPlayer") : t("outright.noEligiblePlayers") : t("outright.selectTeamFirst")}</option>
           {filteredPlayers.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
         </select>
       </label>
@@ -77,7 +79,7 @@ function AwardPlayerSelect({ awardLabel, teamId, playerId, teams, players, disab
 }
 
 export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
-  const { setOnboardingCompleted } = useStore();
+  const { setOnboardingCompleted, t } = useStore();
   const [data, setData] = useState<OutrightOptionsPayload | null>(null);
   const [championTeamId, setChampionTeamId] = useState("");
   const [secondRunnerUpTeamId, setSecondRunnerUpTeamId] = useState("");
@@ -101,7 +103,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
     fetch("/api/predictions/outrights", { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error ?? "Could not load live outright options");
+        if (!response.ok) throw new Error(payload.error ?? t("outright.loadError"));
         return payload as OutrightOptionsPayload;
       })
       .then((payload) => {
@@ -130,7 +132,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
         }
       })
       .catch((caught) => {
-        if (mounted) setError(caught instanceof Error ? caught.message : "Could not load live outright options");
+        if (mounted) setError(caught instanceof Error ? caught.message : t("outright.loadError"));
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -148,7 +150,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
           body: JSON.stringify({ championTeamId, secondRunnerUpTeamId, fairPlayTeamId, bestPlayerId, bestGkId, goldenBootPlayerId, youngPlayerId, tournamentId: data?.tournament.id })
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error ?? "Could not save outright picks");
+        if (!response.ok) throw new Error(result.error ?? t("outright.saveError"));
         const nextSummary = {
           champion: getName(data?.options.teams ?? [], championTeamId),
           secondRunnerUp: getName(data?.options.teams ?? [], secondRunnerUpTeamId),
@@ -162,7 +164,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
         setIsEditing(false);
         setOnboardingCompleted(true);
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Could not save outright picks");
+        setError(caught instanceof Error ? caught.message : t("outright.saveError"));
       }
     });
   }
@@ -183,58 +185,58 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
     ? formatAppDateTime(lockTarget)
     : "the Round of 16";
   const statusMessage = useMemo(() => {
-    if (isLoading) return "Loading live tournament options…";
-    if (isLocked) return "Outright picks are locked because the Round of 16 has started.";
+    if (isLoading) return t("outright.loading");
+    if (isLocked) return t("outright.lockedMessage");
     if (data?.message) return data.message;
-    if (data?.source === "live-provider") return "Options are synced from the configured live football provider.";
-    return "Options are loaded from your tournament database.";
+    if (data?.source === "live-provider") return t("outright.liveProvider");
+    return t("outright.databaseProvider");
   }, [data, isLoading, isLocked]);
 
   return (
     <Card>
-      <SectionTitle eyebrow={completed ? "Saved picks" : "Tournament picks"} title="Choose tournament winners" />
-      <p className="mt-2 text-sm font-semibold text-slate-500">Choose all tournament awards from live tournament data after signing in.</p>
+      <SectionTitle eyebrow={completed ? t("outright.savedPicks") : t("outright.tournamentPicks")} title={t("outright.chooseWinners")} />
+      <p className="mt-2 text-sm font-semibold text-slate-500">{t("outright.description")}</p>
       <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{statusMessage}</p>
 
       <div className="mt-4 rounded-3xl bg-gradient-to-br from-navy to-emerald-800 p-4 text-white">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-widest text-emerald-200">Selection deadline</p>
-            <p className="mt-1 text-sm font-bold">Closes when the Round of 16 starts</p>
+            <p className="text-xs font-black uppercase tracking-widest text-emerald-200">{t("outright.deadline")}</p>
+            <p className="mt-1 text-sm font-bold">{t("outright.deadlineHelp")}</p>
           </div>
           <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-black text-emerald-50">{lockLabel}</span>
         </div>
-        {lockTarget ? <Countdown target={lockTarget} /> : <p className="text-sm font-bold text-emerald-50">Deadline syncing…</p>}
+        {lockTarget ? <Countdown target={lockTarget} /> : <p className="text-sm font-bold text-emerald-50">{t("outright.deadlineSyncing")}</p>}
       </div>
 
       {completed && summary && !isEditing ? (
         <div className="mt-4 space-y-4">
           <dl className="grid grid-cols-1 gap-3 text-sm">
-            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>Tournament Winner</dt><dd className="font-bold">{summary.champion}</dd></div>
-            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>2nd Runner-up</dt><dd className="font-bold">{summary.secondRunnerUp}</dd></div>
-            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>Golden Ball</dt><dd className="font-bold">{summary.bestPlayer}</dd></div>
-            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>Golden Glove</dt><dd className="font-bold">{summary.bestGk}</dd></div>
-            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>Golden Boot</dt><dd className="font-bold">{summary.goldenBoot}</dd></div>
-            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>FIFA Young Player Award</dt><dd className="font-bold">{summary.youngPlayer}</dd></div>
-            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>FIFA Fair Play Trophy</dt><dd className="font-bold">{summary.fairPlay}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.tournamentWinner")}</dt><dd className="font-bold">{summary.champion}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.secondRunnerUp")}</dt><dd className="font-bold">{summary.secondRunnerUp}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.goldenBall")}</dt><dd className="font-bold">{summary.bestPlayer}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.goldenGlove")}</dt><dd className="font-bold">{summary.bestGk}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.goldenBoot")}</dt><dd className="font-bold">{summary.goldenBoot}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.youngPlayer")}</dt><dd className="font-bold">{summary.youngPlayer}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.fairPlay")}</dt><dd className="font-bold">{summary.fairPlay}</dd></div>
           </dl>
-          {liveCanEdit && <button type="button" onClick={() => setIsEditing(true)} className="w-full rounded-2xl bg-slate-950 py-3 font-black text-white transition active:scale-[0.98]">Edit picks before Round of 16</button>}
+          {liveCanEdit && <button type="button" onClick={() => setIsEditing(true)} className="w-full rounded-2xl bg-slate-950 py-3 font-black text-white transition active:scale-[0.98]">{t("outright.editBeforeLock")}</button>}
         </div>
       ) : (
         <div className="mt-5 space-y-4">
-          <label className="block text-sm font-black">Tournament Winner
+          <label className="block text-sm font-black">{t("outright.tournamentWinner")}
             <select value={championTeamId} onChange={(event) => setChampionTeamId(event.target.value)} disabled={!liveCanEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
           
-          <label className="block text-sm font-black">2nd Runner-up
+          <label className="block text-sm font-black">{t("outright.secondRunnerUp")}
             <select value={secondRunnerUpTeamId} onChange={(event) => setSecondRunnerUpTeamId(event.target.value)} disabled={!liveCanEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
           <AwardPlayerSelect
-            awardLabel="Golden Ball"
+            awardLabel={t("outright.goldenBall")}
             teamId={bestPlayerTeamId}
             playerId={bestPlayerId}
             teams={data?.options.teams ?? []}
@@ -242,9 +244,10 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
             disabled={!liveCanEdit || !data?.options.players.length}
             onTeamChange={(teamId) => { setBestPlayerTeamId(teamId); setBestPlayerId(""); }}
             onPlayerChange={setBestPlayerId}
+            t={t}
           />
           <AwardPlayerSelect
-            awardLabel="Golden Glove"
+            awardLabel={t("outright.goldenGlove")}
             teamId={bestGkTeamId}
             playerId={bestGkId}
             teams={data?.options.teams ?? []}
@@ -252,9 +255,10 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
             disabled={!liveCanEdit || !eligibleGoalkeepers.length}
             onTeamChange={(teamId) => { setBestGkTeamId(teamId); setBestGkId(""); }}
             onPlayerChange={setBestGkId}
+            t={t}
           />
           <AwardPlayerSelect
-            awardLabel="Golden Boot"
+            awardLabel={t("outright.goldenBoot")}
             teamId={goldenBootTeamId}
             playerId={goldenBootPlayerId}
             teams={data?.options.teams ?? []}
@@ -262,9 +266,10 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
             disabled={!liveCanEdit || !eligibleGoldenBootPlayers.length}
             onTeamChange={(teamId) => { setGoldenBootTeamId(teamId); setGoldenBootPlayerId(""); }}
             onPlayerChange={setGoldenBootPlayerId}
+            t={t}
           />
           <AwardPlayerSelect
-            awardLabel="FIFA Young Player Award"
+            awardLabel={t("outright.youngPlayer")}
             teamId={youngPlayerTeamId}
             playerId={youngPlayerId}
             teams={data?.options.teams ?? []}
@@ -272,8 +277,9 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
             disabled={!liveCanEdit || !data?.options.players.length}
             onTeamChange={(teamId) => { setYoungPlayerTeamId(teamId); setYoungPlayerId(""); }}
             onPlayerChange={setYoungPlayerId}
+            t={t}
           />
-          <label className="block text-sm font-black">FIFA Fair Play Trophy
+          <label className="block text-sm font-black">{t("outright.fairPlay")}
             <select value={fairPlayTeamId} onChange={(event) => setFairPlayTeamId(event.target.value)} disabled={!liveCanEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
@@ -282,7 +288,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
       )}
 
       {error && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
-      {(!completed || isEditing) && <button type="button" onClick={submit} disabled={!canSubmit} className="mt-5 w-full rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300">{isPending ? "Saving picks…" : liveCanEdit ? "Save tournament picks" : "Picks are locked"}</button>}
+      {(!completed || isEditing) && <button type="button" onClick={submit} disabled={!canSubmit} className="mt-5 w-full rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300">{isPending ? t("outright.saving") : liveCanEdit ? t("outright.save") : t("outright.locked")}</button>}
     </Card>
   );
 }

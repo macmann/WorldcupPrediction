@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, SectionTitle } from "@/components/Cards";
 import { TeamName } from "@/components/TeamName";
+import { useStore } from "@/store/useStore";
 
 const tournamentGroups = [
   { group: "A", teams: ["Mexico", "South Korea", "South Africa", "Czechia"] },
@@ -21,11 +22,12 @@ const tournamentGroups = [
 
 export function TournamentGroupsTable() {
   const [isVisible, setIsVisible] = useState(false);
+  const { t } = useStore();
 
   return (
     <Card>
-      <SectionTitle eyebrow="WC26 groups" title="Tournament table" />
-      <p className="mt-2 text-sm leading-6 text-slate-600">See the 12 groups and the national teams competing in each group.</p>
+      <SectionTitle eyebrow={t("winners.groupsEyebrow")} title={t("winners.groupsTitle")} />
+      <p className="mt-2 text-sm leading-6 text-slate-600">{t("winners.groupsDescription")}</p>
       <button
         type="button"
         aria-expanded={isVisible}
@@ -33,7 +35,7 @@ export function TournamentGroupsTable() {
         onClick={() => setIsVisible((visible) => !visible)}
         className="mt-4 flex w-full items-center justify-between rounded-2xl bg-navy px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-slate-950/15 transition active:scale-[0.98]"
       >
-        <span>{isVisible ? "Hide tournament table" : "View tournament table"}</span>
+        <span>{isVisible ? t("winners.hideTable") : t("winners.viewTable")}</span>
         <span aria-hidden="true" className={`text-lg transition-transform ${isVisible ? "rotate-180" : ""}`}>⌄</span>
       </button>
 
@@ -42,8 +44,8 @@ export function TournamentGroupsTable() {
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase tracking-wider text-slate-500">
               <tr>
-                <th scope="col" className="px-3 py-3">Group</th>
-                <th scope="col" className="px-3 py-3">National Teams</th>
+                <th scope="col" className="px-3 py-3">{t("winners.groupHeader")}</th>
+                <th scope="col" className="px-3 py-3">{t("winners.teamsHeader")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
