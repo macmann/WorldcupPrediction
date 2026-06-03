@@ -17,9 +17,9 @@ export async function GET() {
     await requireSuperAdminAccount();
     const admins = await prisma.adminAccount.findMany({
       orderBy: [{ isSuperAdmin: "desc" }, { createdAt: "asc" }],
-      select: { id: true, username: true, displayName: true, isSuperAdmin: true, createdAt: true }
+      select: { id: true, username: true, displayName: true, isSuperAdmin: true, twoFactorEnabledAt: true, createdAt: true }
     });
-    return NextResponse.json({ admins });
+    return NextResponse.json({ admins: admins.map((admin) => ({ ...admin, twoFactorEnabled: Boolean(admin.twoFactorEnabledAt), twoFactorEnabledAt: undefined })) });
   } catch (error) {
     return jsonError(error);
   }
@@ -37,9 +37,9 @@ export async function POST(request: Request) {
         displayName: input.displayName,
         isSuperAdmin: Boolean(input.isSuperAdmin)
       },
-      select: { id: true, username: true, displayName: true, isSuperAdmin: true, createdAt: true }
+      select: { id: true, username: true, displayName: true, isSuperAdmin: true, twoFactorEnabledAt: true, createdAt: true }
     });
-    return NextResponse.json({ admin }, { status: 201 });
+    return NextResponse.json({ admin: { ...admin, twoFactorEnabled: Boolean(admin.twoFactorEnabledAt), twoFactorEnabledAt: undefined } }, { status: 201 });
   } catch (error) {
     return jsonError(error);
   }
