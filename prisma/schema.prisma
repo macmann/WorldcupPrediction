@@ -94,9 +94,11 @@ model AdminAccount {
   username     String   @unique
   passwordHash String   @map("password_hash")
   displayName  String   @map("display_name")
-  isSuperAdmin Boolean  @default(false) @map("is_super_admin")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  isSuperAdmin       Boolean   @default(false) @map("is_super_admin")
+  twoFactorSecret    String?   @map("two_factor_secret")
+  twoFactorEnabledAt DateTime? @map("two_factor_enabled_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("admin_accounts")
 }

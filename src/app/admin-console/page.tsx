@@ -12,8 +12,8 @@ const maxBannerImageBytes = 6 * 1024 * 1024;
 const maxLoginBackgroundImageBytes = 6 * 1024 * 1024;
 
 
-type AdminSession = { id: string; username: string; displayName: string; isSuperAdmin: boolean };
-type AdminAccount = { id: string; username: string; displayName: string; isSuperAdmin: boolean; createdAt: string };
+type AdminSession = { id: string; username: string; displayName: string; isSuperAdmin: boolean; twoFactorEnabled: boolean };
+type AdminAccount = { id: string; username: string; displayName: string; isSuperAdmin: boolean; twoFactorEnabled: boolean; createdAt: string };
 type AdminUser = {
   id: string; email: string; displayName: string; avatarUrl?: string | null; globalPoints: number;
   exactScoresCount: number; correctOutcomesCount: number; isAdmin: boolean; isBanned: boolean; banReason?: string | null;
@@ -134,6 +134,8 @@ export default function AdminConsole() {
   const [predictionFilter, setPredictionFilter] = useState<PredictionFilter>("all");
   const [predictionUserId, setPredictionUserId] = useState("");
   const [predictionUserSearch, setPredictionUserSearch] = useState("");
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{ secret: string; otpauthUri: string } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   function loadAdminData(search = query, currentAdmin = admin) {
     setError(null);
@@ -164,10 +166,38 @@ export default function AdminConsole() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleLogin(nextAdmin: AdminSession) { setAdmin(nextAdmin); setMessage(`Welcome, ${nextAdmin.displayName}.`); loadAdminData("", nextAdmin); }
+  function handleLogin(nextAdmin: AdminSession) { setAdmin(nextAdmin); setMessage(`Welcome, ${nextAdmin.displayName}.`); setTwoFactorSetup(null); setTwoFactorCode(""); loadAdminData("", nextAdmin); }
   function logout() {
     setError(null);
-    startTransition(async () => { try { await adminJson("/api/admin/auth/logout", { method: "POST" }); } finally { setAdmin(null); setAdmins([]); setUsers([]); setStreams([]); setOps(null); setMessage(null); } });
+    startTransition(async () => { try { await adminJson("/api/admin/auth/logout", { method: "POST" }); } finally { setAdmin(null); setAdmins([]); setUsers([]); setStreams([]); setOps(null); setMessage(null); setTwoFactorSetup(null); setTwoFactorCode(""); } });
+  }
+
+  function beginTwoFactorSetup() {
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        const data = await adminJson<{ enabled: boolean; secret?: string; otpauthUri?: string }>("/api/admin/auth/2fa/setup");
+        if (data.enabled) {
+          setAdmin((current) => current ? { ...current, twoFactorEnabled: true } : current);
+          setMessage("Two-factor authentication is already enabled for this admin account.");
+          return;
+        }
+        if (data.secret && data.otpauthUri) setTwoFactorSetup({ secret: data.secret, otpauthUri: data.otpauthUri });
+      } catch (setupError) { setError(setupError instanceof Error ? setupError.message : "Could not start 2FA setup"); }
+    });
+  }
+
+  function confirmTwoFactorSetup() {
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        const data = await adminJson<{ admin: AdminSession }>("/api/admin/auth/2fa/setup", { method: "POST", body: JSON.stringify({ code: twoFactorCode }) });
+        setAdmin(data.admin);
+        setTwoFactorSetup(null);
+        setTwoFactorCode("");
+        setMessage("Two-factor authentication enabled. Your next admin login will require an authenticator code.");
+      } catch (setupError) { setError(setupError instanceof Error ? setupError.message : "Could not verify authenticator code"); }
+    });
   }
 
   function updateUser(id: string, payload: Record<string, unknown>, success: string) {
@@ -416,6 +446,7 @@ export default function AdminConsole() {
         </section>
         {message && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{message}</p>}
         {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
+        <AdminTwoFactorPanel admin={admin} setup={twoFactorSetup} code={twoFactorCode} disabled={isPending} onBeginSetup={beginTwoFactorSetup} onCodeChange={setTwoFactorCode} onConfirm={confirmTwoFactorSetup} />
 
         <AdminTabs activeTab={activeTab} isSuperAdmin={admin.isSuperAdmin} onChange={setActiveTab} />
 
@@ -601,11 +632,60 @@ function PlayerMasterPanel({ disabled, onError, onMessage }: { disabled: boolean
   </div>;
 }
 
+function AdminTwoFactorPanel({ admin, setup, code, disabled, onBeginSetup, onCodeChange, onConfirm }: { admin: AdminSession; setup: { secret: string; otpauthUri: string } | null; code: string; disabled: boolean; onBeginSetup: () => void; onCodeChange: (code: string) => void; onConfirm: () => void }) {
+  return (
+    <section className={`rounded-3xl border p-5 shadow-sm ${admin.twoFactorEnabled ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className={`text-xs font-black uppercase tracking-[0.25em] ${admin.twoFactorEnabled ? "text-emerald-700" : "text-amber-700"}`}>Admin two-factor authentication</p>
+          <h2 className="mt-1 text-xl font-black text-navy">{admin.twoFactorEnabled ? "Authenticator protection is enabled" : "Add an authenticator app before your next login"}</h2>
+          <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">{admin.twoFactorEnabled ? "This admin account now requires a 6-digit authenticator code after the password is verified." : "You can use the admin console now, but after setup this account will require a 6-digit authenticator code on every future login."}</p>
+        </div>
+        {!admin.twoFactorEnabled && !setup && <button type="button" disabled={disabled} onClick={onBeginSetup} className={`${buttonClass} bg-amber-600`}>Set up 2FA</button>}
+      </div>
+      {!admin.twoFactorEnabled && setup && (
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+          <div className="rounded-2xl bg-white p-4">
+            <p className="text-sm font-black text-navy">1. Add this account to your authenticator app</p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">Scan/import the otpauth URI if your app supports it, or manually enter the setup key.</p>
+            <label className="mt-3 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Manual setup key<input value={setup.secret} readOnly className={`${inputClass} mt-2 font-mono tracking-widest`} onFocus={(event) => event.currentTarget.select()} /></label>
+            <label className="mt-3 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Authenticator URI<textarea value={setup.otpauthUri} readOnly className={`${inputClass} mt-2 min-h-24 font-mono text-xs`} onFocus={(event) => event.currentTarget.select()} /></label>
+          </div>
+          <div className="rounded-2xl bg-white p-4">
+            <p className="text-sm font-black text-navy">2. Verify the 6-digit code</p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">Enter the current code from your authenticator app to enable 2FA.</p>
+            <input value={code} onChange={(event) => onCodeChange(event.target.value)} className={`${inputClass} mt-4`} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*" maxLength={6} placeholder="123456" />
+            <button type="button" disabled={disabled || code.trim().length < 6} onClick={onConfirm} className={`${buttonClass} mt-3 w-full bg-emerald-600`}>Enable 2FA</button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function AdminLogin({ onLogin }: { onLogin: (admin: AdminSession) => void }) {
   const [error, setError] = useState<string | null>(null);
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
+  const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [isPending, startTransition] = useTransition();
-  function login(formData: FormData) { setError(null); startTransition(async () => { try { const data = await adminJson<{ admin: AdminSession }>("/api/admin/auth/login", { method: "POST", body: JSON.stringify({ username: String(formData.get("username") ?? ""), password: String(formData.get("password") ?? "") }) }); onLogin(data.admin); } catch (loginError) { setError(loginError instanceof Error ? loginError.message : "Could not sign in"); } }); }
-  return <main className="flex min-h-dvh items-center justify-center bg-slate-950 p-6 text-white"><section className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-8 text-slate-900 shadow-2xl"><div className="flex items-center gap-4"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy text-white"><PlatformLogo className="h-12 w-12" /></span><div><p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">Admin only</p><h1 className="text-3xl font-black text-navy">Admin Console</h1></div></div><p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Use the separate admin username and password. Player accounts cannot sign in here.</p>{error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}<form action={login} className="mt-6 space-y-4"><input name="username" className={inputClass} autoComplete="username" placeholder="Admin username" required /><input name="password" className={inputClass} autoComplete="current-password" placeholder="Admin password" type="password" required /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Signing in…" : "Sign in to admin"}</button></form></section></main>;
+
+  function login(formData: FormData) {
+    const payload = { username: String(formData.get("username") ?? credentials.username), password: String(formData.get("password") ?? credentials.password), totpCode: String(formData.get("totpCode") ?? "") };
+    setError(null);
+    startTransition(async () => {
+      try {
+        const data = await adminJson<{ admin?: AdminSession; twoFactorRequired?: boolean }>("/api/admin/auth/login", { method: "POST", body: JSON.stringify(payload) });
+        if (data.twoFactorRequired) {
+          setCredentials({ username: payload.username, password: payload.password });
+          setTwoFactorRequired(true);
+          return;
+        }
+        if (data.admin) onLogin(data.admin);
+      } catch (loginError) { setError(loginError instanceof Error ? loginError.message : "Could not sign in"); }
+    });
+  }
+
+  return <main className="flex min-h-dvh items-center justify-center bg-slate-950 p-6 text-white"><section className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-8 text-slate-900 shadow-2xl"><div className="flex items-center gap-4"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy text-white"><PlatformLogo className="h-12 w-12" /></span><div><p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">Admin only</p><h1 className="text-3xl font-black text-navy">Admin Console</h1></div></div><p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">{twoFactorRequired ? "Enter the 6-digit code from your authenticator app to finish signing in." : "Use the separate admin username and password. Player accounts cannot sign in here."}</p>{error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}<form action={login} className="mt-6 space-y-4">{twoFactorRequired ? <><input name="username" type="hidden" value={credentials.username} readOnly /><input name="password" type="hidden" value={credentials.password} readOnly /><input name="totpCode" className={inputClass} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*" placeholder="Authenticator code" required autoFocus /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Verifying…" : "Verify and sign in"}</button><button type="button" disabled={isPending} onClick={() => { setTwoFactorRequired(false); setCredentials({ username: "", password: "" }); setError(null); }} className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200 disabled:opacity-60">Use different credentials</button></> : <><input name="username" className={inputClass} autoComplete="username" placeholder="Admin username" required /><input name="password" className={inputClass} autoComplete="current-password" placeholder="Admin password" type="password" required /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Signing in…" : "Sign in to admin"}</button></>}</form></section></main>;
 }
 
 function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab; isSuperAdmin: boolean; onChange: (tab: AdminTab) => void }) {
@@ -726,7 +806,7 @@ function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, o
   );
 }
 
-function AdminAccountPanel({ admins, disabled, onCreate }: { admins: AdminAccount[]; disabled: boolean; onCreate: (formData: FormData) => void }) { return <div className={panelClass}><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Admin access</p><h2 className="mt-1 text-2xl font-black text-navy">Create admin account</h2><form action={onCreate} className="mt-5 space-y-3"><input name="username" required className={inputClass} placeholder="admin username" /><input name="displayName" required className={inputClass} placeholder="Display name" /><input name="password" required minLength={8} type="password" className={inputClass} placeholder="Password" /><label className="flex items-center gap-2 text-sm font-bold text-slate-600"><input name="isSuperAdmin" type="checkbox" className="h-4 w-4 rounded border-slate-300" />Super admin privileges</label><button disabled={disabled} className={`${buttonClass} w-full bg-indigo-600`}>Create admin</button></form><div className="mt-5 max-h-48 space-y-2 overflow-y-auto pr-1">{admins.map((account) => <div key={account.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3"><p className="font-black text-navy">{account.displayName}</p><p className="text-xs font-bold text-slate-500">{account.username} · {account.isSuperAdmin ? "Super admin" : "Admin"}</p></div>)}</div></div>; }
+function AdminAccountPanel({ admins, disabled, onCreate }: { admins: AdminAccount[]; disabled: boolean; onCreate: (formData: FormData) => void }) { return <div className={panelClass}><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Admin access</p><h2 className="mt-1 text-2xl font-black text-navy">Create admin account</h2><form action={onCreate} className="mt-5 space-y-3"><input name="username" required className={inputClass} placeholder="admin username" /><input name="displayName" required className={inputClass} placeholder="Display name" /><input name="password" required minLength={8} type="password" className={inputClass} placeholder="Password" /><label className="flex items-center gap-2 text-sm font-bold text-slate-600"><input name="isSuperAdmin" type="checkbox" className="h-4 w-4 rounded border-slate-300" />Super admin privileges</label><button disabled={disabled} className={`${buttonClass} w-full bg-indigo-600`}>Create admin</button></form><div className="mt-5 max-h-48 space-y-2 overflow-y-auto pr-1">{admins.map((account) => <div key={account.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3"><p className="font-black text-navy">{account.displayName}</p><p className="text-xs font-bold text-slate-500">{account.username} · {account.isSuperAdmin ? "Super admin" : "Admin"} · {account.twoFactorEnabled ? "2FA enabled" : "2FA not set"}</p></div>)}</div></div>; }
 function StreamPanel({ streams, competitions, disabled, onCreate, onLoadCompetitions, onImportCompetition, importStartFrom, onImportStartFromChange, onDeleteTournament }: { streams: AdminTournament[]; competitions: ApiCompetition[]; disabled: boolean; onCreate: (formData: FormData) => void; onLoadCompetitions: () => void; onImportCompetition: (code: string) => void; importStartFrom: string; onImportStartFromChange: (value: string) => void; onDeleteTournament: (id: string) => void }) { return <div className={panelClass}><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Streams</p><h2 className="mt-1 text-2xl font-black text-navy">Create competition stream</h2><div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4"><div className="flex items-center justify-between gap-3"><div><h3 className="font-black text-emerald-800">Add league from football API</h3><p className="mt-1 text-xs font-semibold text-emerald-700/80">Load available competitions, then import one to create its stream and sync upcoming fixtures.</p></div><button type="button" disabled={disabled} onClick={onLoadCompetitions} className={`${buttonClass} bg-emerald-600`}>Load API leagues</button></div><label className="mt-3 block text-xs font-black uppercase tracking-[0.2em] text-emerald-800">Start from date<input type="date" value={importStartFrom} onChange={(event) => onImportStartFromChange(event.target.value)} className={`${inputClass} mt-2 border-emerald-200 bg-white normal-case tracking-normal`} /></label><p className="mt-2 text-[11px] font-semibold text-emerald-700/80">Only fixtures on/after this date are synced for imported leagues.</p><div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">{competitions.length === 0 && <p className="rounded-xl bg-white/70 p-3 text-xs font-bold text-emerald-700">No API leagues loaded yet.</p>}{competitions.map((competition) => <div key={competition.externalId} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3"><div><p className="font-black text-navy">{competition.name}</p><p className="text-xs font-bold text-slate-500">{competition.code} · {competition.areaName ?? "International"} · {formatDate(competition.startsAt)}–{formatDate(competition.endsAt)}</p></div><button type="button" disabled={disabled || competition.isAdded} onClick={() => onImportCompetition(competition.code)} className={`${buttonClass} ${competition.isAdded ? "bg-slate-300" : "bg-indigo-600"}`}>{competition.isAdded ? "Added" : "Add & sync"}</button></div>)}</div></div><form action={onCreate} className="mt-5 space-y-3"><input name="name" required className={inputClass} placeholder="World Cup 2026" /><input name="startsAt" required type="datetime-local" className={inputClass} /><input name="endsAt" type="datetime-local" className={inputClass} /><input name="hostCountries" className={inputClass} placeholder="USA, Canada, Mexico" /><button disabled={disabled} className={`${buttonClass} w-full bg-emerald-600`}>Create manual stream</button></form><div className="mt-5 max-h-64 space-y-2 overflow-y-auto pr-1">{streams.map((stream) => <div key={stream.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><div><p className="font-black text-navy">{stream.name}</p><p className="text-xs font-bold text-slate-500">{stream.slug} · {stream.externalId ?? "manual"} · {stream.isActive ? "Visible" : "Hidden"}</p><p className="text-[11px] font-semibold text-slate-400">Start from: {formatDate(stream.syncFromAt)}</p></div><button type="button" disabled={disabled} onClick={() => onDeleteTournament(stream.id)} className="rounded-xl bg-red-600 px-3 py-2 text-xs font-black text-white disabled:bg-slate-300">Remove</button></div></div>)}</div></div>; }
 
 type LegalSettings = { gameRulesHtml?: string | null; termsConditionsHtml?: string | null };

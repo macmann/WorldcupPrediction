@@ -14,6 +14,7 @@ export type AdminSessionUser = {
   username: string;
   displayName: string;
   isSuperAdmin: boolean;
+  twoFactorEnabled: boolean;
 };
 
 export async function ensureDefaultAdminAccount() {
@@ -70,7 +71,8 @@ export async function getCurrentAdmin(): Promise<AdminSessionUser | null> {
       id: admin.id,
       username: admin.username,
       displayName: admin.displayName,
-      isSuperAdmin: admin.isSuperAdmin
+      isSuperAdmin: admin.isSuperAdmin,
+      twoFactorEnabled: Boolean(admin.twoFactorEnabledAt)
     };
   } catch {
     return null;
