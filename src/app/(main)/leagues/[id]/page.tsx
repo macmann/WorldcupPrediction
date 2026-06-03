@@ -68,7 +68,7 @@ export default async function LeagueDetail({ params }: { params: { id: string } 
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase text-slate-500">
-              <tr><th className="p-3">#</th><th>{t("league.player")}</th><th>{t("common.pointsShort")}</th><th>{t("leagues.exact")}</th><th>{t("league.joinedAt")}</th></tr>
+              <tr><th className="p-3">#</th><th>{t("league.player")}</th><th>{t("common.totalMarks")}</th><th>{t("league.joinedAt")}</th></tr>
             </thead>
             <tbody>
               {league.leaderboard.map((row) => (
@@ -76,7 +76,6 @@ export default async function LeagueDetail({ params }: { params: { id: string } 
                   <td className="p-3 font-black">{row.rank}</td>
                   <td className="font-bold">{row.user.displayName}</td>
                   <td>{row.user.globalPoints}</td>
-                  <td>{row.user.exactScoresCount}</td>
                   <td className="pr-3 text-xs font-semibold text-slate-500">{new Date(row.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</td>
                 </tr>
               ))}
