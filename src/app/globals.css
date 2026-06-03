@@ -53,3 +53,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
     linear-gradient(to top, rgba(2, 6, 23, 0.78), transparent 70%);
   filter: blur(1px);
 }
+
+
+.legal-content { @apply space-y-2 leading-relaxed; }
+.legal-content h1,
+.legal-content h2,
+.legal-content h3 { @apply font-black text-slate-950; }
+.legal-content h1 { @apply text-base; }
+.legal-content h2 { @apply text-sm; }
+.legal-content h3 { @apply text-xs uppercase tracking-[0.16em]; }
+.legal-content p { @apply leading-relaxed; }
+.legal-content ul { @apply ml-4 list-disc space-y-1; }
+.legal-content ol { @apply ml-4 list-decimal space-y-1; }
+.legal-content a { @apply font-black text-indigo-700 underline; }
+.legal-content strong,
+.legal-content b { @apply font-black; }

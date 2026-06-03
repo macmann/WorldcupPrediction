@@ -1,7 +1,7 @@
 "use client";
 
 import { formatAppDateTime } from "@/lib/dateTime";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { PlatformLogo } from "@/components/Icons";
 
 const panelClass = "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm";
@@ -26,7 +26,7 @@ type PlayerCatalogSource = "API" | "MANUAL";
 type AdminPlayer = { id: string; sequenceNumber?: number | null; name: string; nationalTeam: string; position: string; groupName: string };
 type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
 type OpsPayload = {
-  settings: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean; updatedAt: string };
+  settings: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean; gameRulesHtml?: string | null; termsConditionsHtml?: string | null; updatedAt: string };
   announcements: AdminAnnouncement[];
   syncStatus: {
     fixtureIngestion?: JobStatus | null;
@@ -83,6 +83,19 @@ function fileToDataUrl(file: File) {
     reader.onerror = () => reject(new Error("Could not read image file"));
     reader.readAsDataURL(file);
   });
+}
+
+function fileToText(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read document file"));
+    reader.readAsText(file);
+  });
+}
+
+function textToHtml(text: string) {
+  return text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean).map((paragraph) => `<p>${paragraph.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br />")}</p>`).join("");
 }
 
 function predictionOutcomeLabel(outcome?: "HOME" | "DRAW" | "AWAY" | null) {
@@ -299,7 +312,13 @@ export default function AdminConsole() {
         if (loginBackgroundImage.size > maxLoginBackgroundImageBytes) { setError("Login background image must be 6 MB or smaller."); return; }
         loginBackgroundImageUrl = await fileToDataUrl(loginBackgroundImage);
       }
-      const payload = { announcementText: String(formData.get("announcementText") ?? ""), bannerImageUrl, loginBackgroundImageUrl, maintenanceMode: formData.get("maintenanceMode") === "on" };
+      const payload: Record<string, unknown> = {};
+      if (formData.has("announcementText")) payload.announcementText = String(formData.get("announcementText") ?? "");
+      if (bannerImageUrl !== undefined) payload.bannerImageUrl = bannerImageUrl;
+      if (loginBackgroundImageUrl !== undefined) payload.loginBackgroundImageUrl = loginBackgroundImageUrl;
+      if (formData.has("maintenanceMode")) payload.maintenanceMode = formData.get("maintenanceMode") === "on";
+      if (formData.has("gameRulesHtml")) payload.gameRulesHtml = String(formData.get("gameRulesHtml") ?? "");
+      if (formData.has("termsConditionsHtml")) payload.termsConditionsHtml = String(formData.get("termsConditionsHtml") ?? "");
       startTransition(async () => { try { await adminJson("/api/admin/settings", { method: "PATCH", body: JSON.stringify(payload) }); setMessage("Global settings updated."); loadAdminData(); } catch (settingsError) { setError(settingsError instanceof Error ? settingsError.message : "Could not save settings"); } });
     } catch (imageError) { setError(imageError instanceof Error ? imageError.message : "Could not read image file"); }
   }
@@ -465,6 +484,7 @@ export default function AdminConsole() {
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Global Settings</p><h2 className="mt-1 text-2xl font-black text-navy">Site controls</h2>
               <form action={saveSettings} className="mt-5 space-y-3"><label className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-black text-slate-700"><input name="maintenanceMode" type="checkbox" defaultChecked={ops?.settings.maintenanceMode ?? false} className="h-5 w-5 rounded border-slate-300" />Maintenance mode</label><button disabled={isPending} className={`${buttonClass} w-full bg-amber-600`}>Publish settings</button></form>
+              <LegalContentAdminPanel settings={ops?.settings} disabled={isPending} onSaveSettings={saveSettings} />
               {admin.isSuperAdmin && <form action={hardResetDatabase} className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4"><h3 className="font-black text-red-700">Hard reset database</h3><p className="mt-1 text-sm font-semibold text-red-700/80">Deletes all player accounts, predictions, leagues, tournaments, matches, announcements, sessions, job status, and app settings. Admin accounts are kept so you can sign back in.</p><input name="confirmation" className={`${inputClass} mt-4 border-red-200`} placeholder="Type HARD RESET" autoComplete="off" /><button disabled={isPending} className={`${buttonClass} mt-3 w-full bg-red-700`}>Hard reset database</button></form>}
             </div>
           )}
@@ -636,7 +656,7 @@ function UserRow({ user, disabled, onUpdate, onAudit, onDelete, onRemoveFromGlob
 function AuditPanel({ audit }: { audit: AuditPayload }) { return <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Audit trail: {audit.user.displayName} ({audit.user.email})</h3><p className="mt-1 text-xs font-semibold text-slate-500">Registered {formatDate(audit.user.registrationTimestamp)} · {audit.predictions.length} recent predictions</p><div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">{audit.predictions.map((prediction) => <div key={prediction.id} className="rounded-xl bg-white p-3 text-xs font-semibold text-slate-600"><p className="font-black text-slate-900">#{prediction.matchId} {prediction.match.homeTeam} vs {prediction.match.awayTeam} · kickoff {formatDate(prediction.match.kickoffTime)}</p><p>Pick: {prediction.predictedHomeScore ?? "—"}-{prediction.predictedAwayScore ?? "—"} ({prediction.predictedOutcome ?? "outcome not set"}) · Points {prediction.pointsAwarded ?? "pending"} · Locked {prediction.isLocked ? "yes" : "no"}</p><p>Created {formatDate(prediction.submittedAt)} · Updated {formatDate(prediction.updatedAt)} · Scored {formatDate(prediction.scoredAt)}</p></div>)}</div></div>; }
 
 
-function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, onUpdate, onDelete, onSaveSettings }: { announcements: AdminAnnouncement[]; settings?: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean }; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void; onSaveSettings: (formData: FormData) => void }) {
+function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, onUpdate, onDelete, onSaveSettings }: { announcements: AdminAnnouncement[]; settings?: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean; gameRulesHtml?: string | null; termsConditionsHtml?: string | null }; disabled: boolean; onCreate: (formData: FormData) => void; onUpdate: (id: string, payload: Partial<AdminAnnouncement>, success: string) => void; onDelete: (id: string) => void; onSaveSettings: (formData: FormData) => void }) {
   return (
     <div className={panelClass}>
       <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Banners & pop-up announcements</p>
@@ -708,3 +728,69 @@ function AnnouncementAdminPanel({ announcements, settings, disabled, onCreate, o
 
 function AdminAccountPanel({ admins, disabled, onCreate }: { admins: AdminAccount[]; disabled: boolean; onCreate: (formData: FormData) => void }) { return <div className={panelClass}><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Admin access</p><h2 className="mt-1 text-2xl font-black text-navy">Create admin account</h2><form action={onCreate} className="mt-5 space-y-3"><input name="username" required className={inputClass} placeholder="admin username" /><input name="displayName" required className={inputClass} placeholder="Display name" /><input name="password" required minLength={8} type="password" className={inputClass} placeholder="Password" /><label className="flex items-center gap-2 text-sm font-bold text-slate-600"><input name="isSuperAdmin" type="checkbox" className="h-4 w-4 rounded border-slate-300" />Super admin privileges</label><button disabled={disabled} className={`${buttonClass} w-full bg-indigo-600`}>Create admin</button></form><div className="mt-5 max-h-48 space-y-2 overflow-y-auto pr-1">{admins.map((account) => <div key={account.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3"><p className="font-black text-navy">{account.displayName}</p><p className="text-xs font-bold text-slate-500">{account.username} · {account.isSuperAdmin ? "Super admin" : "Admin"}</p></div>)}</div></div>; }
 function StreamPanel({ streams, competitions, disabled, onCreate, onLoadCompetitions, onImportCompetition, importStartFrom, onImportStartFromChange, onDeleteTournament }: { streams: AdminTournament[]; competitions: ApiCompetition[]; disabled: boolean; onCreate: (formData: FormData) => void; onLoadCompetitions: () => void; onImportCompetition: (code: string) => void; importStartFrom: string; onImportStartFromChange: (value: string) => void; onDeleteTournament: (id: string) => void }) { return <div className={panelClass}><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Streams</p><h2 className="mt-1 text-2xl font-black text-navy">Create competition stream</h2><div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4"><div className="flex items-center justify-between gap-3"><div><h3 className="font-black text-emerald-800">Add league from football API</h3><p className="mt-1 text-xs font-semibold text-emerald-700/80">Load available competitions, then import one to create its stream and sync upcoming fixtures.</p></div><button type="button" disabled={disabled} onClick={onLoadCompetitions} className={`${buttonClass} bg-emerald-600`}>Load API leagues</button></div><label className="mt-3 block text-xs font-black uppercase tracking-[0.2em] text-emerald-800">Start from date<input type="date" value={importStartFrom} onChange={(event) => onImportStartFromChange(event.target.value)} className={`${inputClass} mt-2 border-emerald-200 bg-white normal-case tracking-normal`} /></label><p className="mt-2 text-[11px] font-semibold text-emerald-700/80">Only fixtures on/after this date are synced for imported leagues.</p><div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">{competitions.length === 0 && <p className="rounded-xl bg-white/70 p-3 text-xs font-bold text-emerald-700">No API leagues loaded yet.</p>}{competitions.map((competition) => <div key={competition.externalId} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3"><div><p className="font-black text-navy">{competition.name}</p><p className="text-xs font-bold text-slate-500">{competition.code} · {competition.areaName ?? "International"} · {formatDate(competition.startsAt)}–{formatDate(competition.endsAt)}</p></div><button type="button" disabled={disabled || competition.isAdded} onClick={() => onImportCompetition(competition.code)} className={`${buttonClass} ${competition.isAdded ? "bg-slate-300" : "bg-indigo-600"}`}>{competition.isAdded ? "Added" : "Add & sync"}</button></div>)}</div></div><form action={onCreate} className="mt-5 space-y-3"><input name="name" required className={inputClass} placeholder="World Cup 2026" /><input name="startsAt" required type="datetime-local" className={inputClass} /><input name="endsAt" type="datetime-local" className={inputClass} /><input name="hostCountries" className={inputClass} placeholder="USA, Canada, Mexico" /><button disabled={disabled} className={`${buttonClass} w-full bg-emerald-600`}>Create manual stream</button></form><div className="mt-5 max-h-64 space-y-2 overflow-y-auto pr-1">{streams.map((stream) => <div key={stream.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><div><p className="font-black text-navy">{stream.name}</p><p className="text-xs font-bold text-slate-500">{stream.slug} · {stream.externalId ?? "manual"} · {stream.isActive ? "Visible" : "Hidden"}</p><p className="text-[11px] font-semibold text-slate-400">Start from: {formatDate(stream.syncFromAt)}</p></div><button type="button" disabled={disabled} onClick={() => onDeleteTournament(stream.id)} className="rounded-xl bg-red-600 px-3 py-2 text-xs font-black text-white disabled:bg-slate-300">Remove</button></div></div>)}</div></div>; }
+
+type LegalSettings = { gameRulesHtml?: string | null; termsConditionsHtml?: string | null };
+
+function LegalContentAdminPanel({ settings, disabled, onSaveSettings }: { settings?: LegalSettings; disabled: boolean; onSaveSettings: (formData: FormData) => void }) {
+  return (
+    <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">User setting pages</p>
+      <h3 className="mt-1 text-xl font-black text-navy">Game Rules & Terms and Condition</h3>
+      <p className="mt-2 text-sm font-semibold text-slate-500">Publish HTML content that appears in the user profile menu. Paste HTML, use the rich text toolbar, or upload a .html/.htm/.txt document.</p>
+      <form action={onSaveSettings} className="mt-4 space-y-4">
+        <RichTextSettingEditor name="gameRulesHtml" label="Game Rules" initialHtml={settings?.gameRulesHtml ?? ""} disabled={disabled} />
+        <RichTextSettingEditor name="termsConditionsHtml" label="Terms and Condition" initialHtml={settings?.termsConditionsHtml ?? ""} disabled={disabled} />
+        <button disabled={disabled} className={`${buttonClass} w-full bg-emerald-600`}>Publish Game Rules & Terms</button>
+      </form>
+    </div>
+  );
+}
+
+function RichTextSettingEditor({ name, label, initialHtml, disabled }: { name: string; label: string; initialHtml: string; disabled: boolean }) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [html, setHtml] = useState(initialHtml);
+  const [fileMessage, setFileMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHtml(initialHtml);
+    if (editorRef.current && editorRef.current.innerHTML !== initialHtml) editorRef.current.innerHTML = initialHtml;
+  }, [initialHtml]);
+
+  function syncFromEditor() { setHtml(editorRef.current?.innerHTML ?? ""); }
+  function format(command: string, value?: string) { editorRef.current?.focus(); document.execCommand(command, false, value); syncFromEditor(); }
+
+  async function uploadDocument(file?: File) {
+    setFileMessage(null);
+    if (!file) return;
+    const lowerName = file.name.toLowerCase();
+    const supported = file.type.startsWith("text/") || lowerName.endsWith(".html") || lowerName.endsWith(".htm") || lowerName.endsWith(".txt");
+    if (!supported) { setFileMessage("Please upload an HTML or text document."); return; }
+    try {
+      const text = await fileToText(file);
+      const nextHtml = lowerName.endsWith(".txt") || file.type === "text/plain" ? textToHtml(text) : text;
+      setHtml(nextHtml);
+      if (editorRef.current) editorRef.current.innerHTML = nextHtml;
+      setFileMessage(`${file.name} loaded into the editor.`);
+    } catch (error) { setFileMessage(error instanceof Error ? error.message : "Could not read document file."); }
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div><p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">{label}</p><p className="mt-1 text-xs font-semibold text-slate-500">This content is saved as HTML and rendered in the user setting menu.</p></div>
+        <label className="shrink-0 cursor-pointer rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-200">Upload<input type="file" accept=".html,.htm,.txt,text/html,text/plain" disabled={disabled} onChange={(event) => void uploadDocument(event.target.files?.[0])} className="hidden" /></label>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" disabled={disabled} onClick={() => format("bold")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Bold</button>
+        <button type="button" disabled={disabled} onClick={() => format("italic")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Italic</button>
+        <button type="button" disabled={disabled} onClick={() => format("insertUnorderedList")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Bullet list</button>
+        <button type="button" disabled={disabled} onClick={() => format("insertOrderedList")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Number list</button>
+        <button type="button" disabled={disabled} onClick={() => format("formatBlock", "h2")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Heading</button>
+        <button type="button" disabled={disabled} onClick={() => format("formatBlock", "p")} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 disabled:opacity-50">Paragraph</button>
+      </div>
+      <div ref={editorRef} contentEditable={!disabled} suppressContentEditableWarning onInput={syncFromEditor} onBlur={syncFromEditor} className="mt-3 min-h-48 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-relaxed text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" dangerouslySetInnerHTML={{ __html: html }} />
+      <textarea name={name} value={html} readOnly className="hidden" />
+      {fileMessage && <p className="mt-2 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">{fileMessage}</p>}
+    </div>
+  );
+}
