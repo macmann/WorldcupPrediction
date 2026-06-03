@@ -94,25 +94,8 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -right-28 top-60 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_17%_22%,rgba(255,255,255,0.2)_0_1px,transparent_2px),radial-gradient(circle_at_78%_18%,rgba(167,243,208,0.2)_0_1px,transparent_2px),radial-gradient(circle_at_66%_72%,rgba(255,255,255,0.16)_0_1px,transparent_2px)]" />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-2.75rem)] max-w-sm flex-col">
-        <div className="flex items-center justify-between px-1 py-2 text-[13px] font-bold tracking-tight text-white/95">
-          <span>9:41</span>
-          <div className="flex items-center gap-1.5 text-white/90" aria-hidden="true">
-            <span className="flex h-3.5 items-end gap-0.5">
-              <span className="h-1.5 w-0.5 rounded-full bg-current" />
-              <span className="h-2 w-0.5 rounded-full bg-current" />
-              <span className="h-2.5 w-0.5 rounded-full bg-current" />
-              <span className="h-3 w-0.5 rounded-full bg-current" />
-            </span>
-            <svg className="h-3.5 w-4" viewBox="0 0 18 14" fill="none"><path d="M1 5.7C5.6 1.9 12.4 1.9 17 5.7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M4.2 8.9C7 6.7 11 6.7 13.8 8.9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M7.5 11.8C8.4 11.1 9.6 11.1 10.5 11.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
-            <span className="relative h-3.5 w-6 rounded-[4px] border border-white/80 p-0.5">
-              <span className="block h-full w-4 rounded-[2px] bg-white" />
-              <span className="absolute -right-1 top-1/2 h-1.5 w-0.5 -translate-y-1/2 rounded-r bg-white/80" />
-            </span>
-          </div>
-        </div>
-
-        <section className="mt-9 flex flex-col items-center text-center">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-1.25rem)] max-w-sm flex-col">
+        <section className="mt-10 flex flex-col items-center text-center">
           <div className="relative grid h-28 w-28 place-items-center rounded-[2rem] border border-white/15 bg-[linear-gradient(145deg,rgba(255,255,255,0.16),rgba(4,31,35,0.35))] shadow-[0_22px_60px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-md">
             <span className="absolute inset-2 rounded-[1.55rem] border border-emerald-200/15 bg-[radial-gradient(circle_at_50%_10%,rgba(252,211,77,0.22),transparent_28%),linear-gradient(160deg,rgba(120,53,15,0.34),rgba(6,95,70,0.24))]" />
             <span className="absolute -top-2 h-7 w-7 rotate-45 rounded bg-amber-300/90 shadow-[0_0_22px_rgba(251,191,36,0.45)]" />
