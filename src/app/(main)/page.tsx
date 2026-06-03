@@ -102,7 +102,6 @@ export default function LoginPage() {
             <PlatformLogo className="relative h-24 w-24 drop-shadow-[0_8px_20px_rgba(0,0,0,0.45)]" />
           </div>
           <p className="mt-5 bg-[linear-gradient(92deg,#f8fafc_0%,#94a3b8_38%,#ffffff_55%,#64748b_100%)] bg-clip-text text-sm font-black uppercase tracking-[0.42em] text-transparent drop-shadow-[0_2px_12px_rgba(255,255,255,0.16)]">FFM - WC2026</p>
-          <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] text-white">Sign in first</h1>
           <p className="mt-4 max-w-[20rem] text-sm font-semibold leading-6 text-emerald-50/88">Log in to unlock your dashboard, make match predictions, and choose your Champion, Best Player, and Best Goalkeeper.</p>
         </section>
 
