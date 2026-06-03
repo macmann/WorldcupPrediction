@@ -8,6 +8,7 @@ import type { Locale, TranslationKey } from "@/lib/i18n";
 export type UserSession = {
   id?: string;
   email?: string;
+  phone?: string | null;
   displayName: string;
   onboardingCompleted: boolean;
   preferredLocale?: Locale;
