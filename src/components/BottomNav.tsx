@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BallIcon, HistoryIcon, HomeIcon, UsersIcon } from "@/components/Icons";
+import { useStore } from "@/store/useStore";
 
 const tabs = [
-  { href: "/dashboard", label: "Home", icon: HomeIcon },
-  { href: "/predict", label: "Predict", icon: BallIcon },
-  { href: "/winners", label: "WC26", icon: WC26Icon },
-  { href: "/leagues", label: "Mini Leagues", icon: UsersIcon },
-  { href: "/history", label: "History", icon: HistoryIcon }
+  { href: "/dashboard", labelKey: "nav.home", icon: HomeIcon },
+  { href: "/predict", labelKey: "nav.predict", icon: BallIcon },
+  { href: "/winners", labelKey: "nav.winners", icon: WC26Icon },
+  { href: "/leagues", labelKey: "nav.leagues", icon: UsersIcon },
+  { href: "/history", labelKey: "nav.history", icon: HistoryIcon }
 ] as const;
 
 function WC26Icon({ className }: { className?: string }) {
@@ -30,6 +31,7 @@ function isActive(pathname: string, href: string) {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useStore();
 
   return (
     <nav aria-label="Primary navigation" className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[400px] px-3 pb-[max(0.7rem,env(safe-area-inset-bottom))] pt-2">
@@ -46,7 +48,7 @@ export function BottomNav() {
                 className={`group flex min-h-[3.6rem] flex-col items-center justify-center gap-1 rounded-[1.35rem] px-1.5 py-2 transition active:scale-95 ${active ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" : "hover:bg-slate-50 hover:text-indigo-700"}`}
               >
                 <Icon className={`h-5 w-5 shrink-0 ${active ? "text-emerald-600" : "text-slate-400 group-hover:text-indigo-600"}`} />
-                <span className="flex h-6 items-center justify-center text-center">{tab.label}</span>
+                <span className="flex h-6 items-center justify-center text-center">{t(tab.labelKey)}</span>
               </Link>
             );
           })}

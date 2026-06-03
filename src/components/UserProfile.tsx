@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { localeLabels, locales } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
 
 function getInitials(displayName?: string, email?: string) {
@@ -18,7 +20,7 @@ function getInitials(displayName?: string, email?: string) {
 
 export function UserProfile() {
   const router = useRouter();
-  const { user, setUser } = useStore();
+  const { user, locale, setLocale, setUser, t } = useStore();
   const menuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"profile" | "settings" | null>(null);
@@ -26,6 +28,8 @@ export function UserProfile() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [localeMessage, setLocaleMessage] = useState<string | null>(null);
+  const [localeError, setLocaleError] = useState<string | null>(null);
   const [isPasswordPending, setIsPasswordPending] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -67,12 +71,12 @@ export function UserProfile() {
     setPasswordSuccess(null);
 
     if (passwordForm.newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters.");
+      setPasswordError(t("settings.passwordTooShort"));
       return;
     }
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError("New password and confirmation do not match.");
+      setPasswordError(t("settings.passwordMismatch"));
       return;
     }
 
@@ -90,15 +94,36 @@ export function UserProfile() {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
 
         if (!response.ok) {
-          setPasswordError(payload?.error || "Could not update password. Please try again.");
+          setPasswordError(payload?.error || t("settings.passwordSaveError"));
           return;
         }
 
         setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-        setPasswordSuccess("Password updated successfully.");
+        setPasswordSuccess(t("settings.passwordSaved"));
       } finally {
         setIsPasswordPending(false);
       }
+    })();
+  }
+
+  function updateLocalePreference(nextLocale: Locale) {
+    setLocale(nextLocale);
+    setLocaleMessage(null);
+    setLocaleError(null);
+
+    void (async () => {
+      const response = await fetch("/api/user/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferredLocale: nextLocale })
+      });
+
+      if (!response.ok) {
+        setLocaleError(t("settings.languageError"));
+        return;
+      }
+
+      setLocaleMessage(t("settings.languageSaved"));
     })();
   }
 
@@ -108,7 +133,7 @@ export function UserProfile() {
       const response = await fetch("/api/auth/logout", { method: "POST" });
 
       if (!response.ok) {
-        setError("Could not log out. Please try again.");
+        setError(t("auth.logoutError"));
         return;
       }
 
@@ -128,7 +153,7 @@ export function UserProfile() {
         type="button"
         onClick={() => setIsOpen((current) => !current)}
         aria-expanded={isOpen}
-        aria-label="Open profile menu"
+        aria-label={t("profile.openMenu")}
         className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-300 text-sm font-black text-navy shadow-lg shadow-emerald-950/20 ring-2 ring-white/25 transition hover:bg-emerald-200 active:scale-95"
       >
         {initials}
@@ -142,7 +167,7 @@ export function UserProfile() {
                 {initials}
               </span>
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200">My profile</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200">{t("profile.myProfile")}</p>
                 <p className="truncate text-base font-black text-white">{user.displayName}</p>
                 {user.email && <p className="truncate text-xs font-semibold text-slate-200">{user.email}</p>}
               </div>
@@ -156,15 +181,15 @@ export function UserProfile() {
               aria-expanded={activeSection === "profile"}
               className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-3 py-3 text-left text-sm font-black text-slate-900 transition hover:bg-emerald-50 active:scale-[0.99]"
             >
-              <span>See profile details</span>
+              <span>{t("profile.detailsToggle")}</span>
               <span aria-hidden="true" className="text-emerald-600">
                 {activeSection === "profile" ? "−" : "+"}
               </span>
             </button>
             {activeSection === "profile" && (
               <div className="rounded-2xl bg-emerald-50 px-3 py-3 text-xs font-bold text-emerald-950">
-                <p>Display name: {user.displayName}</p>
-                <p className="mt-1">Email: {user.email || "Not added"}</p>
+                <p>{t("profile.displayName")}: {user.displayName}</p>
+                <p className="mt-1">{t("profile.email")}: {user.email || t("profile.emailMissing")}</p>
               </div>
             )}
             <button
@@ -173,7 +198,7 @@ export function UserProfile() {
               aria-expanded={activeSection === "settings"}
               className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-3 py-3 text-left text-sm font-black text-slate-900 transition hover:bg-indigo-50 active:scale-[0.99]"
             >
-              <span>Settings</span>
+              <span>{t("settings.title")}</span>
               <span aria-hidden="true" className="text-indigo-600">
                 {activeSection === "settings" ? "−" : "+"}
               </span>
@@ -181,15 +206,37 @@ export function UserProfile() {
             {activeSection === "settings" && (
               <div className="space-y-3 rounded-2xl bg-indigo-50 px-3 py-3 text-xs font-bold text-indigo-950">
                 <div>
-                  <p>Onboarding: {user.onboardingCompleted ? "Completed" : "Needs setup"}</p>
+                  <p>{t("settings.onboarding")}: {user.onboardingCompleted ? t("settings.completed") : t("settings.needsSetup")}</p>
+                </div>
+
+                <div className="space-y-2 rounded-2xl bg-white/70 p-3 ring-1 ring-indigo-100">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-700">{t("settings.languageTitle")}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-indigo-700">{t("settings.languageDescription")}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {locales.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => updateLocalePreference(option)}
+                        aria-pressed={locale === option}
+                        className={`rounded-xl px-3 py-2 text-xs font-black transition active:scale-[0.99] ${locale === option ? "bg-indigo-700 text-white shadow-lg shadow-indigo-950/10" : "bg-white text-indigo-950 ring-1 ring-indigo-100 hover:bg-indigo-50"}`}
+                      >
+                        {localeLabels[option]}
+                      </button>
+                    ))}
+                  </div>
+                  {localeMessage && <p className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700">{localeMessage}</p>}
+                  {localeError && <p className="rounded-xl bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700">{localeError}</p>}
                 </div>
                 <form onSubmit={changePassword} className="space-y-2 rounded-2xl bg-white/70 p-3 ring-1 ring-indigo-100">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-700">Change password</p>
-                    <p className="mt-1 text-[11px] font-semibold text-indigo-700">Use at least 8 characters for your new password.</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-700">{t("settings.changePassword")}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-indigo-700">{t("settings.passwordHelp")}</p>
                   </div>
                   <label className="block">
-                    <span className="text-[11px] font-black text-indigo-950">Current password</span>
+                    <span className="text-[11px] font-black text-indigo-950">{t("settings.currentPassword")}</span>
                     <input
                       type="password"
                       value={passwordForm.currentPassword}
@@ -201,7 +248,7 @@ export function UserProfile() {
                     />
                   </label>
                   <label className="block">
-                    <span className="text-[11px] font-black text-indigo-950">New password</span>
+                    <span className="text-[11px] font-black text-indigo-950">{t("settings.newPassword")}</span>
                     <input
                       type="password"
                       value={passwordForm.newPassword}
@@ -214,7 +261,7 @@ export function UserProfile() {
                     />
                   </label>
                   <label className="block">
-                    <span className="text-[11px] font-black text-indigo-950">Confirm new password</span>
+                    <span className="text-[11px] font-black text-indigo-950">{t("settings.confirmPassword")}</span>
                     <input
                       type="password"
                       value={passwordForm.confirmPassword}
@@ -231,7 +278,7 @@ export function UserProfile() {
                     disabled={isPasswordPending}
                     className="w-full rounded-xl bg-indigo-700 px-3 py-2 text-xs font-black text-white shadow-lg shadow-indigo-950/10 transition hover:bg-indigo-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                   >
-                    {isPasswordPending ? "Updating password…" : "Update password"}
+                    {isPasswordPending ? t("settings.updatingPassword") : t("settings.updatePassword")}
                   </button>
                   {passwordError && <p className="rounded-xl bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700">{passwordError}</p>}
                   {passwordSuccess && <p className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700">{passwordSuccess}</p>}
@@ -244,7 +291,7 @@ export function UserProfile() {
               disabled={isPending}
               className="flex w-full items-center justify-center rounded-2xl bg-navy px-3 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/10 transition hover:bg-indigo-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
-              {isPending ? "Logging out…" : "Log out"}
+              {isPending ? t("auth.loggingOut") : t("auth.logout")}
             </button>
             {error && <p className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
           </div>

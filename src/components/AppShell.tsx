@@ -1,11 +1,16 @@
+"use client";
+
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
 import { PlatformLogo } from "@/components/Icons";
 import { UserProfile } from "@/components/UserProfile";
 import { AnnouncementBanner } from "@/components/SystemStatusGate";
 import { AnnouncementPopup } from "@/components/AnnouncementPopup";
+import { useStore } from "@/store/useStore";
 
-export function AppShell({ children, title = "FFM - WC2026", eyebrow = "2026 Pool" }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
+export function AppShell({ children, title = "FFM - WC2026", eyebrow }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
+  const { t } = useStore();
+
   return (
     <AuthGate>
       <AnnouncementPopup />
@@ -15,7 +20,7 @@ export function AppShell({ children, title = "FFM - WC2026", eyebrow = "2026 Poo
             <PlatformLogo className="h-12 w-12" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">{eyebrow}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">{eyebrow ?? t("app.eyebrow")}</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight">{title}</h1>
           </div>
           <UserProfile />

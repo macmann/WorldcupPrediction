@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { createSessionToken } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
-import { prisma } from "@/lib/prisma";
+import { ensureUserPreferredLocaleColumn, prisma } from "@/lib/prisma";
 import { hashPasswordResetToken } from "@/lib/passwordReset";
 
 const schema = z.object({
@@ -15,6 +15,7 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     const input = schema.parse(await request.json());
+    await ensureUserPreferredLocaleColumn();
     const tokenHash = hashPasswordResetToken(input.token);
     const resetToken = await prisma.passwordResetToken.findUnique({
       where: { tokenHash },
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
     const sessionToken = await createSessionToken(user.id);
     cookies().set("session", sessionToken, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
-    return NextResponse.json({ user: { id: user.id, email: user.email, displayName: user.displayName, onboardingCompleted: Boolean((user as { onboardingCompletedAt?: Date | null }).onboardingCompletedAt) } });
+    return NextResponse.json({ user: { id: user.id, email: user.email, displayName: user.displayName, onboardingCompleted: Boolean((user as { onboardingCompletedAt?: Date | null }).onboardingCompletedAt), preferredLocale: (user as { preferredLocale?: string | null }).preferredLocale ?? "en" } });
   } catch (error) {
     return jsonError(error);
   }
