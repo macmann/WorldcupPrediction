@@ -5,13 +5,24 @@ import { config } from "./config";
 import { requireAdminAccount } from "./adminAuth";
 
 const secret = new TextEncoder().encode(config.jwtSecret);
+const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export async function createSessionToken(userId: string) {
   return new SignJWT({ sub: userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime("7d")
     .sign(secret);
+}
+
+export function setSessionCookie(token: string) {
+  cookies().set("session", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS
+  });
 }
 
 export async function getCurrentUser() {

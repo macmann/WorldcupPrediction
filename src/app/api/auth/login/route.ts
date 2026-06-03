@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { createSessionToken } from "@/lib/auth";
+import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
 import { ensureUserPhoneColumn, ensureUserPreferredLocaleColumn, prisma } from "@/lib/prisma";
 
@@ -24,7 +23,7 @@ export async function POST(request: Request) {
     if (!validPassword) throw Object.assign(new Error("Invalid email or password"), { status: 401 });
 
     const token = await createSessionToken(user.id);
-    cookies().set("session", token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+    setSessionCookie(token);
     return NextResponse.json({ user: { id: user.id, email: user.email, phone: user.phone, displayName: user.displayName, onboardingCompleted: Boolean((user as { onboardingCompletedAt?: Date | null }).onboardingCompletedAt), preferredLocale: (user as { preferredLocale?: string | null }).preferredLocale ?? "en" } });
   } catch (error) {
     return jsonError(error);
