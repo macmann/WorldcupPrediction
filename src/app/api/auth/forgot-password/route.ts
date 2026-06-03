@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { ensureUserPhoneColumn, prisma } from "@/lib/prisma";
 import { jsonError } from "@/lib/http";
 import { buildPasswordResetUrl, createPasswordResetToken, getPasswordResetExpiry, hashPasswordResetToken, sendPasswordResetEmail } from "@/lib/passwordReset";
 
@@ -16,6 +16,7 @@ export async function POST(request: Request) {
   try {
     const input = schema.parse(await request.json());
     const email = input.email.toLowerCase();
+    await ensureUserPhoneColumn();
     const user = await prisma.user.findUnique({ where: { email } });
 
     await prisma.passwordResetToken.deleteMany({

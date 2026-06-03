@@ -251,6 +251,11 @@ export function UserProfile() {
                     {user.email}
                   </p>
                 )}
+                {user.phone && (
+                  <p className="truncate text-xs font-semibold text-slate-200">
+                    {user.phone}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -280,6 +285,9 @@ export function UserProfile() {
                   {t("profile.email")}:{" "}
                   {user.email || t("profile.emailMissing")}
                 </p>
+                {user.phone && (
+                  <p className="mt-1">Phone: {user.phone}</p>
+                )}
               </div>
             )}
             <LegalContentSection

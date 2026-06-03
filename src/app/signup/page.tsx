@@ -12,6 +12,7 @@ export default function SignupPage() {
   const { setUser } = useStore();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -24,10 +25,13 @@ export default function SignupPage() {
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ displayName, email, password })
+          body: JSON.stringify({ displayName, email, phone, password })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error ?? "Could not create account");
+        if (!response.ok) {
+          const fieldError = data.details?.fieldErrors?.phone?.[0];
+          throw new Error(fieldError ?? data.error ?? "Could not create account");
+        }
         setUser(data.user);
         router.push("/dashboard");
       } catch (caught) {
@@ -56,6 +60,9 @@ export default function SignupPage() {
           </label>
           <label className="block text-sm font-black">Email
             <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold" />
+          </label>
+          <label className="block text-sm font-black">Phone number
+            <input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required inputMode="numeric" pattern="09[0-9]{7,9}" minLength={9} maxLength={11} autoComplete="tel" title="Phone number must start with 09 and contain 9 to 11 digits." className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold" />
           </label>
           <label className="block text-sm font-black">Password
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold" />
