@@ -27,9 +27,8 @@ export default async function LeaguesHub() {
               </div>
               <p className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-black text-white">#{globalLeague.rank}</p>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-              <div className="rounded-2xl bg-white p-3"><p className="text-xs font-bold text-slate-500">{t("common.points")}</p><p className="text-lg font-black">{globalLeague.points}</p></div>
-              <div className="rounded-2xl bg-white p-3"><p className="text-xs font-bold text-slate-500">{t("leagues.exact")}</p><p className="text-lg font-black">{globalLeague.exactScoresCount}</p></div>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-center text-sm">
+              <div className="rounded-2xl bg-white p-3"><p className="text-xs font-bold text-slate-500">{t("common.totalMarks")}</p><p className="text-lg font-black">{globalLeague.points}</p></div>
               <div className="rounded-2xl bg-white p-3"><p className="text-xs font-bold text-slate-500">{t("common.leader")}</p><p className="truncate text-lg font-black">{globalLeague.leader?.displayName ?? "—"}</p></div>
             </div>
           </Card>
