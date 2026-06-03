@@ -14,6 +14,7 @@ let tournamentSyncColumnEnsured: Promise<void> | null = null;
 let playerSequenceNumberColumnEnsured: Promise<void> | null = null;
 let playerCatalogColumnsEnsured: Promise<void> | null = null;
 let userPreferredLocaleColumnEnsured: Promise<void> | null = null;
+let legalContentColumnsEnsured: Promise<void> | null = null;
 
 export async function ensureTournamentSyncColumn() {
   if (!tournamentSyncColumnEnsured) {
@@ -55,6 +56,16 @@ export async function ensurePlayerCatalogColumns() {
     })();
   }
   await playerCatalogColumnsEnsured;
+}
+
+export async function ensureLegalContentColumns() {
+  if (!legalContentColumnsEnsured) {
+    legalContentColumnsEnsured = (async () => {
+      await prisma.$executeRawUnsafe(`ALTER TABLE IF EXISTS "app_settings" ADD COLUMN IF NOT EXISTS "game_rules_html" TEXT;`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE IF EXISTS "app_settings" ADD COLUMN IF NOT EXISTS "terms_conditions_html" TEXT;`);
+    })();
+  }
+  await legalContentColumnsEnsured;
 }
 
 export async function ensureUserPreferredLocaleColumn() {

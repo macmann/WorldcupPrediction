@@ -436,6 +436,8 @@ model AppSetting {
   loginBackgroundImageUrl String? @map("login_background_image_url")
   maintenanceMode  Boolean  @default(false) @map("maintenance_mode")
   playerCatalogSource String @default("API") @map("player_catalog_source")
+  gameRulesHtml String? @map("game_rules_html")
+  termsConditionsHtml String? @map("terms_conditions_html")
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("app_settings")
