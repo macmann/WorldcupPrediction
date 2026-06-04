@@ -300,7 +300,7 @@ export function UserProfile() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-14 z-40 flex max-h-[calc(100dvh-6rem)] w-72 flex-col overflow-hidden rounded-3xl bg-white text-slate-950 shadow-2xl shadow-emerald-950/25 ring-1 ring-slate-200">
+        <div className="fixed inset-x-3 bottom-[calc(5.8rem+env(safe-area-inset-bottom))] top-[max(1rem,env(safe-area-inset-top))] z-50 mx-auto flex w-auto max-w-[376px] flex-col overflow-hidden rounded-[2rem] bg-white text-slate-950 shadow-2xl shadow-emerald-950/25 ring-1 ring-slate-200">
           <div className="shrink-0 bg-gradient-to-br from-navy to-indigo-900 p-4 text-white">
             <div className="flex items-center gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-300 text-sm font-black text-navy shadow-lg shadow-emerald-950/20">
@@ -327,7 +327,7 @@ export function UserProfile() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
             <button
               type="button"
               onClick={() =>
@@ -445,7 +445,7 @@ export function UserProfile() {
               </span>
             </button>
             {activeSection === "settings" && (
-              <div className="max-h-[22rem] space-y-3 overflow-y-auto overscroll-contain rounded-2xl bg-indigo-50 px-3 py-3 pr-2 text-xs font-bold text-indigo-950">
+              <div className="space-y-3 rounded-[1.35rem] bg-indigo-50 px-3 py-3 text-xs font-bold text-indigo-950">
                 <div>
                   <p>
                     {t("settings.onboarding")}:{" "}
