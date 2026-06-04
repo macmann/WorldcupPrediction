@@ -301,7 +301,15 @@ export function UserProfile() {
 
       {isOpen && (
         <div className="fixed inset-x-3 bottom-[calc(5.8rem+env(safe-area-inset-bottom))] top-[max(1rem,env(safe-area-inset-top))] z-50 mx-auto flex w-auto max-w-[376px] flex-col overflow-hidden rounded-[2rem] bg-white text-slate-950 shadow-2xl shadow-emerald-950/25 ring-1 ring-slate-200">
-          <div className="shrink-0 bg-gradient-to-br from-navy to-indigo-900 p-4 text-white">
+          <div className="relative shrink-0 bg-gradient-to-br from-navy to-indigo-900 p-4 pr-16 text-white">
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              aria-label={t("profile.closeMenu")}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-2xl font-black leading-none text-white shadow-lg shadow-slate-950/20 ring-1 ring-white/25 transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-emerald-200 active:scale-95"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
             <div className="flex items-center gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-300 text-sm font-black text-navy shadow-lg shadow-emerald-950/20">
                 {initials}
