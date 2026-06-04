@@ -22,6 +22,8 @@ type AdminUser = {
 type AdminTournament = { id: string; name: string; slug: string; startsAt: string; endsAt?: string | null; syncFromAt?: string | null; isActive: boolean; externalId?: string | null };
 type ApiCompetition = { code: string; name: string; externalId: string; areaName?: string | null; startsAt: string; endsAt?: string | null; isAdded: boolean };
 type AdminAnnouncement = { id: string; title: string; description: string; imageUrl: string; linkUrl: string; isActive: boolean; displayFrequencyHours: number; createdAt: string; updatedAt: string };
+type AdminMessage = { id: string; title: string; body: string; audienceType: "ALL" | "USER" | "LEAGUE"; sentByAdminUsername?: string | null; createdAt: string; recipientCount: number; leagues?: Array<{ id: string; name: string; joinCode: string }> };
+type AdminLeagueOption = { id: string; name: string; joinCode: string; type: string; memberCount: number };
 type PlayerCatalogSource = "API" | "MANUAL";
 type AdminPlayer = { id: string; sequenceNumber?: number | null; name: string; nationalTeam: string; position: string; groupName: string };
 type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
@@ -59,7 +61,7 @@ type PredictionRow = {
   submittedAt: string;
   scoredAt?: string | null;
 };
-type AdminTab = "overview" | "players" | "users" | "predictions" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
+type AdminTab = "overview" | "players" | "users" | "predictions" | "messages" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
 
 async function adminJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -509,6 +511,8 @@ export default function AdminConsole() {
             </div>
           )}
 
+          {activeTab === "messages" && <MessageAdminPanel disabled={isPending} onError={setError} onMessage={setMessage} />}
+
           {activeTab === "announcements" && <AnnouncementAdminPanel announcements={ops?.announcements ?? []} settings={ops?.settings} disabled={isPending} onCreate={createAnnouncement} onUpdate={updateAnnouncement} onDelete={deleteAnnouncement} onSaveSettings={saveSettings} />}
 
           {activeTab === "settings" && (
@@ -688,12 +692,112 @@ function AdminLogin({ onLogin }: { onLogin: (admin: AdminSession) => void }) {
   return <main className="flex min-h-dvh items-center justify-center bg-slate-950 p-6 text-white"><section className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-8 text-slate-900 shadow-2xl"><div className="flex items-center gap-4"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy text-white"><PlatformLogo className="h-12 w-12" /></span><div><p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">Admin only</p><h1 className="text-3xl font-black text-navy">Admin Console</h1></div></div><p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">{twoFactorRequired ? "Enter the 6-digit code from your authenticator app to finish signing in." : "Use the separate admin username and password. Player accounts cannot sign in here."}</p>{error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}<form action={login} className="mt-6 space-y-4">{twoFactorRequired ? <><input name="username" type="hidden" value={credentials.username} readOnly /><input name="password" type="hidden" value={credentials.password} readOnly /><input name="totpCode" className={inputClass} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*" placeholder="Authenticator code" required autoFocus /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Verifying…" : "Verify and sign in"}</button><button type="button" disabled={isPending} onClick={() => { setTwoFactorRequired(false); setCredentials({ username: "", password: "" }); setError(null); }} className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200 disabled:opacity-60">Use different credentials</button></> : <><input name="username" className={inputClass} autoComplete="username" placeholder="Admin username" required /><input name="password" className={inputClass} autoComplete="current-password" placeholder="Admin password" type="password" required /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Signing in…" : "Sign in to admin"}</button></>}</form></section></main>;
 }
 
+
+function MessageAdminPanel({ disabled, onError, onMessage }: { disabled: boolean; onError: (message: string | null) => void; onMessage: (message: string | null) => void }) {
+  const [messages, setMessages] = useState<AdminMessage[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [leagueSearch, setLeagueSearch] = useState("");
+  const [userOptions, setUserOptions] = useState<AdminUser[]>([]);
+  const [leagueOptions, setLeagueOptions] = useState<AdminLeagueOption[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<AdminUser[]>([]);
+  const [selectedLeagues, setSelectedLeagues] = useState<AdminLeagueOption[]>([]);
+  const [audienceType, setAudienceType] = useState<"ALL" | "USER" | "LEAGUE">("ALL");
+  const [isLoading, setIsLoading] = useState(true);
+
+  async function loadMessages() {
+    setIsLoading(true);
+    try {
+      const data = await adminJson<{ messages: AdminMessage[] }>("/api/admin/messages");
+      setMessages(data.messages);
+    } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not load admin messages"); }
+    finally { setIsLoading(false); }
+  }
+
+  useEffect(() => { void loadMessages(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const timeout = window.setTimeout(async () => {
+      try {
+        const data = await adminJson<{ users: AdminUser[] }>(`/api/admin/users${userSearch ? `?q=${encodeURIComponent(userSearch)}` : ""}`);
+        setUserOptions(data.users);
+      } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not search users"); }
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [userSearch, onError]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(async () => {
+      try {
+        const data = await adminJson<{ leagues: AdminLeagueOption[] }>(`/api/admin/leagues${leagueSearch ? `?q=${encodeURIComponent(leagueSearch)}` : ""}`);
+        setLeagueOptions(data.leagues);
+      } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not search leagues"); }
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [leagueSearch, onError]);
+
+  function addUser(user: AdminUser) {
+    setSelectedUsers((current) => current.some((selected) => selected.id === user.id) ? current : [...current, user]);
+  }
+
+  function addLeague(league: AdminLeagueOption) {
+    setSelectedLeagues((current) => current.some((selected) => selected.id === league.id) ? current : [...current, league]);
+  }
+
+  async function sendMessage(formData: FormData) {
+    onError(null); onMessage(null);
+    const payload = {
+      audienceType,
+      title: String(formData.get("title") ?? ""),
+      body: String(formData.get("body") ?? ""),
+      ...(audienceType === "USER" ? { userIds: selectedUsers.map((user) => user.id) } : {}),
+      ...(audienceType === "LEAGUE" ? { leagueIds: selectedLeagues.map((league) => league.id) } : {})
+    };
+    try {
+      const data = await adminJson<{ message: AdminMessage }>("/api/admin/messages", { method: "POST", body: JSON.stringify(payload) });
+      onMessage(`Message sent to ${data.message.recipientCount} recipient${data.message.recipientCount === 1 ? "" : "s"}.`);
+      setMessages((current) => [data.message, ...current]);
+      setSelectedUsers([]); setSelectedLeagues([]);
+      const form = document.getElementById("admin-message-form") as HTMLFormElement | null;
+      form?.reset();
+      await loadMessages();
+    } catch (caught) { onError(caught instanceof Error ? caught.message : "Could not send admin message"); }
+  }
+
+  return <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className={panelClass}>
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">In-app messaging</p>
+      <h2 className="mt-1 text-2xl font-black text-navy">Send admin notification</h2>
+      <p className="mt-2 text-sm font-semibold text-slate-500">Users receive these one-way admin messages in their profile message box with an unread badge.</p>
+      <form id="admin-message-form" action={sendMessage} className="mt-5 space-y-4">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(["ALL", "USER", "LEAGUE"] as const).map((option) => <button key={option} type="button" onClick={() => setAudienceType(option)} className={`rounded-2xl px-3 py-3 text-sm font-black transition ${audienceType === option ? "bg-navy text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{option === "ALL" ? "All users" : option === "USER" ? "Individual" : "Leagues"}</button>)}
+        </div>
+        {audienceType === "USER" && <div className="rounded-2xl bg-slate-50 p-3"><input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} className={inputClass} placeholder="Search users by name or email" /><div className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-1">{userOptions.map((user) => <button key={user.id} type="button" onClick={() => addUser(user)} className="w-full rounded-xl bg-white p-3 text-left text-xs font-bold text-slate-600 ring-1 ring-slate-100 hover:ring-emerald-200"><span className="block font-black text-navy">{user.displayName}</span>{user.email}</button>)}</div><div className="mt-3 flex flex-wrap gap-2">{selectedUsers.map((user) => <button key={user.id} type="button" onClick={() => setSelectedUsers((current) => current.filter((selected) => selected.id !== user.id))} className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{user.displayName} ×</button>)}</div></div>}
+        {audienceType === "LEAGUE" && <div className="rounded-2xl bg-slate-50 p-3"><input value={leagueSearch} onChange={(event) => setLeagueSearch(event.target.value)} className={inputClass} placeholder="Search leagues by name or join code" /><div className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-1">{leagueOptions.map((league) => <button key={league.id} type="button" onClick={() => addLeague(league)} className="w-full rounded-xl bg-white p-3 text-left text-xs font-bold text-slate-600 ring-1 ring-slate-100 hover:ring-emerald-200"><span className="block font-black text-navy">{league.name}</span>{league.joinCode} · {league.memberCount} members</button>)}</div><div className="mt-3 flex flex-wrap gap-2">{selectedLeagues.map((league) => <button key={league.id} type="button" onClick={() => setSelectedLeagues((current) => current.filter((selected) => selected.id !== league.id))} className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-black text-indigo-700">{league.name} ×</button>)}</div></div>}
+        <input name="title" required maxLength={140} className={inputClass} placeholder="Message title" />
+        <textarea name="body" required maxLength={3000} className={`${inputClass} min-h-40`} placeholder="Message body" />
+        <button disabled={disabled || (audienceType === "USER" && selectedUsers.length === 0) || (audienceType === "LEAGUE" && selectedLeagues.length === 0)} className={`${buttonClass} w-full bg-emerald-600`}>Send message</button>
+      </form>
+    </div>
+    <div className={panelClass}>
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Delivery log</p>
+      <h2 className="mt-1 text-2xl font-black text-navy">Recent messages</h2>
+      <div className="mt-5 max-h-[42rem] space-y-3 overflow-y-auto pr-1">
+        {isLoading && <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">Loading messages…</p>}
+        {!isLoading && messages.length === 0 && <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">No admin messages have been sent yet.</p>}
+        {messages.map((message) => <article key={message.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-navy">{message.title}</p><p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{message.audienceType} · {message.recipientCount} recipients</p></div><p className="shrink-0 text-xs font-bold text-slate-400">{formatDate(message.createdAt)}</p></div><p className="mt-3 whitespace-pre-wrap text-sm font-semibold text-slate-600">{message.body}</p>{message.leagues && message.leagues.length > 0 && <p className="mt-3 text-xs font-bold text-indigo-600">Leagues: {message.leagues.map((league) => `${league.name} (${league.joinCode})`).join(", ")}</p>}</article>)}
+      </div>
+    </div>
+  </div>;
+}
+
 function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab; isSuperAdmin: boolean; onChange: (tab: AdminTab) => void }) {
   const tabs: Array<{ id: AdminTab; label: string; description: string }> = [
     { id: "overview", label: "Overview", description: "Health and leagues" },
     { id: "users", label: "Users", description: "Moderation" },
     { id: "players", label: "Players", description: "WC26 player master" },
     { id: "predictions", label: "Predictions", description: "Points ledger" },
+    { id: "messages", label: "Messages", description: "Admin notifications" },
     { id: "announcements", label: "Banners & Popups", description: "Homepage and popup creatives" },
     { id: "matches", label: "Matches", description: "Scores and points" },
     { id: "tournaments", label: "Tournaments", description: "Streams and awards" },
@@ -703,7 +807,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
 
   return (
     <nav aria-label="Admin sections" className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-9">
+      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-10">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (

@@ -12,6 +12,17 @@ type LegalContent = {
   termsConditionsHtml?: string | null;
 };
 
+type AdminInboxMessage = {
+  id: string;
+  title: string;
+  body: string;
+  audienceType: string;
+  sentByAdminUsername?: string | null;
+  createdAt: string;
+  deliveredAt: string;
+  readAt?: string | null;
+};
+
 function getInitials(displayName?: string, email?: string) {
   const source = displayName?.trim() || email?.trim() || "You";
   const parts = source.split(/\s+/).filter(Boolean);
@@ -50,7 +61,7 @@ export function UserProfile() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<
-    "profile" | "gameRules" | "terms" | "settings" | null
+    "profile" | "messages" | "gameRules" | "terms" | "settings" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [passwordForm, setPasswordForm] = useState({
@@ -63,6 +74,10 @@ export function UserProfile() {
   const [localeMessage, setLocaleMessage] = useState<string | null>(null);
   const [localeError, setLocaleError] = useState<string | null>(null);
   const [legalContent, setLegalContent] = useState<LegalContent | null>(null);
+  const [inboxMessages, setInboxMessages] = useState<AdminInboxMessage[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [inboxError, setInboxError] = useState<string | null>(null);
+  const [isInboxLoading, setIsInboxLoading] = useState(false);
   const [legalContentError, setLegalContentError] = useState<string | null>(
     null,
   );
@@ -92,6 +107,37 @@ export function UserProfile() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [isOpen]);
+
+
+  async function loadInbox() {
+    setIsInboxLoading(true);
+    setInboxError(null);
+    try {
+      const response = await fetch("/api/messages", { cache: "no-store" });
+      const payload = (await response.json().catch(() => null)) as { messages?: AdminInboxMessage[]; unreadCount?: number; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || t("profile.messagesLoadError"));
+      setInboxMessages(payload?.messages ?? []);
+      setUnreadCount(payload?.unreadCount ?? 0);
+    } catch (caught) {
+      setInboxError(caught instanceof Error ? caught.message : t("profile.messagesLoadError"));
+    } finally {
+      setIsInboxLoading(false);
+    }
+  }
+
+  async function markMessageRead(messageId: string) {
+    setInboxMessages((current) => current.map((message) => message.id === messageId ? { ...message, readAt: message.readAt ?? new Date().toISOString() } : message));
+    setUnreadCount((current) => Math.max(0, current - 1));
+    await fetch(`/api/messages/${messageId}/read`, { method: "PATCH" }).catch(() => undefined);
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    void loadInbox();
+    const interval = window.setInterval(() => void loadInbox(), 60000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     if (!isOpen || legalContent) return;
@@ -227,9 +273,14 @@ export function UserProfile() {
         onClick={() => setIsOpen((current) => !current)}
         aria-expanded={isOpen}
         aria-label={t("profile.openMenu")}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-300 text-sm font-black text-navy shadow-lg shadow-emerald-950/20 ring-2 ring-white/25 transition hover:bg-emerald-200 active:scale-95"
+        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-emerald-300 text-sm font-black text-navy shadow-lg shadow-emerald-950/20 ring-2 ring-white/25 transition hover:bg-emerald-200 active:scale-95"
       >
         {initials}
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white ring-2 ring-white" aria-label={`${unreadCount} unread admin messages`}>
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
       </button>
 
       {isOpen && (
@@ -288,6 +339,47 @@ export function UserProfile() {
                 {user.phone && (
                   <p className="mt-1">Phone: {user.phone}</p>
                 )}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection((current) => current === "messages" ? null : "messages");
+                void loadInbox();
+              }}
+              aria-expanded={activeSection === "messages"}
+              className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-3 py-3 text-left text-sm font-black text-slate-900 transition hover:bg-red-50 active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-2">
+                {t("profile.messages")}
+                {unreadCount > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{unreadCount}</span>}
+              </span>
+              <span aria-hidden="true" className="text-red-600">
+                {activeSection === "messages" ? "−" : "+"}
+              </span>
+            </button>
+            {activeSection === "messages" && (
+              <div className="max-h-96 space-y-2 overflow-y-auto rounded-2xl bg-red-50 px-3 py-3 text-xs font-bold text-red-950">
+                {isInboxLoading && <p>{t("profile.messagesLoading")}</p>}
+                {inboxError && <p className="rounded-xl bg-white px-3 py-2 text-red-700">{inboxError}</p>}
+                {!isInboxLoading && !inboxError && inboxMessages.length === 0 && <p>{t("profile.messagesEmpty")}</p>}
+                {inboxMessages.map((message) => (
+                  <article key={message.id} className={`rounded-xl bg-white p-3 ring-1 ${message.readAt ? "ring-red-100" : "ring-red-300"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-slate-950">{message.title}</p>
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-red-500">{message.readAt ? t("profile.messageRead") : t("profile.messageNew")}</p>
+                      </div>
+                      {!message.readAt && (
+                        <button type="button" onClick={() => void markMessageRead(message.id)} className="shrink-0 rounded-lg bg-red-600 px-2 py-1 text-[10px] font-black text-white">
+                          {t("profile.markRead")}
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-slate-700">{message.body}</p>
+                    <p className="mt-2 text-[10px] font-bold text-slate-400">{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(message.createdAt))}</p>
+                  </article>
+                ))}
               </div>
             )}
             <LegalContentSection

@@ -55,6 +55,12 @@ enum NotificationStatus {
   SKIPPED
 }
 
+enum AdminMessageAudienceType {
+  ALL
+  USER
+  LEAGUE
+}
+
 model User {
   id                      String                   @id @default(uuid()) @db.Uuid
   email                   String                   @unique
@@ -83,6 +89,7 @@ model User {
   shareCards              ShareCard[]
   announcementViews       AnnouncementView[]
   passwordResetTokens     PasswordResetToken[]
+  adminMessageReceipts    AdminMessageReceipt[]
 
   @@index([globalPoints(sort: Desc), exactScoresCount(sort: Desc), registrationTimestamp(sort: Asc)], map: "leaderboard_tiebreaker_idx")
   @@index([isBanned])
@@ -90,10 +97,10 @@ model User {
 }
 
 model AdminAccount {
-  id           String   @id @default(uuid()) @db.Uuid
-  username     String   @unique
-  passwordHash String   @map("password_hash")
-  displayName  String   @map("display_name")
+  id                 String    @id @default(uuid()) @db.Uuid
+  username           String    @unique
+  passwordHash       String    @map("password_hash")
+  displayName        String    @map("display_name")
   isSuperAdmin       Boolean   @default(false) @map("is_super_admin")
   twoFactorSecret    String?   @map("two_factor_secret")
   twoFactorEnabledAt DateTime? @map("two_factor_enabled_at") @db.Timestamptz(6)
@@ -274,41 +281,42 @@ model Prediction {
 }
 
 model Outright {
-  userId             String      @id @map("user_id") @db.Uuid
-  tournamentId       String?     @map("tournament_id") @db.Uuid
-  championTeamId     String      @map("champion_team_id") @db.Uuid
-  secondRunnerUpTeamId String    @map("second_runner_up_team_id") @db.Uuid
-  fairPlayTeamId     String      @map("fair_play_team_id") @db.Uuid
-  bestPlayerId       String      @map("best_player_id") @db.Uuid
-  bestGkId           String      @map("best_gk_id") @db.Uuid
-  goldenBootPlayerId String      @map("golden_boot_player_id") @db.Uuid
-  youngPlayerId      String      @map("young_player_id") @db.Uuid
-  pointsAwarded      Int?        @map("points_awarded")
-  submittedAt        DateTime    @default(now()) @map("submitted_at") @db.Timestamptz(6)
-  updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tournament         Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
-  championTeam       Team        @relation("ChampionTeam", fields: [championTeamId], references: [id], onDelete: Restrict)
-  secondRunnerUpTeam Team        @relation("SecondRunnerUpTeam", fields: [secondRunnerUpTeamId], references: [id], onDelete: Restrict)
-  fairPlayTeam       Team        @relation("FairPlayTeam", fields: [fairPlayTeamId], references: [id], onDelete: Restrict)
-  bestPlayer         Player      @relation("BestPlayer", fields: [bestPlayerId], references: [id], onDelete: Restrict)
-  bestGoalkeeper     Player      @relation("BestGoalkeeper", fields: [bestGkId], references: [id], onDelete: Restrict)
-  goldenBoot         Player      @relation("GoldenBoot", fields: [goldenBootPlayerId], references: [id], onDelete: Restrict)
-  youngPlayer        Player      @relation("YoungPlayer", fields: [youngPlayerId], references: [id], onDelete: Restrict)
+  userId               String      @id @map("user_id") @db.Uuid
+  tournamentId         String?     @map("tournament_id") @db.Uuid
+  championTeamId       String      @map("champion_team_id") @db.Uuid
+  secondRunnerUpTeamId String      @map("second_runner_up_team_id") @db.Uuid
+  fairPlayTeamId       String      @map("fair_play_team_id") @db.Uuid
+  bestPlayerId         String      @map("best_player_id") @db.Uuid
+  bestGkId             String      @map("best_gk_id") @db.Uuid
+  goldenBootPlayerId   String      @map("golden_boot_player_id") @db.Uuid
+  youngPlayerId        String      @map("young_player_id") @db.Uuid
+  pointsAwarded        Int?        @map("points_awarded")
+  submittedAt          DateTime    @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  updatedAt            DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tournament           Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  championTeam         Team        @relation("ChampionTeam", fields: [championTeamId], references: [id], onDelete: Restrict)
+  secondRunnerUpTeam   Team        @relation("SecondRunnerUpTeam", fields: [secondRunnerUpTeamId], references: [id], onDelete: Restrict)
+  fairPlayTeam         Team        @relation("FairPlayTeam", fields: [fairPlayTeamId], references: [id], onDelete: Restrict)
+  bestPlayer           Player      @relation("BestPlayer", fields: [bestPlayerId], references: [id], onDelete: Restrict)
+  bestGoalkeeper       Player      @relation("BestGoalkeeper", fields: [bestGkId], references: [id], onDelete: Restrict)
+  goldenBoot           Player      @relation("GoldenBoot", fields: [goldenBootPlayerId], references: [id], onDelete: Restrict)
+  youngPlayer          Player      @relation("YoungPlayer", fields: [youngPlayerId], references: [id], onDelete: Restrict)
 
   @@index([tournamentId])
   @@map("outrights")
 }
 
 model League {
-  id            String               @id @default(uuid()) @db.Uuid
-  name          String
-  joinCode      String               @unique @map("join_code") @db.VarChar(8)
-  type          LeagueType           @default(PRIVATE)
-  ownerUserId   String?              @map("owner_user_id") @db.Uuid
-  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  memberships   LeagueMember[]
-  rankSnapshots LeagueRankSnapshot[]
+  id                  String                     @id @default(uuid()) @db.Uuid
+  name                String
+  joinCode            String                     @unique @map("join_code") @db.VarChar(8)
+  type                LeagueType                 @default(PRIVATE)
+  ownerUserId         String?                    @map("owner_user_id") @db.Uuid
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  memberships         LeagueMember[]
+  rankSnapshots       LeagueRankSnapshot[]
+  adminMessageTargets AdminMessageLeagueTarget[]
 
   @@index([type])
   @@map("leagues")
@@ -376,6 +384,48 @@ model NotificationDelivery {
   @@map("notification_deliveries")
 }
 
+model AdminMessage {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  title               String
+  body                String                     @db.Text
+  audienceType        AdminMessageAudienceType   @map("audience_type")
+  sentByAdminId       String?                    @map("sent_by_admin_id") @db.Uuid
+  sentByAdminUsername String?                    @map("sent_by_admin_username")
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  receipts            AdminMessageReceipt[]
+  leagueTargets       AdminMessageLeagueTarget[]
+
+  @@index([createdAt])
+  @@index([audienceType, createdAt])
+  @@map("admin_messages")
+}
+
+model AdminMessageReceipt {
+  id          String       @id @default(uuid()) @db.Uuid
+  messageId   String       @map("message_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  deliveredAt DateTime     @default(now()) @map("delivered_at") @db.Timestamptz(6)
+  readAt      DateTime?    @map("read_at") @db.Timestamptz(6)
+  message     AdminMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt, deliveredAt])
+  @@index([messageId])
+  @@map("admin_message_receipts")
+}
+
+model AdminMessageLeagueTarget {
+  messageId String       @map("message_id") @db.Uuid
+  leagueId  String       @map("league_id") @db.Uuid
+  message   AdminMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  league    League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, leagueId])
+  @@index([leagueId])
+  @@map("admin_message_league_targets")
+}
+
 model ShareCard {
   id        String          @id @default(uuid()) @db.Uuid
   userId    String          @map("user_id") @db.Uuid
@@ -404,16 +454,16 @@ model ShareCardItem {
 }
 
 model Announcement {
-  id          String             @id @default(uuid()) @db.Uuid
-  title       String
-  description String             @db.Text
-  imageUrl    String             @map("image_url") @db.Text
-  linkUrl     String             @map("link_url") @db.Text
-  isActive    Boolean            @default(true) @map("is_active")
-  displayFrequencyHours Int       @default(24) @map("display_frequency_hours")
-  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  views       AnnouncementView[]
+  id                    String             @id @default(uuid()) @db.Uuid
+  title                 String
+  description           String             @db.Text
+  imageUrl              String             @map("image_url") @db.Text
+  linkUrl               String             @map("link_url") @db.Text
+  isActive              Boolean            @default(true) @map("is_active")
+  displayFrequencyHours Int                @default(24) @map("display_frequency_hours")
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  views                 AnnouncementView[]
 
   @@index([isActive, createdAt])
   @@map("announcements")
@@ -433,15 +483,15 @@ model AnnouncementView {
 }
 
 model AppSetting {
-  id               Int      @id @default(1)
-  announcementText String?  @map("announcement_text")
-  bannerImageUrl   String?  @map("banner_image_url")
-  loginBackgroundImageUrl String? @map("login_background_image_url")
-  maintenanceMode  Boolean  @default(false) @map("maintenance_mode")
-  playerCatalogSource String @default("API") @map("player_catalog_source")
-  gameRulesHtml String? @map("game_rules_html")
-  termsConditionsHtml String? @map("terms_conditions_html")
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                      Int      @id @default(1)
+  announcementText        String?  @map("announcement_text")
+  bannerImageUrl          String?  @map("banner_image_url")
+  loginBackgroundImageUrl String?  @map("login_background_image_url")
+  maintenanceMode         Boolean  @default(false) @map("maintenance_mode")
+  playerCatalogSource     String   @default("API") @map("player_catalog_source")
+  gameRulesHtml           String?  @map("game_rules_html")
+  termsConditionsHtml     String?  @map("terms_conditions_html")
+  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("app_settings")
 }
