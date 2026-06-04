@@ -14,7 +14,7 @@ export function AppShell({ children, title = "FFM - WC2026", eyebrow }: { childr
   return (
     <AuthGate>
       <AnnouncementPopup />
-      <header className="sticky top-0 z-20 bg-gradient-to-br from-navy via-[#0a1b3e] to-[#0c2742] px-5 pb-8 pt-[max(1.5rem,env(safe-area-inset-top))] text-white shadow-[0_18px_44px_rgba(6,20,46,0.18)]">
+      <header className="sticky top-0 z-40 bg-gradient-to-br from-navy via-[#0a1b3e] to-[#0c2742] px-5 pb-8 pt-[max(1.5rem,env(safe-area-inset-top))] text-white shadow-[0_18px_44px_rgba(6,20,46,0.18)]">
         <div className="flex items-start gap-3">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.35rem] bg-white/10 shadow-lg shadow-emerald-950/20 ring-1 ring-white/15">
             <PlatformLogo className="h-12 w-12" />
