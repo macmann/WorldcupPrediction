@@ -126,9 +126,25 @@ export function UserProfile() {
   }
 
   async function markMessageRead(messageId: string) {
+    const target = inboxMessages.find((message) => message.id === messageId);
     setInboxMessages((current) => current.map((message) => message.id === messageId ? { ...message, readAt: message.readAt ?? new Date().toISOString() } : message));
-    setUnreadCount((current) => Math.max(0, current - 1));
+    if (target && !target.readAt) setUnreadCount((current) => Math.max(0, current - 1));
     await fetch(`/api/messages/${messageId}/read`, { method: "PATCH" }).catch(() => undefined);
+  }
+
+  async function deleteMessage(messageId: string) {
+    const target = inboxMessages.find((message) => message.id === messageId);
+    if (!target) return;
+
+    setInboxMessages((current) => current.filter((message) => message.id !== messageId));
+    if (!target.readAt) setUnreadCount((current) => Math.max(0, current - 1));
+
+    const response = await fetch(`/api/messages/${messageId}`, { method: "DELETE" }).catch(() => null);
+    if (!response?.ok) {
+      setInboxMessages((current) => [target, ...current].sort((a, b) => new Date(b.deliveredAt).getTime() - new Date(a.deliveredAt).getTime()));
+      if (!target.readAt) setUnreadCount((current) => current + 1);
+      setInboxError(t("profile.messageDeleteError"));
+    }
   }
 
   useEffect(() => {
@@ -370,11 +386,16 @@ export function UserProfile() {
                         <p className="text-sm font-black text-slate-950">{message.title}</p>
                         <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-red-500">{message.readAt ? t("profile.messageRead") : t("profile.messageNew")}</p>
                       </div>
-                      {!message.readAt && (
-                        <button type="button" onClick={() => void markMessageRead(message.id)} className="shrink-0 rounded-lg bg-red-600 px-2 py-1 text-[10px] font-black text-white">
-                          {t("profile.markRead")}
+                      <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                        {!message.readAt && (
+                          <button type="button" onClick={() => void markMessageRead(message.id)} className="rounded-lg bg-red-600 px-2 py-1 text-[10px] font-black text-white">
+                            {t("profile.markRead")}
+                          </button>
+                        )}
+                        <button type="button" onClick={() => void deleteMessage(message.id)} className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600 transition hover:bg-slate-200">
+                          {t("profile.deleteMessage")}
                         </button>
-                      )}
+                      </div>
                     </div>
                     <p className="mt-2 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-slate-700">{message.body}</p>
                     <p className="mt-2 text-[10px] font-bold text-slate-400">{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(message.createdAt))}</p>
