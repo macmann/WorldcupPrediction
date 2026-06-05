@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useMemo, useState, useTransition } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
+import { ButtonSpinner } from "@/components/ButtonSpinner";
 import { Card } from "@/components/Cards";
 import { PlatformLogo } from "@/components/Icons";
 import { useStore } from "@/store/useStore";
@@ -15,30 +16,31 @@ function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
     setError(null);
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/auth/reset-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, password })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error ?? "Could not reset password");
-        setUser(data.user);
-        router.push("/dashboard");
-      } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Could not reset password");
-      }
-    });
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not reset password");
+      setUser(data.user);
+      router.push("/dashboard");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not reset password");
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -63,13 +65,13 @@ function ResetPasswordForm() {
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <label className="block text-sm font-black">New password
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold" />
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} autoComplete="new-password" disabled={isSubmitting} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:cursor-not-allowed disabled:bg-slate-100" />
             </label>
             <label className="block text-sm font-black">Confirm password
-              <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold" />
+              <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={8} autoComplete="new-password" disabled={isSubmitting} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:cursor-not-allowed disabled:bg-slate-100" />
             </label>
             {error && <p className="rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
-            <button disabled={isPending} className="w-full rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300">{isPending ? "Resetting password…" : "Reset password"}</button>
+            <button disabled={isSubmitting} aria-busy={isSubmitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300">{isSubmitting ? <ButtonSpinner /> : null}<span>{isSubmitting ? "Resetting password…" : "Reset password"}</span></button>
           </form>
         )}
         <p className="mt-5 text-center text-sm font-semibold text-slate-500">Need to sign in? <Link href="/" className="font-black text-indigo-700">Back to sign in</Link></p>

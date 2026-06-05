@@ -2,6 +2,7 @@
 
 import { formatAppDateTime } from "@/lib/dateTime";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { ButtonSpinner } from "@/components/ButtonSpinner";
 import { PlatformLogo } from "@/components/Icons";
 
 const panelClass = "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm";
@@ -671,25 +672,29 @@ function AdminLogin({ onLogin }: { onLogin: (admin: AdminSession) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [credentials, setCredentials] = useState({ username: "", password: "" });
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function login(formData: FormData) {
+  async function login(formData: FormData) {
+    if (isSubmitting) return;
     const payload = { username: String(formData.get("username") ?? credentials.username), password: String(formData.get("password") ?? credentials.password), totpCode: String(formData.get("totpCode") ?? "") };
     setError(null);
-    startTransition(async () => {
-      try {
-        const data = await adminJson<{ admin?: AdminSession; twoFactorRequired?: boolean }>("/api/admin/auth/login", { method: "POST", body: JSON.stringify(payload) });
-        if (data.twoFactorRequired) {
-          setCredentials({ username: payload.username, password: payload.password });
-          setTwoFactorRequired(true);
-          return;
-        }
-        if (data.admin) onLogin(data.admin);
-      } catch (loginError) { setError(loginError instanceof Error ? loginError.message : "Could not sign in"); }
-    });
+    setIsSubmitting(true);
+    try {
+      const data = await adminJson<{ admin?: AdminSession; twoFactorRequired?: boolean }>("/api/admin/auth/login", { method: "POST", body: JSON.stringify(payload) });
+      if (data.twoFactorRequired) {
+        setCredentials({ username: payload.username, password: payload.password });
+        setTwoFactorRequired(true);
+        setIsSubmitting(false);
+        return;
+      }
+      if (data.admin) onLogin(data.admin);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Could not sign in");
+      setIsSubmitting(false);
+    }
   }
 
-  return <main className="flex min-h-dvh items-center justify-center bg-slate-950 p-6 text-white"><section className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-8 text-slate-900 shadow-2xl"><div className="flex items-center gap-4"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy text-white"><PlatformLogo className="h-12 w-12" /></span><div><p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">Admin only</p><h1 className="text-3xl font-black text-navy">Admin Console</h1></div></div><p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">{twoFactorRequired ? "Enter the 6-digit code from your authenticator app to finish signing in." : "Use the separate admin username and password. Player accounts cannot sign in here."}</p>{error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}<form action={login} className="mt-6 space-y-4">{twoFactorRequired ? <><input name="username" type="hidden" value={credentials.username} readOnly /><input name="password" type="hidden" value={credentials.password} readOnly /><input name="totpCode" className={inputClass} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*" placeholder="Authenticator code" required autoFocus /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Verifying…" : "Verify and sign in"}</button><button type="button" disabled={isPending} onClick={() => { setTwoFactorRequired(false); setCredentials({ username: "", password: "" }); setError(null); }} className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200 disabled:opacity-60">Use different credentials</button></> : <><input name="username" className={inputClass} autoComplete="username" placeholder="Admin username" required /><input name="password" className={inputClass} autoComplete="current-password" placeholder="Admin password" type="password" required /><button disabled={isPending} className={`${buttonClass} w-full bg-navy`}>{isPending ? "Signing in…" : "Sign in to admin"}</button></>}</form></section></main>;
+  return <main className="flex min-h-dvh items-center justify-center bg-slate-950 p-6 text-white"><section className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-8 text-slate-900 shadow-2xl"><div className="flex items-center gap-4"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy text-white"><PlatformLogo className="h-12 w-12" /></span><div><p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">Admin only</p><h1 className="text-3xl font-black text-navy">Admin Console</h1></div></div><p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">{twoFactorRequired ? "Enter the 6-digit code from your authenticator app to finish signing in." : "Use the separate admin username and password. Player accounts cannot sign in here."}</p>{error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}<form action={login} className="mt-6 space-y-4">{twoFactorRequired ? <><input name="username" type="hidden" value={credentials.username} readOnly /><input name="password" type="hidden" value={credentials.password} readOnly /><input name="totpCode" className={inputClass} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*" placeholder="Authenticator code" required autoFocus disabled={isSubmitting} /><button disabled={isSubmitting} aria-busy={isSubmitting} className={`${buttonClass} flex w-full items-center justify-center gap-2 bg-navy`}>{isSubmitting ? <ButtonSpinner /> : null}<span>{isSubmitting ? "Verifying…" : "Verify and sign in"}</span></button><button type="button" disabled={isSubmitting} onClick={() => { setTwoFactorRequired(false); setCredentials({ username: "", password: "" }); setError(null); }} className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200 disabled:opacity-60">Use different credentials</button></> : <><input name="username" className={inputClass} autoComplete="username" placeholder="Admin username" required disabled={isSubmitting} /><input name="password" className={inputClass} autoComplete="current-password" placeholder="Admin password" type="password" required disabled={isSubmitting} /><button disabled={isSubmitting} aria-busy={isSubmitting} className={`${buttonClass} flex w-full items-center justify-center gap-2 bg-navy`}>{isSubmitting ? <ButtonSpinner /> : null}<span>{isSubmitting ? "Signing in…" : "Sign in to admin"}</span></button></>}</form></section></main>;
 }
 
 

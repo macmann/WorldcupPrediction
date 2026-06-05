@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState, useTransition } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { ButtonSpinner } from "@/components/ButtonSpinner";
 import { PlatformLogo } from "@/components/Icons";
 import { useStore } from "@/store/useStore";
 
@@ -15,7 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [loginBackgroundImageUrl, setLoginBackgroundImageUrl] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -50,24 +51,25 @@ export default function LoginPage() {
     return () => { mounted = false; };
   }, []);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
     setError(null);
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error ?? "Could not sign in");
-        setUser(data.user);
-        router.push("/dashboard");
-      } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Could not sign in");
-      }
-    });
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not sign in");
+      setUser(data.user);
+      router.push("/dashboard");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not sign in");
+      setIsSubmitting(false);
+    }
   }
 
   if (checkingSession) {
@@ -110,23 +112,24 @@ export default function LoginPage() {
             <label className="block text-[13px] font-black uppercase tracking-[0.14em] text-slate-100/90">Email
               <span className="mt-2 flex items-center gap-3 rounded-[1.35rem] border border-teal-300/35 bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(17,94,89,0.24)),repeating-linear-gradient(90deg,rgba(255,255,255,0.035)_0_1px,transparent_1px_5px)] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] transition focus-within:border-teal-200/85 focus-within:shadow-[0_0_28px_rgba(45,212,191,0.22),inset_0_1px_0_rgba(255,255,255,0.12)]">
                 <svg className="h-4 w-4 shrink-0 text-teal-100/48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" placeholder="you@example.com" className="min-w-0 flex-1 bg-transparent text-base font-bold normal-case tracking-normal text-white placeholder:text-slate-300/42" />
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" placeholder="you@example.com" disabled={isSubmitting} className="min-w-0 flex-1 bg-transparent text-base font-bold normal-case tracking-normal text-white placeholder:text-slate-300/42 disabled:cursor-not-allowed disabled:opacity-60" />
               </span>
             </label>
             <label className="block text-[13px] font-black uppercase tracking-[0.14em] text-slate-100/90">Password
               <span className="mt-2 flex items-center gap-3 rounded-[1.35rem] border border-teal-300/35 bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(17,94,89,0.24)),repeating-linear-gradient(90deg,rgba(255,255,255,0.035)_0_1px,transparent_1px_5px)] px-4 py-3.5 shadow-[0_0_34px_rgba(45,212,191,0.14),inset_0_1px_0_rgba(255,255,255,0.09)] transition focus-within:border-teal-200/85 focus-within:shadow-[0_0_30px_rgba(45,212,191,0.25),inset_0_1px_0_rgba(255,255,255,0.12)]">
                 <svg className="h-4 w-4 shrink-0 text-teal-100/48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-                <input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" placeholder="Password" className="min-w-0 flex-1 bg-transparent text-base font-bold normal-case tracking-normal text-white placeholder:text-slate-300/42" />
-                <button type="button" onClick={() => setShowPassword((current) => !current)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-teal-50/72 transition hover:bg-white/10" aria-label={showPassword ? "Hide password" : "Show password"}>
+                <input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" placeholder="Password" disabled={isSubmitting} className="min-w-0 flex-1 bg-transparent text-base font-bold normal-case tracking-normal text-white placeholder:text-slate-300/42 disabled:cursor-not-allowed disabled:opacity-60" />
+                <button type="button" onClick={() => setShowPassword((current) => !current)} disabled={isSubmitting} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-teal-50/72 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60" aria-label={showPassword ? "Hide password" : "Show password"}>
                   <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{showPassword ? null : <path d="m4 4 16 16"/>}</svg>
                 </button>
               </span>
             </label>
             <div className="text-right text-sm font-bold"><Link href="/forgot-password" className="text-[#c4b5fd] transition hover:text-violet-200">Forgot password?</Link></div>
             {error && <p className="rounded-2xl border border-red-300/30 bg-red-500/14 p-3 text-sm font-bold text-red-100">{error}</p>}
-            <button disabled={isPending} className="group mt-1 flex w-full items-center justify-center gap-2 rounded-[1.35rem] bg-[linear-gradient(135deg,#22c55e_0%,#059669_55%,#047857_100%)] py-4 font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.34),inset_0_1px_0_rgba(255,255,255,0.26)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55">
-              <span>{isPending ? "Signing in…" : "Sign in"}</span>
-              <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+            <button disabled={isSubmitting} aria-busy={isSubmitting} className="group mt-1 flex w-full items-center justify-center gap-2 rounded-[1.35rem] bg-[linear-gradient(135deg,#22c55e_0%,#059669_55%,#047857_100%)] py-4 font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.34),inset_0_1px_0_rgba(255,255,255,0.26)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55">
+              {isSubmitting ? <ButtonSpinner /> : null}
+              <span>{isSubmitting ? "Signing in…" : "Sign in"}</span>
+              {!isSubmitting && <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>}
             </button>
           </form>
           <p className="mt-5 text-center text-sm font-semibold text-slate-200/76">No account yet? <Link href="/signup" className="font-black text-[#c4b5fd] transition hover:text-violet-200">Create one</Link></p>
