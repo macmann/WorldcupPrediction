@@ -292,8 +292,12 @@ export default function AdminConsole() {
     setError(null); setMessage(null);
     startTransition(async () => {
       try {
-        const result = await adminJson<{ upserted: number; queuedForScoring: number }>("/api/admin/matches/sync", { method: "POST" });
-        setMessage(`Fixture sync completed. Updated ${result.upserted} matches and queued ${result.queuedForScoring} for scoring.`);
+        const result = await adminJson<{ queued?: boolean; jobId?: string | null; requestedAt?: string; upserted?: number; queuedForScoring?: number }>("/api/admin/matches/sync", { method: "POST" });
+        if (result.queued) {
+          setMessage(`Fixture sync queued${result.jobId ? ` as job ${result.jobId}` : ""}. Refresh the operations overview in a moment to see updated scores and scoring totals.`);
+        } else {
+          setMessage(`Fixture sync completed. Updated ${result.upserted ?? 0} matches and queued ${result.queuedForScoring ?? 0} for scoring.`);
+        }
         loadAdminData();
       } catch (syncError) {
         setError(syncError instanceof Error ? syncError.message : "Could not run fixture sync");
@@ -477,7 +481,7 @@ export default function AdminConsole() {
           {activeTab === "matches" && (
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Matches & Operations</p><h2 className="mt-1 text-2xl font-black text-navy">Scores and recalculation tools</h2>
-              <div className="mt-4"><button type="button" onClick={runFixtureSyncNow} disabled={isPending} className={`${buttonClass} bg-emerald-600`}>Fetch scores from API now</button><p className="mt-1 text-xs font-semibold text-slate-500">Runs fixture ingestion immediately (bypasses scheduler), then queues completed matches for scoring.</p></div>
+              <div className="mt-4"><button type="button" onClick={runFixtureSyncNow} disabled={isPending} className={`${buttonClass} bg-emerald-600`}>{isPending ? <span className="inline-flex items-center gap-2"><ButtonSpinner /> Queueing sync…</span> : "Fetch scores from API now"}</button><p className="mt-1 text-xs font-semibold text-slate-500">Queues fixture ingestion immediately (bypasses the 4-hour scheduler), then queues completed matches for scoring in the background.</p></div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 <form action={overrideScore} className="rounded-2xl border border-red-100 bg-red-50 p-4"><h3 className="font-black text-red-700">Manual result overwrite</h3><p className="mt-1 text-xs font-semibold text-red-600/80">Inputs final 90-minute score and forces FINISHED.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_90px_90px]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><input name="homeScore" className={inputClass} placeholder="Home" type="number" min="0" required /><input name="awayScore" className={inputClass} placeholder="Away" type="number" min="0" required /></div><button disabled={isPending} className={`${buttonClass} mt-3 w-full bg-red-600`}>Override final score</button></form>
                 <form action={recalculate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Point recalculation trigger</h3><p className="mt-1 text-xs font-semibold text-slate-500">Pick a finished match by date/filter, or type a Match ID directly.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"><input type="date" value={recalcDate} onChange={(event) => setRecalcDate(event.target.value)} className={inputClass} /><button type="button" onClick={() => loadRecalculateMatches(recalcDate)} disabled={isPending || !recalcDate} className={`${buttonClass} bg-slate-600`}>Load date</button></div><input value={recalcFilter} onChange={(event) => setRecalcFilter(event.target.value)} className={`${inputClass} mt-3`} placeholder="Filter by match ID or team name" /><select name="matchId" className={`${inputClass} mt-3`}><option value="">Select finished match</option>{filteredRecalcMatches.map((match) => { const home = match.homeScore90 ?? match.homeScore ?? "–"; const away = match.awayScore90 ?? match.awayScore ?? "–"; return <option key={match.id} value={match.id}>{`#${match.id} · ${match.homeTeam} ${home}-${away} ${match.awayTeam} · ${formatAppDateTime(match.kickoffTime)}`}</option>; })}</select><div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"><input name="manualMatchId" className={inputClass} placeholder="Or enter Match ID manually" type="number" /><button disabled={isPending} className={`${buttonClass} bg-slate-800`}>Recalculate points</button></div></form>
@@ -834,7 +838,15 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
 }
 
 function MetricCard({ label, value, tone = "navy" }: { label: string; value: number; tone?: "navy" | "red" }) { return <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">{label}</p><p className={`mt-3 text-4xl font-black ${tone === "red" ? "text-red-600" : "text-navy"}`}>{value}</p></div>; }
-function StatusCard({ title, status }: { title: string; status?: JobStatus | null }) { return <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-400">{title}</p><p className={`mt-2 font-black ${status?.lastError ? "text-red-600" : "text-emerald-700"}`}>{status?.lastError ? "Needs attention" : status?.lastSuccessAt ? "Healthy" : "No run yet"}</p><p className="text-xs font-semibold text-slate-500">Success: {formatDate(status?.lastSuccessAt)}</p>{status?.lastError && <p className="mt-1 text-xs font-bold text-red-600">{status.lastError}</p>}</div>; }
+function isQueuedPayload(payload: unknown) {
+  return Boolean(payload && typeof payload === "object" && "queued" in payload && (payload as { queued?: unknown }).queued === true);
+}
+function StatusCard({ title, status }: { title: string; status?: JobStatus | null }) {
+  const isQueued = isQueuedPayload(status?.lastPayload);
+  const label = status?.lastError ? "Needs attention" : isQueued ? "Queued" : status?.lastSuccessAt ? "Healthy" : "No run yet";
+  const tone = status?.lastError ? "text-red-600" : isQueued ? "text-amber-600" : "text-emerald-700";
+  return <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-400">{title}</p><p className={`mt-2 font-black ${tone}`}>{label}</p><p className="text-xs font-semibold text-slate-500">Success: {formatDate(status?.lastSuccessAt)}</p>{isQueued && <p className="mt-1 text-xs font-bold text-amber-600">Waiting for the background worker to finish this run.</p>}{status?.lastError && <p className="mt-1 text-xs font-bold text-red-600">{status.lastError}</p>}</div>;
+}
 
 function UserRow({ user, disabled, onUpdate, onAudit, onDelete, onRemoveFromGlobalLeague }: { user: AdminUser; disabled: boolean; onUpdate: (id: string, payload: Record<string, unknown>, success: string) => void; onAudit: (id: string) => void; onDelete: (id: string, label: string) => void; onRemoveFromGlobalLeague: (id: string, label: string) => void }) {
   const [displayName, setDisplayName] = useState(user.displayName); const [email, setEmail] = useState(user.email); const [globalPoints, setGlobalPoints] = useState(String(user.globalPoints)); const [exactScoresCount, setExactScoresCount] = useState(String(user.exactScoresCount)); const [correctOutcomesCount, setCorrectOutcomesCount] = useState(String(user.correctOutcomesCount)); const [banReason, setBanReason] = useState(user.banReason ?? ""); const [password, setPassword] = useState("");

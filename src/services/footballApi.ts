@@ -61,6 +61,20 @@ type Provider<T> = {
   load: () => Promise<T>;
 };
 
+const fixtureFetchTimeoutMs = Number(process.env.FIXTURE_FETCH_TIMEOUT_MS ?? 15000);
+
+async function fetchJsonWithTimeout(url: string, init: RequestInit, label: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(new Error(`${label} timed out after ${fixtureFetchTimeoutMs}ms`)), fixtureFetchTimeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (!response.ok) throw new Error(`${label} failed: ${response.status}`);
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function mapStatus(status: string): MatchStatus {
   const normalized = status.toUpperCase();
   if (["FINISHED", "AWARDED", "COMPLETED"].includes(normalized)) return MatchStatus.FINISHED;
@@ -130,12 +144,11 @@ function compactCatalog(catalog: ExternalCatalog): ExternalCatalog {
 }
 
 async function fetchFootballDataFixtures(competitionCode = config.worldCupCompetitionCode): Promise<ExternalFixture[]> {
-  const response = await fetch(`${config.footballApiBaseUrl}/competitions/${competitionCode}/matches`, {
-    headers: { "X-Auth-Token": config.footballApiKey },
-    cache: "no-store"
-  });
-  if (!response.ok) throw new Error(`Football API failed: ${response.status}`);
-  const payload = await response.json();
+  const payload = await fetchJsonWithTimeout(
+    `${config.footballApiBaseUrl}/competitions/${competitionCode}/matches`,
+    { headers: { "X-Auth-Token": config.footballApiKey }, cache: "no-store" },
+    `Football API ${competitionCode} matches`
+  );
   return (payload.matches ?? []).map((match: any) => {
     const duration = match.score?.duration;
     const canUseFullTimeAsStandardTime = !duration || duration === "REGULAR";
@@ -163,12 +176,11 @@ async function fetchFootballDataFixtures(competitionCode = config.worldCupCompet
 }
 
 async function fetchWc2026ApiFixtures(): Promise<ExternalFixture[]> {
-  const response = await fetch(`${config.wc2026ApiBaseUrl}/matches`, {
-    headers: { Authorization: `Bearer ${config.wc2026ApiKey}` },
-    cache: "no-store"
-  });
-  if (!response.ok) throw new Error(`WC2026 API failed: ${response.status}`);
-  const payload = await response.json();
+  const payload = await fetchJsonWithTimeout(
+    `${config.wc2026ApiBaseUrl}/matches`,
+    { headers: { Authorization: `Bearer ${config.wc2026ApiKey}` }, cache: "no-store" },
+    "WC2026 API matches"
+  );
   const matches = unwrapArray(payload, ["matches", "fixtures"]);
 
   return matches.map((match: any) => {
@@ -227,12 +239,11 @@ export async function fetchWorldCupFixtures(): Promise<ExternalFixture[]> {
 
 export async function fetchFootballDataCompetitions(): Promise<ExternalCompetition[]> {
   if (!config.footballApiKey) return [];
-  const response = await fetch(`${config.footballApiBaseUrl}/competitions`, {
-    headers: { "X-Auth-Token": config.footballApiKey },
-    cache: "no-store"
-  });
-  if (!response.ok) throw new Error(`Football API competitions failed: ${response.status}`);
-  const payload = await response.json();
+  const payload = await fetchJsonWithTimeout(
+    `${config.footballApiBaseUrl}/competitions`,
+    { headers: { "X-Auth-Token": config.footballApiKey }, cache: "no-store" },
+    "Football API competitions"
+  );
   return unwrapArray(payload, ["competitions"]).map((competition: any) => {
     const season = competition.currentSeason ?? {};
     const code = competition.code ?? competition.id;
