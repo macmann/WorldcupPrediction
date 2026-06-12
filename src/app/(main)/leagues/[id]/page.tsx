@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
@@ -74,7 +75,7 @@ export default async function LeagueDetail({ params }: { params: { id: string } 
               {league.leaderboard.map((row) => (
                 <tr key={row.user.id} className="border-t border-slate-100">
                   <td className="p-3 font-black">{row.rank}</td>
-                  <td className="font-bold">{row.user.displayName}</td>
+                  <td className="font-bold"><Link href={`/people/${row.user.id}`} className="text-navy underline-offset-4 hover:underline">{row.user.displayName}</Link></td>
                   <td>{row.user.globalPoints}</td>
                   <td className="pr-3 text-xs font-semibold text-slate-500">{new Date(row.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</td>
                 </tr>
