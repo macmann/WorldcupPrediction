@@ -180,7 +180,7 @@ async function DailyHistorySection({ date, t }: { date?: string; t: T }) {
               {summary.leaderboard.length ? summary.leaderboard.map((row) => (
                 <tr key={row.userId} className={`border-t border-slate-100 ${row.isCurrentUser ? "bg-emerald-50" : ""}`}>
                   <td className="p-3 font-black">{row.rank}</td>
-                  <td className="font-bold">{row.displayName}<span className="block text-xs font-medium text-slate-500">{row.exactScores} {t("history.exactScores")} • {row.correctOutcomes}/{summary.finishedMatchCount} {t("history.correctOutcomes")}</span></td>
+                  <td className="font-bold"><Link href={`/people/${row.userId}`} className="text-navy underline-offset-4 hover:underline">{row.displayName}</Link><span className="block text-xs font-medium text-slate-500">{row.exactScores} {t("history.exactScores")} • {row.correctOutcomes}/{summary.finishedMatchCount} {t("history.correctOutcomes")}</span></td>
                   <td className="font-black">{row.points}</td>
                   <td className="pr-3 font-black text-emerald-700">{row.accuracy}%</td>
                 </tr>
