@@ -82,8 +82,8 @@ async function ingestFixtureBatch(fixtures: ExternalFixture[], tournamentId?: st
     const standardTimeHome = fixture.homeScore90 ?? fixture.homeScore;
     const standardTimeAway = fixture.awayScore90 ?? fixture.awayScore;
     if (fixture.status === MatchStatus.FINISHED && standardTimeHome !== null && standardTimeAway !== null) {
-      await enqueueScoringJob(fixture.id);
-      queuedForScoring += 1;
+      const scoringJob = await enqueueScoringJob(fixture.id);
+      if (scoringJob) queuedForScoring += 1;
     }
   }
   return { upserted, queuedForScoring };
@@ -108,8 +108,14 @@ export async function ingestFixtures() {
 
   const results = [];
   for (const tournament of externalTournaments) {
-    const result = await ingestTournamentFixtures(tournament);
-    results.push({ tournament: tournament.name, ...result });
+    try {
+      const result = await ingestTournamentFixtures(tournament);
+      results.push({ tournament: tournament.name, ...result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown fixture ingestion error";
+      console.warn(`Fixture ingestion failed for ${tournament.name}: ${message}`);
+      results.push({ tournament: tournament.name, upserted: 0, queuedForScoring: 0, skipped: true, error: message });
+    }
   }
 
   const hasExternalWorldCup = externalTournaments.some((tournament) => footballDataCode(tournament.externalId) === config.worldCupCompetitionCode);
