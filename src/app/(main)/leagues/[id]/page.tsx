@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
 import { DailyShareActions } from "@/components/DailyShareActions";
+import { LeagueManageActions } from "@/components/LeagueManageActions";
 import { getLeagueDetail } from "@/lib/leagues";
 import { getServerTranslator } from "@/lib/serverI18n";
 
@@ -55,6 +56,7 @@ export default async function LeagueDetail({ params }: { params: { id: string } 
             <p className="mt-1 font-black">{league.isOwner ? t("common.owner") : t("common.member")}</p>
           </div>
         </div>
+        {league.type === "PRIVATE" && <LeagueManageActions leagueId={league.id} isOwner={league.isOwner} />}
       </Card>
 
       <Card>
