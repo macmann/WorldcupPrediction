@@ -99,6 +99,20 @@ export default async function Dashboard() {
           <p className="mt-3 rounded-2xl bg-slate-100 p-4 text-sm font-semibold text-slate-500">{t("dashboard.unavailable")}</p>
         )}
       </Card>
+
+      <Link
+        href="/tournament-view"
+        className="group block overflow-hidden rounded-[1.75rem] bg-[radial-gradient(circle_at_12%_20%,rgba(103,232,249,0.34),transparent_28%),linear-gradient(135deg,#06142e_0%,#12356d_56%,#0f766e_100%)] p-5 text-white shadow-[0_18px_42px_rgba(6,20,46,0.18)] transition active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-cyan-100/80">New bracket hub</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">World Cup 2026 Tournament View</h2>
+            <p className="mt-2 text-sm font-semibold text-blue-100/85">Browse groups, points, and knockout fixtures in a mobile-first tournament board.</p>
+          </div>
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15 text-2xl ring-1 ring-white/20 transition group-hover:translate-x-1">→</span>
+        </div>
+      </Link>
     </AppShell>
   );
 }
