@@ -11,6 +11,11 @@ import { ingestFixtures } from "@/services/fixtures";
 type GroupRow = { id: string; name: string; flagEmoji: string | null; flagImageUrl: string | null; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDifference: number; points: number };
 
 const stageOrder: Record<StageType, number> = { GROUP: 0, ROUND_OF_32: 1, ROUND_OF_16: 2, QUARTER_FINAL: 3, SEMI_FINAL: 4, THIRD_PLACE: 5, FINAL: 6 };
+function getCurrentStage(matches: Array<{ stage: StageType; status: MatchStatus }>) {
+  const unfinished = matches.filter((match) => match.status !== MatchStatus.FINISHED).sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage]);
+  if (unfinished[0]) return unfinished[0].stage;
+  return matches.sort((a, b) => stageOrder[b.stage] - stageOrder[a.stage])[0]?.stage ?? StageType.GROUP;
+}
 function groupSortValue(groupName: string) { return groupName.length === 1 ? groupName.charCodeAt(0) : Number.MAX_SAFE_INTEGER; }
 function createRow(id: string, name: string, flagEmoji?: string | null): GroupRow { return { id, name, flagEmoji: teamFlagEmoji(name, flagEmoji), flagImageUrl: teamFlagImageUrl(name), played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 }; }
 function applyResult(row: GroupRow, goalsFor: number, goalsAgainst: number) { row.played += 1; row.goalsFor += goalsFor; row.goalsAgainst += goalsAgainst; row.goalDifference = row.goalsFor - row.goalsAgainst; if (goalsFor > goalsAgainst) { row.won += 1; row.points += 3; } else if (goalsFor === goalsAgainst) { row.drawn += 1; row.points += 1; } else { row.lost += 1; } }
@@ -46,7 +51,8 @@ export async function GET() {
     }
 
     const groups = Array.from(groupRows.entries()).sort(([a], [b]) => groupSortValue(a) - groupSortValue(b) || a.localeCompare(b)).map(([name, rows]) => ({ name: `Group ${name}`, teams: Array.from(rows.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name)).map((team, index) => ({ ...team, rank: index + 1 })) }));
-    const fixtures = uniqueMatches.sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage] || a.kickoffTime.getTime() - b.kickoffTime.getTime()).map((match) => ({ id: match.id, stage: match.stage, groupName: normalizeMatchGroupName(match.groupName), kickoffTime: match.kickoffTime, venue: match.venue, status: match.status, homeTeam: match.homeTeam, awayTeam: match.awayTeam, homeScore: match.homeScore, awayScore: match.awayScore, homeFlagEmoji: teamFlagEmoji(match.homeTeam, match.homeTeamRef?.flagEmoji), awayFlagEmoji: teamFlagEmoji(match.awayTeam, match.awayTeamRef?.flagEmoji), homeFlagImageUrl: teamFlagImageUrl(match.homeTeam), awayFlagImageUrl: teamFlagImageUrl(match.awayTeam), tournament: match.tournament }));
-    return NextResponse.json({ tournament, groups, fixtures });
+    const currentStage = getCurrentStage([...uniqueMatches]);
+    const knockoutFixtures = uniqueMatches.filter((match) => match.stage !== StageType.GROUP && match.stage !== StageType.THIRD_PLACE).sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage] || a.kickoffTime.getTime() - b.kickoffTime.getTime()).map((match) => ({ id: match.id, stage: match.stage, groupName: normalizeMatchGroupName(match.groupName), kickoffTime: match.kickoffTime, venue: match.venue, status: match.status, homeTeam: match.homeTeam, awayTeam: match.awayTeam, homeScore: match.homeScore, awayScore: match.awayScore, homeFlagEmoji: teamFlagEmoji(match.homeTeam, match.homeTeamRef?.flagEmoji), awayFlagEmoji: teamFlagEmoji(match.awayTeam, match.awayTeamRef?.flagEmoji), homeFlagImageUrl: teamFlagImageUrl(match.homeTeam), awayFlagImageUrl: teamFlagImageUrl(match.awayTeam), tournament: match.tournament }));
+    return NextResponse.json({ tournament, currentStage, groups, knockoutFixtures });
   } catch (error) { return jsonError(error); }
 }
