@@ -236,6 +236,14 @@ function readNestedValue(record: any, keys: string[]) {
   return undefined;
 }
 
+function readFirstNestedValue(record: any, keys: string[]) {
+  for (const key of keys) {
+    const value = readNestedValue(record, [key]);
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return undefined;
+}
+
 function parseInteger(value: unknown, fallback = 0) {
   if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
   if (typeof value === "string" && value.trim() !== "") {
@@ -265,29 +273,34 @@ function parseGroupStanding(rawStanding: any, fallbackRank: number): ExternalGro
   const name = canonicalCountryName(rawName) ?? rawName;
   if (!name || /^tbd$/i.test(name)) return null;
   const flagEmoji = countryNameToFlagEmoji(name) ?? readFirstString(rawTeam, ["flagEmoji", "flag_emoji", "emoji"]);
-  const goalsFor = parseInteger(readNestedValue(rawStanding, ["goalsFor", "goals_for", "gf", "goals.for", "stats.goalsFor", "stats.goals_for", "stats.gf"]));
-  const goalsAgainst = parseInteger(readNestedValue(rawStanding, ["goalsAgainst", "goals_against", "ga", "goals.against", "stats.goalsAgainst", "stats.goals_against", "stats.ga"]));
+  const played = parseInteger(readFirstNestedValue(rawStanding, ["played", "matchesPlayed", "matches_played", "playedMatches", "played_matches", "gamesPlayed", "games_played", "mp", "p", "all.played", "stats.played", "stats.matchesPlayed", "stats.matches_played", "stats.gamesPlayed", "stats.games_played", "stats.mp", "stats.p"]));
+  const won = parseInteger(readFirstNestedValue(rawStanding, ["won", "wins", "win", "w", "all.won", "all.wins", "all.win", "stats.won", "stats.wins", "stats.win", "stats.w"]));
+  const drawn = parseInteger(readFirstNestedValue(rawStanding, ["drawn", "draws", "draw", "d", "all.drawn", "all.draws", "all.draw", "stats.drawn", "stats.draws", "stats.draw", "stats.d"]));
+  const lost = parseInteger(readFirstNestedValue(rawStanding, ["lost", "losses", "lose", "l", "all.lost", "all.losses", "all.lose", "stats.lost", "stats.losses", "stats.lose", "stats.l"]));
+  const goalsFor = parseInteger(readFirstNestedValue(rawStanding, ["goalsFor", "goals_for", "goalsScored", "goals_scored", "gf", "goals.for", "all.goals.for", "stats.goalsFor", "stats.goals_for", "stats.goalsScored", "stats.goals_scored", "stats.gf"]));
+  const goalsAgainst = parseInteger(readFirstNestedValue(rawStanding, ["goalsAgainst", "goals_against", "goalsConceded", "goals_conceded", "ga", "goals.against", "all.goals.against", "stats.goalsAgainst", "stats.goals_against", "stats.goalsConceded", "stats.goals_conceded", "stats.ga"]));
   return {
     id: readFirstString(rawTeam, ["id", "externalId", "external_id", "fifa_code", "code"]) ?? name,
     rank: parseInteger(rawStanding?.rank ?? rawStanding?.position ?? rawStanding?.pos, fallbackRank),
     name,
     flagEmoji,
     flagImageUrl: null,
-    played: parseInteger(readNestedValue(rawStanding, ["played", "matches_played", "mp", "stats.played", "stats.matches_played", "stats.mp"])),
-    won: parseInteger(readNestedValue(rawStanding, ["won", "wins", "w", "stats.won", "stats.wins", "stats.w"])),
-    drawn: parseInteger(readNestedValue(rawStanding, ["drawn", "draws", "d", "stats.drawn", "stats.draws", "stats.d"])),
-    lost: parseInteger(readNestedValue(rawStanding, ["lost", "losses", "l", "stats.lost", "stats.losses", "stats.l"])),
+    played,
+    won,
+    drawn,
+    lost,
     goalsFor,
     goalsAgainst,
-    goalDifference: parseInteger(readNestedValue(rawStanding, ["goalDifference", "goal_difference", "gd", "stats.goalDifference", "stats.goal_difference", "stats.gd"]), goalsFor - goalsAgainst),
-    points: parseInteger(readNestedValue(rawStanding, ["points", "pts", "stats.points", "stats.pts"])),
-    form: normalizeForm(readNestedValue(rawStanding, ["form", "last5", "last_five", "stats.form", "stats.last5", "stats.last_five"]))
+    goalDifference: parseInteger(readFirstNestedValue(rawStanding, ["goalDifference", "goal_difference", "goalsDiff", "goals_diff", "gd", "stats.goalDifference", "stats.goal_difference", "stats.goalsDiff", "stats.goals_diff", "stats.gd"]), goalsFor - goalsAgainst),
+    points: parseInteger(readFirstNestedValue(rawStanding, ["points", "pts", "point", "stats.points", "stats.pts", "stats.point"])),
+    form: normalizeForm(readFirstNestedValue(rawStanding, ["form", "last5", "last_five", "stats.form", "stats.last5", "stats.last_five"]))
   };
 }
 
-function parseGroupPayload(payload: any, fallbackName?: string): ExternalGroup | null {
-  const rawGroup = payload?.group ?? payload?.data ?? payload;
-  const groupName = normalizeGroupName(readFirstString(rawGroup, ["name", "group", "group_name", "groupName"]) ?? fallbackName ?? null);
+export function parseGroupPayload(payload: any, fallbackName?: string): ExternalGroup | null {
+  const payloadGroup = payload?.group;
+  const rawGroup = payloadGroup && typeof payloadGroup === "object" ? payloadGroup : payload?.data ?? payload;
+  const groupName = normalizeGroupName(readFirstString(rawGroup, ["name", "group", "group_name", "groupName"]) ?? (typeof payloadGroup === "string" ? payloadGroup : null) ?? fallbackName ?? null);
   if (!groupName) return null;
   const rawStandings = unwrapArray(rawGroup, ["standings", "teams", "table", "group_table", "groupTable"]);
   const teams = rawStandings.map((standing: any, index: number) => parseGroupStanding(standing, index + 1)).filter(Boolean) as ExternalGroupStanding[];
