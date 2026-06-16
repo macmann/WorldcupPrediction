@@ -56,6 +56,28 @@ export type ExternalCompetition = {
   endsAt?: string | null;
 };
 
+export type ExternalGroupStanding = {
+  id: string;
+  rank: number;
+  name: string;
+  flagEmoji: string | null;
+  flagImageUrl: string | null;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+  form: Array<"W" | "D" | "L">;
+};
+
+export type ExternalGroup = {
+  name: string;
+  teams: ExternalGroupStanding[];
+};
+
 type Provider<T> = {
   name: string;
   load: () => Promise<T>;
@@ -204,6 +226,77 @@ async function fetchWc2026ApiFixtures(): Promise<ExternalFixture[]> {
       venue: match.stadium ?? match.venue ?? null
     };
   }).filter((match: ExternalFixture) => Number.isInteger(match.id) && Boolean(match.kickoffTime));
+}
+
+function parseInteger(value: unknown, fallback = 0) {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return Math.trunc(parsed);
+  }
+  return fallback;
+}
+
+function readFirstString(record: any, keys: string[]) {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if ((typeof value === "number" || typeof value === "bigint") && String(value).trim()) return String(value);
+  }
+  return null;
+}
+
+function normalizeForm(value: unknown): Array<"W" | "D" | "L"> {
+  const rawResults = Array.isArray(value) ? value : typeof value === "string" ? value.split(/[,-]?\s*/).filter(Boolean) : [];
+  return rawResults.map((result) => String(result).trim().charAt(0).toUpperCase()).filter((result): result is "W" | "D" | "L" => result === "W" || result === "D" || result === "L").slice(-5);
+}
+
+function parseGroupStanding(rawStanding: any, fallbackRank: number): ExternalGroupStanding | null {
+  const rawTeam = rawStanding?.team ?? rawStanding?.country ?? rawStanding?.nation ?? rawStanding;
+  const rawName = readFirstString(rawTeam, ["name", "team_name", "teamName", "country", "nation"]) ?? readFirstString(rawStanding, ["name", "team_name", "teamName", "country", "nation"]);
+  const name = canonicalCountryName(rawName) ?? rawName;
+  if (!name || /^tbd$/i.test(name)) return null;
+  const flagEmoji = countryNameToFlagEmoji(name) ?? readFirstString(rawTeam, ["flagEmoji", "flag_emoji", "emoji"]);
+  const goalsFor = parseInteger(rawStanding?.goalsFor ?? rawStanding?.goals_for ?? rawStanding?.gf);
+  const goalsAgainst = parseInteger(rawStanding?.goalsAgainst ?? rawStanding?.goals_against ?? rawStanding?.ga);
+  return {
+    id: readFirstString(rawTeam, ["id", "externalId", "external_id", "fifa_code", "code"]) ?? name,
+    rank: parseInteger(rawStanding?.rank ?? rawStanding?.position ?? rawStanding?.pos, fallbackRank),
+    name,
+    flagEmoji,
+    flagImageUrl: null,
+    played: parseInteger(rawStanding?.played ?? rawStanding?.matches_played ?? rawStanding?.mp),
+    won: parseInteger(rawStanding?.won ?? rawStanding?.wins ?? rawStanding?.w),
+    drawn: parseInteger(rawStanding?.drawn ?? rawStanding?.draws ?? rawStanding?.d),
+    lost: parseInteger(rawStanding?.lost ?? rawStanding?.losses ?? rawStanding?.l),
+    goalsFor,
+    goalsAgainst,
+    goalDifference: parseInteger(rawStanding?.goalDifference ?? rawStanding?.goal_difference ?? rawStanding?.gd, goalsFor - goalsAgainst),
+    points: parseInteger(rawStanding?.points ?? rawStanding?.pts),
+    form: normalizeForm(rawStanding?.form ?? rawStanding?.last5 ?? rawStanding?.last_five)
+  };
+}
+
+function parseGroupPayload(payload: any, fallbackName?: string): ExternalGroup | null {
+  const rawGroup = payload?.group ?? payload?.data ?? payload;
+  const groupName = normalizeGroupName(readFirstString(rawGroup, ["name", "group", "group_name", "groupName"]) ?? fallbackName ?? null);
+  if (!groupName) return null;
+  const rawStandings = unwrapArray(rawGroup, ["standings", "teams", "table", "group_table", "groupTable"]);
+  const teams = rawStandings.map((standing: any, index: number) => parseGroupStanding(standing, index + 1)).filter(Boolean) as ExternalGroupStanding[];
+  if (teams.length === 0) return null;
+  return { name: `Group ${groupName}`, teams: teams.sort((a, b) => a.rank - b.rank) };
+}
+
+export async function fetchWorldCupGroups(): Promise<ExternalGroup[]> {
+  if (!config.wc2026ApiKey) return [];
+
+  const listPayload = await fetchWc2026Endpoint("/groups");
+  const listGroups = unwrapArray(listPayload, ["groups"]).map((group: any) => parseGroupPayload(group)).filter(Boolean) as ExternalGroup[];
+  if (listGroups.length > 0) return listGroups;
+
+  const groupIds = Array.from({ length: 12 }, (_, index) => String.fromCharCode(65 + index));
+  const groups = await Promise.all(groupIds.map(async (groupId) => parseGroupPayload(await fetchWc2026Endpoint(`/groups/${groupId}`), groupId)));
+  return groups.filter(Boolean) as ExternalGroup[];
 }
 
 async function firstWorkingProvider<T>(providers: Array<Provider<T>>): Promise<T | null> {
