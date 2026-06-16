@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { MatchStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { getAppSettings, JOB_FIXTURE_SYNC, JOB_LIVE_SCORE_POLL } from "@/lib/adminOps";
+import { getAppSettings, JOB_FIXTURE_SYNC, JOB_GROUP_STANDINGS_SYNC, JOB_LIVE_SCORE_POLL } from "@/lib/adminOps";
 import { jsonError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
@@ -21,7 +21,7 @@ export async function GET() {
     const [settings, announcements, jobStatuses, latestSyncedMatch, totalUsers, dailyActiveUsers, predictionCount, totalPredictions, leagues, recentFinishedMatches, tournaments, settlements] = await Promise.all([
       getAppSettings(),
       prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 50, select: { id: true, title: true, description: true, imageUrl: true, linkUrl: true, isActive: true, displayFrequencyHours: true, createdAt: true, updatedAt: true } }),
-      prisma.adminJobStatus.findMany({ where: { key: { in: [JOB_FIXTURE_SYNC, JOB_LIVE_SCORE_POLL] } } }),
+      prisma.adminJobStatus.findMany({ where: { key: { in: [JOB_FIXTURE_SYNC, JOB_LIVE_SCORE_POLL, JOB_GROUP_STANDINGS_SYNC] } } }),
       prisma.match.findFirst({ where: { lastSyncedAt: { not: null } }, orderBy: { lastSyncedAt: "desc" }, select: { id: true, homeTeam: true, awayTeam: true, lastSyncedAt: true } }),
       prisma.user.count(),
       prisma.userSession.groupBy({ by: ["userId"], where: { createdAt: { gte: today } } }).then((rows) => rows.length),
@@ -64,6 +64,7 @@ export async function GET() {
       syncStatus: {
         fixtureIngestion: statusByKey.get(JOB_FIXTURE_SYNC) ?? null,
         liveScorePoll: statusByKey.get(JOB_LIVE_SCORE_POLL) ?? null,
+        groupStandings: statusByKey.get(JOB_GROUP_STANDINGS_SYNC) ?? null,
         latestSyncedMatch
       },
       analytics: {
