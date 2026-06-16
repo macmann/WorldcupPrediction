@@ -8,7 +8,8 @@ import { dedupeMatchesByFixture, normalizeMatchGroupName } from "@/lib/matchIden
 import { prisma } from "@/lib/prisma";
 import { ingestFixtures } from "@/services/fixtures";
 
-type GroupRow = { id: string; name: string; flagEmoji: string | null; flagImageUrl: string | null; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDifference: number; points: number };
+type GroupResult = "W" | "D" | "L";
+type GroupRow = { id: string; name: string; flagEmoji: string | null; flagImageUrl: string | null; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDifference: number; points: number; form: GroupResult[] };
 
 const stageOrder: Record<StageType, number> = { GROUP: 0, ROUND_OF_32: 1, ROUND_OF_16: 2, QUARTER_FINAL: 3, SEMI_FINAL: 4, THIRD_PLACE: 5, FINAL: 6 };
 function getCurrentStage(matches: Array<{ stage: StageType; status: MatchStatus }>) {
@@ -17,8 +18,17 @@ function getCurrentStage(matches: Array<{ stage: StageType; status: MatchStatus 
   return matches.sort((a, b) => stageOrder[b.stage] - stageOrder[a.stage])[0]?.stage ?? StageType.GROUP;
 }
 function groupSortValue(groupName: string) { return groupName.length === 1 ? groupName.charCodeAt(0) : Number.MAX_SAFE_INTEGER; }
-function createRow(id: string, name: string, flagEmoji?: string | null): GroupRow { return { id, name, flagEmoji: teamFlagEmoji(name, flagEmoji), flagImageUrl: teamFlagImageUrl(name), played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 }; }
-function applyResult(row: GroupRow, goalsFor: number, goalsAgainst: number) { row.played += 1; row.goalsFor += goalsFor; row.goalsAgainst += goalsAgainst; row.goalDifference = row.goalsFor - row.goalsAgainst; if (goalsFor > goalsAgainst) { row.won += 1; row.points += 3; } else if (goalsFor === goalsAgainst) { row.drawn += 1; row.points += 1; } else { row.lost += 1; } }
+function createRow(id: string, name: string, flagEmoji?: string | null): GroupRow { return { id, name, flagEmoji: teamFlagEmoji(name, flagEmoji), flagImageUrl: teamFlagImageUrl(name), played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, form: [] }; }
+function applyResult(row: GroupRow, goalsFor: number, goalsAgainst: number) {
+  row.played += 1;
+  row.goalsFor += goalsFor;
+  row.goalsAgainst += goalsAgainst;
+  row.goalDifference = row.goalsFor - row.goalsAgainst;
+  if (goalsFor > goalsAgainst) { row.won += 1; row.points += 3; row.form.push("W"); }
+  else if (goalsFor === goalsAgainst) { row.drawn += 1; row.points += 1; row.form.push("D"); }
+  else { row.lost += 1; row.form.push("L"); }
+  row.form = row.form.slice(-5);
+}
 
 export async function GET() {
   try {
