@@ -7,9 +7,11 @@ import { jsonError } from "@/lib/http";
 import { dedupeMatchesByFixture, normalizeMatchGroupName } from "@/lib/matchIdentity";
 import { prisma } from "@/lib/prisma";
 import { ingestFixtures } from "@/services/fixtures";
+import { fetchWorldCupGroups, type ExternalGroup } from "@/services/footballApi";
 
 type GroupResult = "W" | "D" | "L";
 type GroupRow = { id: string; name: string; flagEmoji: string | null; flagImageUrl: string | null; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDifference: number; points: number; form: GroupResult[] };
+type TournamentGroup = { name: string; teams: Array<GroupRow & { rank: number }> } | ExternalGroup;
 
 const stageOrder: Record<StageType, number> = { GROUP: 0, ROUND_OF_32: 1, ROUND_OF_16: 2, QUARTER_FINAL: 3, SEMI_FINAL: 4, THIRD_PLACE: 5, FINAL: 6 };
 function getCurrentStage(matches: Array<{ stage: StageType; status: MatchStatus }>) {
@@ -60,7 +62,16 @@ export async function GET() {
       applyResult(awayRow, match.awayScore90, match.homeScore90);
     }
 
-    const groups = Array.from(groupRows.entries()).sort(([a], [b]) => groupSortValue(a) - groupSortValue(b) || a.localeCompare(b)).map(([name, rows]) => ({ name: `Group ${name}`, teams: Array.from(rows.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name)).map((team, index) => ({ ...team, rank: index + 1 })) }));
+    const databaseGroups = Array.from(groupRows.entries()).sort(([a], [b]) => groupSortValue(a) - groupSortValue(b) || a.localeCompare(b)).map(([name, rows]) => ({ name: `Group ${name}`, teams: Array.from(rows.values()).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name)).map((team, index) => ({ ...team, rank: index + 1 })) }));
+    let groups: TournamentGroup[] = databaseGroups;
+    if (config.wc2026ApiKey) {
+      try {
+        const providerGroups = await fetchWorldCupGroups();
+        if (providerGroups.length > 0) groups = providerGroups;
+      } catch (error) {
+        console.warn(error instanceof Error ? error.message : error);
+      }
+    }
     const currentStage = getCurrentStage([...uniqueMatches]);
     const knockoutFixtures = uniqueMatches.filter((match) => match.stage !== StageType.GROUP && match.stage !== StageType.THIRD_PLACE).sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage] || a.kickoffTime.getTime() - b.kickoffTime.getTime()).map((match) => ({ id: match.id, stage: match.stage, groupName: normalizeMatchGroupName(match.groupName), kickoffTime: match.kickoffTime, venue: match.venue, status: match.status, homeTeam: match.homeTeam, awayTeam: match.awayTeam, homeScore: match.homeScore, awayScore: match.awayScore, homeFlagEmoji: teamFlagEmoji(match.homeTeam, match.homeTeamRef?.flagEmoji), awayFlagEmoji: teamFlagEmoji(match.awayTeam, match.awayTeamRef?.flagEmoji), homeFlagImageUrl: teamFlagImageUrl(match.homeTeam), awayFlagImageUrl: teamFlagImageUrl(match.awayTeam), tournament: match.tournament }));
     return NextResponse.json({ tournament, currentStage, groups, knockoutFixtures });
