@@ -310,8 +310,9 @@ export default function AdminConsole() {
     setError(null); setMessage(null);
     startTransition(async () => {
       try {
-        const result = await adminJson<{ refreshed: boolean; groups: number; standings: number; refreshedAt: string }>("/api/admin/groups/sync", { method: "POST" });
-        setMessage(`Group standings refreshed from API: ${result.groups} groups and ${result.standings} table rows found.`);
+        const result = await adminJson<{ refreshed: boolean; groups: number; standings: number; rowsWithPlayedMatches?: number; rowsWithPoints?: number; totalPoints?: number; totalPlayed?: number; sample?: Array<{ name: string; played: number; points: number }>; refreshedAt: string }>("/api/admin/groups/sync", { method: "POST" });
+        const sampleText = result.sample?.length ? ` Sample: ${result.sample.map((row) => `${row.name} ${row.played}MP/${row.points}pts`).join(", ")}.` : "";
+        setMessage(`Group standings refreshed from API: ${result.groups} groups and ${result.standings} table rows found; ${result.rowsWithPlayedMatches ?? 0} rows have played matches, ${result.rowsWithPoints ?? 0} rows have points (${result.totalPlayed ?? 0} total MP, ${result.totalPoints ?? 0} total pts).${sampleText}`);
         loadAdminData();
       } catch (syncError) {
         setError(syncError instanceof Error ? syncError.message : "Could not refresh group standings");
