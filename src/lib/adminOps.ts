@@ -3,6 +3,7 @@ import { ensureLegalContentColumns, ensurePlayerCatalogColumns, prisma } from ".
 
 export const JOB_FIXTURE_SYNC = "fixture-sync";
 export const JOB_LIVE_SCORE_POLL = "live-score-poll";
+export const JOB_GROUP_STANDINGS_SYNC = "group-standings-sync";
 
 export async function recordAdminJobStatus(key: string, label: string, outcome: { success: boolean; payload?: unknown; error?: unknown }) {
   const now = new Date();

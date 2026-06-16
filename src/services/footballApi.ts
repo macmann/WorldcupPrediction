@@ -228,6 +228,14 @@ async function fetchWc2026ApiFixtures(): Promise<ExternalFixture[]> {
   }).filter((match: ExternalFixture) => Number.isInteger(match.id) && Boolean(match.kickoffTime));
 }
 
+function readNestedValue(record: any, keys: string[]) {
+  for (const key of keys) {
+    const value = key.split(".").reduce((current, part) => current?.[part], record);
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+}
+
 function parseInteger(value: unknown, fallback = 0) {
   if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
   if (typeof value === "string" && value.trim() !== "") {
@@ -257,23 +265,23 @@ function parseGroupStanding(rawStanding: any, fallbackRank: number): ExternalGro
   const name = canonicalCountryName(rawName) ?? rawName;
   if (!name || /^tbd$/i.test(name)) return null;
   const flagEmoji = countryNameToFlagEmoji(name) ?? readFirstString(rawTeam, ["flagEmoji", "flag_emoji", "emoji"]);
-  const goalsFor = parseInteger(rawStanding?.goalsFor ?? rawStanding?.goals_for ?? rawStanding?.gf);
-  const goalsAgainst = parseInteger(rawStanding?.goalsAgainst ?? rawStanding?.goals_against ?? rawStanding?.ga);
+  const goalsFor = parseInteger(readNestedValue(rawStanding, ["goalsFor", "goals_for", "gf", "goals.for", "stats.goalsFor", "stats.goals_for", "stats.gf"]));
+  const goalsAgainst = parseInteger(readNestedValue(rawStanding, ["goalsAgainst", "goals_against", "ga", "goals.against", "stats.goalsAgainst", "stats.goals_against", "stats.ga"]));
   return {
     id: readFirstString(rawTeam, ["id", "externalId", "external_id", "fifa_code", "code"]) ?? name,
     rank: parseInteger(rawStanding?.rank ?? rawStanding?.position ?? rawStanding?.pos, fallbackRank),
     name,
     flagEmoji,
     flagImageUrl: null,
-    played: parseInteger(rawStanding?.played ?? rawStanding?.matches_played ?? rawStanding?.mp),
-    won: parseInteger(rawStanding?.won ?? rawStanding?.wins ?? rawStanding?.w),
-    drawn: parseInteger(rawStanding?.drawn ?? rawStanding?.draws ?? rawStanding?.d),
-    lost: parseInteger(rawStanding?.lost ?? rawStanding?.losses ?? rawStanding?.l),
+    played: parseInteger(readNestedValue(rawStanding, ["played", "matches_played", "mp", "stats.played", "stats.matches_played", "stats.mp"])),
+    won: parseInteger(readNestedValue(rawStanding, ["won", "wins", "w", "stats.won", "stats.wins", "stats.w"])),
+    drawn: parseInteger(readNestedValue(rawStanding, ["drawn", "draws", "d", "stats.drawn", "stats.draws", "stats.d"])),
+    lost: parseInteger(readNestedValue(rawStanding, ["lost", "losses", "l", "stats.lost", "stats.losses", "stats.l"])),
     goalsFor,
     goalsAgainst,
-    goalDifference: parseInteger(rawStanding?.goalDifference ?? rawStanding?.goal_difference ?? rawStanding?.gd, goalsFor - goalsAgainst),
-    points: parseInteger(rawStanding?.points ?? rawStanding?.pts),
-    form: normalizeForm(rawStanding?.form ?? rawStanding?.last5 ?? rawStanding?.last_five)
+    goalDifference: parseInteger(readNestedValue(rawStanding, ["goalDifference", "goal_difference", "gd", "stats.goalDifference", "stats.goal_difference", "stats.gd"]), goalsFor - goalsAgainst),
+    points: parseInteger(readNestedValue(rawStanding, ["points", "pts", "stats.points", "stats.pts"])),
+    form: normalizeForm(readNestedValue(rawStanding, ["form", "last5", "last_five", "stats.form", "stats.last5", "stats.last_five"]))
   };
 }
 

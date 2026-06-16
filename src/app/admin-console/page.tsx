@@ -34,6 +34,7 @@ type OpsPayload = {
   syncStatus: {
     fixtureIngestion?: JobStatus | null;
     liveScorePoll?: JobStatus | null;
+    groupStandings?: JobStatus | null;
     latestSyncedMatch?: { id: number; homeTeam: string; awayTeam: string; lastSyncedAt?: string | null } | null;
   };
   analytics: { totalUsers: number; dailyActiveUsers: number; upcomingMatchdayPredictions: number; totalPredictions: number; utcWindowStart: string; utcWindowEnd: string };
@@ -305,6 +306,19 @@ export default function AdminConsole() {
     });
   }
 
+  function refreshGroupStandingsNow() {
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        const result = await adminJson<{ refreshed: boolean; groups: number; standings: number; refreshedAt: string }>("/api/admin/groups/sync", { method: "POST" });
+        setMessage(`Group standings refreshed from API: ${result.groups} groups and ${result.standings} table rows found.`);
+        loadAdminData();
+      } catch (syncError) {
+        setError(syncError instanceof Error ? syncError.message : "Could not refresh group standings");
+      }
+    });
+  }
+
   function recalculate(formData: FormData) {
     const selectedMatchId = String(formData.get("matchId") ?? "").trim();
     const manualMatchId = String(formData.get("manualMatchId") ?? "").trim();
@@ -462,9 +476,10 @@ export default function AdminConsole() {
             <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
               <div className={panelClass}>
                 <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Operations overview</p><h2 className="mt-1 text-2xl font-black text-navy">API sync status dashboard</h2>
-                <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <div className="mt-5 grid gap-3 md:grid-cols-4">
                   <StatusCard title="Fixture ingestion" status={ops?.syncStatus.fixtureIngestion} />
                   <StatusCard title="Live score poll" status={ops?.syncStatus.liveScorePoll} />
+                  <StatusCard title="Group standings" status={ops?.syncStatus.groupStandings} />
                   <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-400">Latest match sync</p><p className="mt-2 font-black text-navy">{formatDate(ops?.syncStatus.latestSyncedMatch?.lastSyncedAt)}</p><p className="text-xs font-semibold text-slate-500">{ops?.syncStatus.latestSyncedMatch ? `#${ops.syncStatus.latestSyncedMatch.id} ${ops.syncStatus.latestSyncedMatch.homeTeam} vs ${ops.syncStatus.latestSyncedMatch.awayTeam}` : "No synced fixture yet"}</p></div>
                 </div>
               </div>
@@ -481,7 +496,7 @@ export default function AdminConsole() {
           {activeTab === "matches" && (
             <div className={panelClass}>
               <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Matches & Operations</p><h2 className="mt-1 text-2xl font-black text-navy">Scores and recalculation tools</h2>
-              <div className="mt-4"><button type="button" onClick={runFixtureSyncNow} disabled={isPending} className={`${buttonClass} bg-emerald-600`}>{isPending ? <span className="inline-flex items-center gap-2"><ButtonSpinner /> Queueing sync…</span> : "Fetch scores from API now"}</button><p className="mt-1 text-xs font-semibold text-slate-500">Queues fixture ingestion immediately (bypasses the 4-hour scheduler), then queues completed matches for scoring in the background.</p></div>
+              <div className="mt-4 flex flex-wrap gap-3"><div><button type="button" onClick={runFixtureSyncNow} disabled={isPending} className={`${buttonClass} bg-emerald-600`}>{isPending ? <span className="inline-flex items-center gap-2"><ButtonSpinner /> Queueing sync…</span> : "Fetch scores from API now"}</button><p className="mt-1 text-xs font-semibold text-slate-500">Queues fixture ingestion immediately (bypasses the 4-hour scheduler), then queues completed matches for scoring in the background.</p></div><div><button type="button" onClick={refreshGroupStandingsNow} disabled={isPending} className={`${buttonClass} bg-indigo-600`}>{isPending ? <span className="inline-flex items-center gap-2"><ButtonSpinner /> Refreshing groups…</span> : "Refresh group standings from API"}</button><p className="mt-1 text-xs font-semibold text-slate-500">Checks the World Cup group standings endpoints, including GET /groups/A–L, and records the result for Tournament View.</p></div></div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 <form action={overrideScore} className="rounded-2xl border border-red-100 bg-red-50 p-4"><h3 className="font-black text-red-700">Manual result overwrite</h3><p className="mt-1 text-xs font-semibold text-red-600/80">Inputs final 90-minute score and forces FINISHED.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_90px_90px]"><input name="matchId" className={inputClass} placeholder="Match ID" type="number" required /><input name="homeScore" className={inputClass} placeholder="Home" type="number" min="0" required /><input name="awayScore" className={inputClass} placeholder="Away" type="number" min="0" required /></div><button disabled={isPending} className={`${buttonClass} mt-3 w-full bg-red-600`}>Override final score</button></form>
                 <form action={recalculate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-black text-navy">Point recalculation trigger</h3><p className="mt-1 text-xs font-semibold text-slate-500">Pick a finished match by date/filter, or type a Match ID directly.</p><div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"><input type="date" value={recalcDate} onChange={(event) => setRecalcDate(event.target.value)} className={inputClass} /><button type="button" onClick={() => loadRecalculateMatches(recalcDate)} disabled={isPending || !recalcDate} className={`${buttonClass} bg-slate-600`}>Load date</button></div><input value={recalcFilter} onChange={(event) => setRecalcFilter(event.target.value)} className={`${inputClass} mt-3`} placeholder="Filter by match ID or team name" /><select name="matchId" className={`${inputClass} mt-3`}><option value="">Select finished match</option>{filteredRecalcMatches.map((match) => { const home = match.homeScore90 ?? match.homeScore ?? "–"; const away = match.awayScore90 ?? match.awayScore ?? "–"; return <option key={match.id} value={match.id}>{`#${match.id} · ${match.homeTeam} ${home}-${away} ${match.awayTeam} · ${formatAppDateTime(match.kickoffTime)}`}</option>; })}</select><div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"><input name="manualMatchId" className={inputClass} placeholder="Or enter Match ID manually" type="number" /><button disabled={isPending} className={`${buttonClass} bg-slate-800`}>Recalculate points</button></div></form>
