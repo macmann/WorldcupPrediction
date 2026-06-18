@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { Card, SectionTitle } from "@/components/Cards";
+import { DriveHighlightFrame } from "@/components/DriveHighlightFrame";
 import { TeamName } from "@/components/TeamName";
 import { formatAppDateTime } from "@/lib/dateTime";
 import { fetchMatches } from "@/lib/serverMatches";
@@ -42,9 +43,7 @@ export default async function HighlightsPage() {
                     <span className="shrink-0 rounded-full bg-red-600 px-3 py-2 text-xs font-black text-white">Watch ▶</span>
                   </summary>
                   <div className="px-4 pb-4">
-                    <div className="aspect-video overflow-hidden rounded-2xl bg-slate-950">
-                      <iframe className="h-full w-full" src={embedUrl} title={`${match.homeTeam} vs ${match.awayTeam} highlights`} allow="autoplay" allowFullScreen />
-                    </div>
+                    <DriveHighlightFrame src={embedUrl} title={`${match.homeTeam} vs ${match.awayTeam} highlights`} />
                   </div>
                 </details>
               );
