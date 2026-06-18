@@ -26,6 +26,9 @@ export type Match = {
   tournament?: { id: string; name: string; slug: string } | null;
   homeScore?: number | null;
   awayScore?: number | null;
+  homeScore90?: number | null;
+  awayScore90?: number | null;
+  highlightUrl?: string | null;
   isLocked?: boolean;
   prediction?: MatchPrediction | null;
 };

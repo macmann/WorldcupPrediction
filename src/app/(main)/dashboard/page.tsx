@@ -101,6 +101,20 @@ export default async function Dashboard() {
       </Card>
 
       <Link
+        href="/highlights"
+        className="group block overflow-hidden rounded-[1.75rem] bg-[radial-gradient(circle_at_12%_20%,rgba(248,113,113,0.32),transparent_30%),linear-gradient(135deg,#111827_0%,#7f1d1d_52%,#dc2626_100%)] p-5 text-white shadow-[0_18px_42px_rgba(127,29,29,0.16)] transition active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-red-100/80">Watch daily highlights</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">Completed match videos</h2>
+            <p className="mt-2 text-sm font-semibold text-red-50/85">Tap a finished score and watch the highlight inside the app.</p>
+          </div>
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15 text-2xl ring-1 ring-white/20 transition group-hover:translate-x-1">▶</span>
+        </div>
+      </Link>
+
+      <Link
         href="/tournament-view"
         className="group block overflow-hidden rounded-[1.75rem] bg-[radial-gradient(circle_at_12%_20%,rgba(103,232,249,0.34),transparent_28%),linear-gradient(135deg,#06142e_0%,#12356d_56%,#0f766e_100%)] p-5 text-white shadow-[0_18px_42px_rgba(6,20,46,0.18)] transition active:scale-[0.99]"
       >
