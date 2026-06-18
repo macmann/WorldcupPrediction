@@ -240,6 +240,7 @@ model Match {
   awayScore              Int?                   @map("away_score")
   homeScore90            Int?                   @map("home_score_90")
   awayScore90            Int?                   @map("away_score_90")
+  highlightUrl           String?                @map("highlight_url")
   lastSyncedAt           DateTime?              @map("last_synced_at") @db.Timestamptz(6)
   createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)

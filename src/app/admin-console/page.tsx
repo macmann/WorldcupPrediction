@@ -27,7 +27,7 @@ type AdminMessage = { id: string; title: string; body: string; audienceType: "AL
 type AdminLeagueOption = { id: string; name: string; joinCode: string; type: string; memberCount: number };
 type PlayerCatalogSource = "API" | "MANUAL";
 type AdminPlayer = { id: string; sequenceNumber?: number | null; name: string; nationalTeam: string; position: string; groupName: string };
-type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null };
+type AdminMatchOption = { id: number; kickoffTime: string; homeTeam: string; awayTeam: string; homeScore90?: number | null; awayScore90?: number | null; homeScore?: number | null; awayScore?: number | null; highlightUrl?: string | null };
 type OpsPayload = {
   settings: { announcementText?: string | null; bannerImageUrl?: string | null; loginBackgroundImageUrl?: string | null; maintenanceMode: boolean; gameRulesHtml?: string | null; termsConditionsHtml?: string | null; updatedAt: string };
   announcements: AdminAnnouncement[];
@@ -63,7 +63,7 @@ type PredictionRow = {
   submittedAt: string;
   scoredAt?: string | null;
 };
-type AdminTab = "overview" | "players" | "users" | "predictions" | "messages" | "announcements" | "matches" | "tournaments" | "settings" | "admins";
+type AdminTab = "overview" | "players" | "users" | "predictions" | "messages" | "announcements" | "matches" | "highlights" | "tournaments" | "settings" | "admins";
 
 async function adminJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -132,6 +132,7 @@ export default function AdminConsole() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [recalcDate, setRecalcDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [recalcMatches, setRecalcMatches] = useState<AdminMatchOption[]>([]);
+  const [highlightMatches, setHighlightMatches] = useState<AdminMatchOption[]>([]);
   const [recalcFilter, setRecalcFilter] = useState("");
   const [importStartFrom, setImportStartFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [predictionRows, setPredictionRows] = useState<PredictionRow[]>([]);
@@ -329,6 +330,33 @@ export default function AdminConsole() {
     startTransition(async () => { try { const result = await adminJson<{ scoredPredictions: number }>(`/api/admin/matches/${matchId}/recalculate`, { method: "POST" }); setMessage(`Match ${matchId} points recalculated for ${result.scoredPredictions} predictions.`); loadAdminData(); } catch (recalcError) { setError(recalcError instanceof Error ? recalcError.message : "Could not recalculate match"); } });
   }
 
+  function loadHighlightMatches() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const data = await adminJson<{ matches: AdminMatchOption[] }>("/api/admin/highlights");
+        setHighlightMatches(data.matches);
+      } catch (highlightError) {
+        setError(highlightError instanceof Error ? highlightError.message : "Could not load highlight matches");
+      }
+    });
+  }
+
+  function saveHighlight(formData: FormData) {
+    const matchId = Number(formData.get("matchId"));
+    const highlightUrl = String(formData.get("highlightUrl") ?? "").trim();
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      try {
+        const data = await adminJson<{ match: AdminMatchOption }>("/api/admin/highlights", { method: "PATCH", body: JSON.stringify({ matchId, highlightUrl }) });
+        setHighlightMatches((current) => current.map((match) => match.id === data.match.id ? data.match : match));
+        setMessage(highlightUrl ? `Highlight saved for match ${matchId}.` : `Highlight removed for match ${matchId}.`);
+      } catch (highlightError) {
+        setError(highlightError instanceof Error ? highlightError.message : "Could not save highlight");
+      }
+    });
+  }
+
   function loadRecalculateMatches(date = recalcDate) {
     setError(null);
     startTransition(async () => {
@@ -434,6 +462,7 @@ export default function AdminConsole() {
 
   useEffect(() => {
     if (activeTab === "matches" && admin) loadRecalculateMatches(recalcDate);
+    if (activeTab === "highlights" && admin) loadHighlightMatches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, admin]);
   useEffect(() => {
@@ -504,6 +533,8 @@ export default function AdminConsole() {
               </div>
             </div>
           )}
+
+          {activeTab === "highlights" && <HighlightAdminPanel matches={highlightMatches} disabled={isPending} onSave={saveHighlight} />}
 
           {activeTab === "users" && (
             <div className={panelClass}>
@@ -655,6 +686,25 @@ function PlayerMasterPanel({ disabled, onError, onMessage }: { disabled: boolean
     <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><th className="py-3 pr-2">No.</th><th className="px-2 py-3">Player name</th><th className="px-2 py-3">National team</th><th className="px-2 py-3">Position</th><th className="px-2 py-3">Group</th><th className="py-3 pl-2">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{players.map((player) => <tr key={player.id}><td colSpan={6} className="py-2"><form action={(formData) => save(player.id, formData)} className="grid grid-cols-[70px_1.4fr_1fr_160px_80px_150px] gap-2"><input name="sequenceNumber" type="number" min="1" required defaultValue={player.sequenceNumber ?? ""} className={inputClass} /><input name="name" required defaultValue={player.name} className={inputClass} /><input name="nationalTeam" required defaultValue={player.nationalTeam} className={inputClass} /><select name="position" required defaultValue={player.position} className={inputClass}><option>Goalkeeper</option><option>Defender</option><option>Midfielder</option><option>Forward</option></select><input name="groupName" required defaultValue={player.groupName} className={inputClass} /><div className="flex gap-2"><button disabled={disabled} className={`${buttonClass} bg-emerald-600`}>Save</button><button type="button" disabled={disabled} onClick={() => void remove(player.id)} className={`${buttonClass} bg-red-600`}>Delete</button></div></form></td></tr>)}</tbody></table></div>
     {isLoading && <p className="mt-4 text-sm font-bold text-slate-500">Loading player master…</p>}{!isLoading && players.length === 0 && <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm font-bold text-slate-500">No player master rows uploaded yet.</p>}
   </div>;
+}
+
+
+function HighlightAdminPanel({ matches, disabled, onSave }: { matches: AdminMatchOption[]; disabled: boolean; onSave: (formData: FormData) => void }) {
+  return (
+    <div className={panelClass}>
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Match highlights</p><h2 className="mt-1 text-2xl font-black text-navy">Attach Google Drive links to completed scores</h2>
+      <p className="mt-2 text-sm font-semibold text-slate-500">After score updates finish, paste a Google Drive file URL for any completed match. Saved links appear in the user dashboard highlight entry point.</p>
+      <div className="mt-5 space-y-3">{matches.map((match) => { const home = match.homeScore90 ?? match.homeScore ?? "–"; const away = match.awayScore90 ?? match.awayScore ?? "–"; return (
+        <form key={match.id} action={onSave} className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 lg:grid-cols-[1.1fr_1.4fr_auto] lg:items-center">
+          <input type="hidden" name="matchId" value={match.id} />
+          <div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">#{match.id} · {formatDate(match.kickoffTime)}</p><p className="mt-1 font-black text-navy">{match.homeTeam} {home}-{away} {match.awayTeam}</p></div>
+          <input name="highlightUrl" defaultValue={match.highlightUrl ?? ""} className={inputClass} placeholder="https://drive.google.com/file/d/…/view" />
+          <button disabled={disabled} className={`${buttonClass} bg-red-600`}>Save highlight</button>
+        </form>
+      ); })}</div>
+      {matches.length === 0 && <p className="mt-4 rounded-2xl bg-slate-100 p-4 text-sm font-semibold text-slate-500">No finished matches are available yet.</p>}
+    </div>
+  );
 }
 
 function AdminTwoFactorPanel({ admin, setup, code, disabled, onBeginSetup, onCodeChange, onConfirm }: { admin: AdminSession; setup: { secret: string; otpauthUri: string } | null; code: string; disabled: boolean; onBeginSetup: () => void; onCodeChange: (code: string) => void; onConfirm: () => void }) {
@@ -825,6 +875,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
     { id: "messages", label: "Messages", description: "Admin notifications" },
     { id: "announcements", label: "Banners & Popups", description: "Homepage and popup creatives" },
     { id: "matches", label: "Matches", description: "Scores and points" },
+    { id: "highlights", label: "Highlights", description: "Drive videos" },
     { id: "tournaments", label: "Tournaments", description: "Streams and awards" },
     { id: "settings", label: "Settings", description: "Site controls" }
   ];
@@ -832,7 +883,7 @@ function AdminTabs({ activeTab, isSuperAdmin, onChange }: { activeTab: AdminTab;
 
   return (
     <nav aria-label="Admin sections" className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-10">
+      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-11">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
