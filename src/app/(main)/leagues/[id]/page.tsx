@@ -9,6 +9,13 @@ import { getServerTranslator } from "@/lib/serverI18n";
 
 type T = Awaited<ReturnType<typeof getServerTranslator>>;
 
+function movementIndicator(movement: { direction: "up" | "down" | "same" | "new"; places: number; previousRank: number | null }) {
+  if (movement.direction === "up") return <span className="text-emerald-600" title={`Up ${movement.places} from #${movement.previousRank}`}>▲</span>;
+  if (movement.direction === "down") return <span className="text-red-500" title={`Down ${movement.places} from #${movement.previousRank}`}>▼</span>;
+  if (movement.direction === "same") return <span className="text-slate-400" title={`No change from #${movement.previousRank}`}>—</span>;
+  return <span className="text-slate-300" title="New ranking">•</span>;
+}
+
 function movementLabel(movement: { direction: "up" | "down" | "same" | "new"; places: number; previousRank: number | null }, t: T) {
   if (movement.direction === "up") return `▲ ${t("league.movementUp")} ${movement.places} from #${movement.previousRank}`;
   if (movement.direction === "down") return `▼ ${t("league.movementDown")} ${movement.places} from #${movement.previousRank}`;
@@ -71,14 +78,15 @@ export default async function LeagueDetail({ params }: { params: { id: string } 
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-100 text-xs uppercase text-slate-500">
-              <tr><th className="p-3">#</th><th>{t("league.player")}</th><th>{t("common.totalMarks")}</th><th>{t("league.joinedAt")}</th></tr>
+              <tr><th className="p-3">#</th><th>{t("league.player")}</th><th>{t("common.totalMarks")}</th><th>{t("league.matchesPlayed")}</th><th>{t("league.joinedAt")}</th></tr>
             </thead>
             <tbody>
               {league.leaderboard.map((row) => (
                 <tr key={row.user.id} className="border-t border-slate-100">
-                  <td className="p-3 font-black">{row.rank}</td>
+                  <td className="p-3 font-black"><span className="inline-flex items-center gap-2">{row.rank}{movementIndicator(row.rankMovement)}</span></td>
                   <td className="font-bold"><Link href={`/people/${row.user.id}`} className="text-navy underline-offset-4 hover:underline">{row.user.displayName}</Link></td>
                   <td>{row.user.globalPoints}</td>
+                  <td>{row.user.matchesPlayedCount}</td>
                   <td className="pr-3 text-xs font-semibold text-slate-500">{new Date(row.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</td>
                 </tr>
               ))}

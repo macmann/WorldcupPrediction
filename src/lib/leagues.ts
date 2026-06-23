@@ -10,6 +10,7 @@ type RankedLeagueMember = {
     globalPoints: number;
     exactScoresCount: number;
     correctOutcomesCount: number;
+    matchesPlayedCount: number;
     registrationTimestamp: Date;
     isBanned: boolean;
   };
@@ -34,16 +35,17 @@ export type LeagueCard = {
   isOwner: boolean;
 };
 
-export type LeagueLeaderboardRow = {
-  rank: number;
-  joinedAt: string;
-  user: Omit<RankedLeagueMember["user"], "registrationTimestamp"> & { registrationTimestamp: string };
-};
-
 export type LeagueRankMovement = {
   direction: "up" | "down" | "same" | "new";
   places: number;
   previousRank: number | null;
+};
+
+export type LeagueLeaderboardRow = {
+  rank: number;
+  joinedAt: string;
+  rankMovement: LeagueRankMovement;
+  user: Omit<RankedLeagueMember["user"], "registrationTimestamp"> & { registrationTimestamp: string };
 };
 
 export type LeagueDetail = {
@@ -61,16 +63,26 @@ export type LeagueDetail = {
   leaderboard: LeagueLeaderboardRow[];
 };
 
-function compareLeagueMembers(a: RankedLeagueMember, b: RankedLeagueMember) {
+export function compareLeagueMembers(a: RankedLeagueMember, b: RankedLeagueMember) {
   return (
     b.user.globalPoints - a.user.globalPoints ||
-    b.user.exactScoresCount - a.user.exactScoresCount ||
+    a.user.matchesPlayedCount - b.user.matchesPlayedCount ||
     a.user.registrationTimestamp.getTime() - b.user.registrationTimestamp.getTime()
   );
 }
 
-function rankMembers(members: RankedLeagueMember[]) {
+export function rankMembers(members: RankedLeagueMember[]) {
   return [...members].sort(compareLeagueMembers).map((member, index) => ({ ...member, rank: index + 1 }));
+}
+
+export function rankMovement(previousRank: number | undefined, currentRank: number): LeagueRankMovement {
+  return previousRank
+    ? {
+        direction: previousRank > currentRank ? "up" as const : previousRank < currentRank ? "down" as const : "same" as const,
+        places: Math.abs(previousRank - currentRank),
+        previousRank
+      }
+    : { direction: "new" as const, places: 0, previousRank: null };
 }
 
 export async function getUserLeagues(): Promise<LeagueCard[]> {
@@ -100,6 +112,7 @@ export async function getUserLeagues(): Promise<LeagueCard[]> {
                   globalPoints: true,
                   exactScoresCount: true,
                   correctOutcomesCount: true,
+                  matchesPlayedCount: true,
                   registrationTimestamp: true,
                   isBanned: true
                 }
@@ -162,6 +175,7 @@ export async function getLeagueDetail(id: string): Promise<LeagueDetail | null |
               globalPoints: true,
               exactScoresCount: true,
               correctOutcomesCount: true,
+              matchesPlayedCount: true,
               registrationTimestamp: true,
               isBanned: true
             }
@@ -178,23 +192,21 @@ export async function getLeagueDetail(id: string): Promise<LeagueDetail | null |
   const currentUserRow = rankedMembers.find((member) => member.user.id === user.id);
   const userRank = currentUserRow?.rank ?? rankedMembers.length;
   const userPoints = currentUserRow?.user.globalPoints ?? user.globalPoints;
-  const previousSnapshot = await prisma.leagueRankSnapshot.findFirst({
-    where: { leagueId: league.id, userId: user.id },
-    select: { rank: true },
+  const previousSnapshots = await prisma.leagueRankSnapshot.findMany({
+    where: { leagueId: league.id },
+    select: { userId: true, rank: true },
     orderBy: { capturedAt: "desc" }
   });
-  const rankMovement = previousSnapshot
-    ? {
-        direction: previousSnapshot.rank > userRank ? "up" as const : previousSnapshot.rank < userRank ? "down" as const : "same" as const,
-        places: Math.abs(previousSnapshot.rank - userRank),
-        previousRank: previousSnapshot.rank
-      }
-    : { direction: "new" as const, places: 0, previousRank: null };
-  const movementText = rankMovement.direction === "up"
-    ? `up ${rankMovement.places}`
-    : rankMovement.direction === "down"
-      ? `down ${rankMovement.places}`
-      : rankMovement.direction === "same"
+  const previousRanks = new Map<string, number>();
+  for (const snapshot of previousSnapshots) {
+    if (!previousRanks.has(snapshot.userId)) previousRanks.set(snapshot.userId, snapshot.rank);
+  }
+  const userRankMovement = rankMovement(previousRanks.get(user.id), userRank);
+  const movementText = userRankMovement.direction === "up"
+    ? `up ${userRankMovement.places}`
+    : userRankMovement.direction === "down"
+      ? `down ${userRankMovement.places}`
+      : userRankMovement.direction === "same"
         ? "holding steady"
         : "new on the table";
 
@@ -207,12 +219,13 @@ export async function getLeagueDetail(id: string): Promise<LeagueDetail | null |
     memberCount: rankedMembers.length,
     userRank,
     userPoints,
-    rankMovement,
+    rankMovement: userRankMovement,
     shareText: `I’m #${userRank} in ${league.name} (${movementText}) with ${userPoints} pts on FFM WC2026.`,
     isOwner: league.ownerUserId === user.id,
     leaderboard: rankedMembers.map((member) => ({
       rank: member.rank,
       joinedAt: member.joinedAt.toISOString(),
+      rankMovement: rankMovement(previousRanks.get(member.user.id), member.rank),
       user: {
         ...member.user,
         registrationTimestamp: member.user.registrationTimestamp.toISOString()

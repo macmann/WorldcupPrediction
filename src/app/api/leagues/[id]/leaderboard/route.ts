@@ -24,13 +24,14 @@ export async function GET(_request: Request, { params }: { params: { id: string 
             avatarUrl: true,
             globalPoints: true,
             exactScoresCount: true,
+            matchesPlayedCount: true,
             registrationTimestamp: true
           }
         }
       },
       orderBy: [
         { user: { globalPoints: "desc" } },
-        { user: { exactScoresCount: "desc" } },
+        { user: { matchesPlayedCount: "asc" } },
         { user: { registrationTimestamp: "asc" } }
       ]
     });

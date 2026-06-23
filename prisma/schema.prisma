@@ -72,6 +72,7 @@ model User {
   globalPoints            Int                      @default(0) @map("global_points")
   exactScoresCount        Int                      @default(0) @map("exact_scores_count")
   correctOutcomesCount    Int                      @default(0) @map("correct_outcomes_count")
+  matchesPlayedCount      Int                      @default(0) @map("matches_played_count")
   isAdmin                 Boolean                  @default(false) @map("is_admin")
   isBanned                Boolean                  @default(false) @map("is_banned")
   banReason               String?                  @map("ban_reason")
@@ -91,7 +92,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   adminMessageReceipts    AdminMessageReceipt[]
 
-  @@index([globalPoints(sort: Desc), exactScoresCount(sort: Desc), registrationTimestamp(sort: Asc)], map: "leaderboard_tiebreaker_idx")
+  @@index([globalPoints(sort: Desc), matchesPlayedCount(sort: Asc), registrationTimestamp(sort: Asc)], map: "leaderboard_tiebreaker_idx")
   @@index([isBanned])
   @@map("users")
 }
