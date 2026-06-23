@@ -1,5 +1,6 @@
 import { MatchStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { captureLeagueRankSnapshots } from "../lib/rankSnapshots";
 import { calculateMatchPoints } from "../lib/scoring";
 
 function standardTimeScore(match: { homeScore90: number | null; awayScore90: number | null; homeScore: number | null; awayScore: number | null }) {
@@ -58,20 +59,29 @@ export async function recalculateMatch(matchId: number) {
       _count: { _all: true },
       where: { isCorrectOutcome: true }
     });
+    const matchesPlayedAggregates = await tx.prediction.groupBy({
+      by: ["userId"],
+      _count: { _all: true },
+      where: { pointsAwarded: { not: null } }
+    });
 
     const pointsByUser = new Map(pointAggregates.map((aggregate) => [aggregate.userId, aggregate._sum.pointsAwarded ?? 0]));
     const exactByUser = new Map(exactAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));
     const outcomeByUser = new Map(outcomeAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));
-    const userIds = new Set([...pointsByUser.keys(), ...exactByUser.keys(), ...outcomeByUser.keys()]);
+    const matchesPlayedByUser = new Map(matchesPlayedAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));
+    const userIds = new Set([...pointsByUser.keys(), ...exactByUser.keys(), ...outcomeByUser.keys(), ...matchesPlayedByUser.keys()]);
 
-    await tx.user.updateMany({ data: { globalPoints: 0, exactScoresCount: 0, correctOutcomesCount: 0 } });
+    await captureLeagueRankSnapshots(tx);
+
+    await tx.user.updateMany({ data: { globalPoints: 0, exactScoresCount: 0, correctOutcomesCount: 0, matchesPlayedCount: 0 } });
     for (const userId of userIds) {
       await tx.user.update({
         where: { id: userId },
         data: {
           globalPoints: pointsByUser.get(userId) ?? 0,
           exactScoresCount: exactByUser.get(userId) ?? 0,
-          correctOutcomesCount: outcomeByUser.get(userId) ?? 0
+          correctOutcomesCount: outcomeByUser.get(userId) ?? 0,
+          matchesPlayedCount: matchesPlayedByUser.get(userId) ?? 0
         }
       });
     }
