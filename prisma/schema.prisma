@@ -187,6 +187,7 @@ model Team {
   awayMatches         Match[]    @relation("AwayTeam")
   championPicks       Outright[] @relation("ChampionTeam")
   secondRunnerUpPicks Outright[] @relation("SecondRunnerUpTeam")
+  thirdPlacePicks      Outright[] @relation("ThirdPlaceTeam")
   fairPlayPicks       Outright[] @relation("FairPlayTeam")
 
   @@unique([tournamentId, name])
@@ -287,6 +288,7 @@ model Outright {
   tournamentId         String?     @map("tournament_id") @db.Uuid
   championTeamId       String      @map("champion_team_id") @db.Uuid
   secondRunnerUpTeamId String      @map("second_runner_up_team_id") @db.Uuid
+  thirdPlaceTeamId      String?     @map("third_place_team_id") @db.Uuid
   fairPlayTeamId       String      @map("fair_play_team_id") @db.Uuid
   bestPlayerId         String      @map("best_player_id") @db.Uuid
   bestGkId             String      @map("best_gk_id") @db.Uuid
@@ -299,6 +301,7 @@ model Outright {
   tournament           Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   championTeam         Team        @relation("ChampionTeam", fields: [championTeamId], references: [id], onDelete: Restrict)
   secondRunnerUpTeam   Team        @relation("SecondRunnerUpTeam", fields: [secondRunnerUpTeamId], references: [id], onDelete: Restrict)
+  thirdPlaceTeam      Team?       @relation("ThirdPlaceTeam", fields: [thirdPlaceTeamId], references: [id], onDelete: Restrict)
   fairPlayTeam         Team        @relation("FairPlayTeam", fields: [fairPlayTeamId], references: [id], onDelete: Restrict)
   bestPlayer           Player      @relation("BestPlayer", fields: [bestPlayerId], references: [id], onDelete: Restrict)
   bestGoalkeeper       Player      @relation("BestGoalkeeper", fields: [bestGkId], references: [id], onDelete: Restrict)

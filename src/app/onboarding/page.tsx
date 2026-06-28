@@ -18,6 +18,7 @@ export default function OnboardingPage() {
   const [data, setData] = useState<OutrightOptionsPayload | null>(null);
   const [championTeamId, setChampionTeamId] = useState("");
   const [secondRunnerUpTeamId, setSecondRunnerUpTeamId] = useState("");
+  const [thirdPlaceTeamId, setThirdPlaceTeamId] = useState("");
   const [fairPlayTeamId, setFairPlayTeamId] = useState("");
   const [bestPlayerId, setBestPlayerId] = useState("");
   const [bestGkId, setBestGkId] = useState("");
@@ -40,6 +41,7 @@ export default function OnboardingPage() {
         setData(payload);
         setChampionTeamId(payload.outright?.championTeamId ?? payload.options.teams[0]?.id ?? "");
         setSecondRunnerUpTeamId(payload.outright?.secondRunnerUpTeamId ?? payload.options.teams[0]?.id ?? "");
+        setThirdPlaceTeamId(payload.outright?.thirdPlaceTeamId ?? payload.options.teams[0]?.id ?? "");
         setFairPlayTeamId(payload.outright?.fairPlayTeamId ?? payload.options.teams[0]?.id ?? "");
         setBestPlayerId(payload.outright?.bestPlayerId ?? payload.options.players[0]?.id ?? "");
         setBestGkId(payload.outright?.bestGkId ?? payload.options.goalkeepers[0]?.id ?? "");
@@ -62,7 +64,7 @@ export default function OnboardingPage() {
         const response = await fetch("/api/predictions/outrights", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ championTeamId, secondRunnerUpTeamId, fairPlayTeamId, bestPlayerId, bestGkId, goldenBootPlayerId, youngPlayerId, tournamentId: data?.tournament.id })
+          body: JSON.stringify({ championTeamId, secondRunnerUpTeamId, thirdPlaceTeamId, fairPlayTeamId, bestPlayerId, bestGkId, goldenBootPlayerId, youngPlayerId, tournamentId: data?.tournament.id })
         });
         if (!response.ok) throw new Error((await response.json()).error ?? "Could not save outright picks");
         window.localStorage.setItem("worldcup:onboarding-completed", "true");
@@ -106,13 +108,18 @@ export default function OnboardingPage() {
           </div>
         </div>
         <div className="mt-5 space-y-4">
-          <label className="block text-sm font-black">Tournament Winner
+          <label className="block text-sm font-black">World Cup Champion
             <select value={championTeamId} onChange={(event) => setChampionTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
-          <label className="block text-sm font-black">2nd Runner-up
+          <label className="block text-sm font-black">1st Runner-up
             <select value={secondRunnerUpTeamId} onChange={(event) => setSecondRunnerUpTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+              {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm font-black">3rd Place
+            <select value={thirdPlaceTeamId} onChange={(event) => setThirdPlaceTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>

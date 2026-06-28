@@ -1,7 +1,8 @@
 import { MatchStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { captureLeagueRankSnapshots } from "../lib/rankSnapshots";
-import { calculateMatchPoints } from "../lib/scoring";
+import { calculateMatchPoints, type MatchOutcome } from "../lib/scoring";
+import { isKnockoutStage } from "../lib/matchPrediction";
 
 function standardTimeScore(match: { homeScore90: number | null; awayScore90: number | null; homeScore: number | null; awayScore: number | null }) {
   return {
@@ -13,6 +14,11 @@ function standardTimeScore(match: { homeScore90: number | null; awayScore90: num
 export async function recalculateMatch(matchId: number) {
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   const actual = match ? standardTimeScore(match) : { home: null, away: null };
+  const actualWinner: MatchOutcome | null = match && isKnockoutStage(match.stage)
+    ? match.homeScore !== null && match.awayScore !== null
+      ? match.homeScore > match.awayScore ? "HOME" : match.awayScore > match.homeScore ? "AWAY" : "DRAW"
+      : null
+    : null;
 
   if (!match || match.status !== MatchStatus.FINISHED || actual.home === null || actual.away === null) {
     throw Object.assign(new Error("Match must be finished with a standard-time score before scoring"), { status: 422 });
@@ -30,7 +36,8 @@ export async function recalculateMatch(matchId: number) {
             ? { home: prediction.predictedHomeScore, away: prediction.predictedAwayScore }
             : null
         },
-        { home: actual.home!, away: actual.away! }
+        { home: actual.home!, away: actual.away! },
+        actualWinner
       );
       await tx.prediction.update({
         where: { id: prediction.id },

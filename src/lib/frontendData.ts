@@ -71,6 +71,7 @@ export type OutrightOptionsPayload = {
   outright: {
     championTeamId: string;
     secondRunnerUpTeamId: string;
+    thirdPlaceTeamId?: string | null;
     fairPlayTeamId: string;
     bestPlayerId: string;
     bestGkId: string;
@@ -78,6 +79,7 @@ export type OutrightOptionsPayload = {
     youngPlayerId: string;
     champion: string;
     secondRunnerUp: string;
+    thirdPlace?: string | null;
     fairPlay: string;
     bestPlayer: string;
     bestGk: string;

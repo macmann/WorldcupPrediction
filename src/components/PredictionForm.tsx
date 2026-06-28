@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LockIcon } from "@/components/Icons";
 import { TeamName, teamNameWithFlag } from "@/components/TeamName";
-import { scoreMatchesOutcome } from "@/lib/matchPrediction";
+import { isKnockoutStage, scoreMatchesOutcome } from "@/lib/matchPrediction";
 import { useStore } from "@/store/useStore";
 import type { Match, MatchOutcome } from "@/lib/frontendData";
 
@@ -28,6 +28,7 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
   const [home, setHome] = useState(currentHome?.toString() ?? "");
   const [away, setAway] = useState(currentAway?.toString() ?? "");
   const locked = useMemo(() => lockedByServerTime(match, new Date(serverNowIso)), [match, serverNowIso]);
+  const knockout = isKnockoutStage(match.stage);
 
   useEffect(() => {
     setSelectedOutcome(currentOutcome);
@@ -48,7 +49,7 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
   const predictedHomeScore = hasCompleteScore ? Number(home) : null;
   const predictedAwayScore = hasCompleteScore ? Number(away) : null;
   const hasValidScoreNumbers = predictedHomeScore !== null && predictedAwayScore !== null && !Number.isNaN(predictedHomeScore) && !Number.isNaN(predictedAwayScore);
-  const scoreOutcomeMismatch = selectedOutcome && hasValidScoreNumbers && !scoreMatchesOutcome(selectedOutcome, predictedHomeScore, predictedAwayScore);
+  const scoreOutcomeMismatch = !knockout && selectedOutcome && hasValidScoreNumbers && !scoreMatchesOutcome(selectedOutcome, predictedHomeScore, predictedAwayScore);
   const canSavePrediction = Boolean(selectedOutcome && hasValidScoreNumbers && !scoreOutcomeMismatch);
   const selectedOutcomeLabel = selectedOutcome ? outcomeLabel(selectedOutcome, match, t) : t("prediction.selectedResult");
 
@@ -67,19 +68,19 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
   }
 
   const inputClass = `w-full rounded-2xl border border-slate-200 bg-white p-4 text-center text-2xl font-black transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-100 ${locked ? "opacity-60" : ""}`;
-  const outcomeOptions: MatchOutcome[] = ["HOME", "DRAW", "AWAY"];
+  const outcomeOptions: MatchOutcome[] = knockout ? ["HOME", "AWAY"] : ["HOME", "DRAW", "AWAY"];
 
   return (
     <div className={`mt-4 space-y-4 ${locked ? "opacity-60" : ""}`}>
       <section className="rounded-3xl border border-slate-100 bg-slate-50 p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-wider text-slate-400">{t("prediction.winDrawWin")}</p>
+            <p className="text-xs font-black uppercase tracking-wider text-slate-400">{knockout ? t("prediction.pickWinner") : t("prediction.winDrawWin")}</p>
             <p className="text-sm font-bold text-slate-600">{t("prediction.correctResultHelp")}</p>
           </div>
           {currentOutcome && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{outcomeLabel(currentOutcome, match, t)}</span>}
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className={`mt-3 grid gap-2 ${knockout ? "grid-cols-2" : "grid-cols-3"}`}>
           {outcomeOptions.map((outcome) => {
             const active = selectedOutcome === outcome;
             return (

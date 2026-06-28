@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
-import { scoreMatchesOutcome } from "@/lib/matchPrediction";
+import { isKnockoutStage, scoreMatchesOutcome } from "@/lib/matchPrediction";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
@@ -24,11 +24,8 @@ const schema = z.object({
   const predictedAwayScore = input.predictedAwayScore ?? input.predicted_away_score;
 
   if (!matchId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["match_id"], message: "match_id is required" });
-  if (!predictedOutcome) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["predicted_outcome"], message: "Choose a win/draw/win result" });
+  if (!predictedOutcome) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["predicted_outcome"], message: "Choose a match winner" });
   if (hasHomeScore !== hasAwayScore || !hasHomeScore) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["predicted_home_score"], message: "Both predicted score values are required" });
-  if (predictedOutcome && hasHomeScore && hasAwayScore && predictedHomeScore !== undefined && predictedAwayScore !== undefined && !scoreMatchesOutcome(predictedOutcome, predictedHomeScore, predictedAwayScore)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["prediction"], message: "Correct score must match the selected win/draw/win result" });
-  }
 
   return { matchId: matchId!, predictedOutcome, predictedHomeScore, predictedAwayScore, hasScore: hasHomeScore && hasAwayScore };
 });
@@ -37,10 +34,17 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const input = schema.parse(await request.json());
-    const match = await prisma.match.findUnique({ where: { id: input.matchId }, select: { kickoffTime: true, isEnabled: true, tournament: { select: { isActive: true } } } });
+    const match = await prisma.match.findUnique({ where: { id: input.matchId }, select: { kickoffTime: true, isEnabled: true, stage: true, tournament: { select: { isActive: true } } } });
     if (!match) throw Object.assign(new Error("Match not found"), { status: 404 });
     if (!match.isEnabled || match.tournament?.isActive === false) throw Object.assign(new Error("This match is not available for predictions"), { status: 403 });
     if (new Date() >= match.kickoffTime) throw Object.assign(new Error("Predictions lock at kickoff"), { status: 403 });
+    const knockout = isKnockoutStage(match.stage);
+    if (knockout && input.predictedOutcome === MatchOutcome.DRAW) {
+      throw Object.assign(new Error("Draw predictions are not allowed for knockout-stage matches; choose the team that will advance"), { status: 400 });
+    }
+    if (!knockout && input.predictedOutcome && input.hasScore && !scoreMatchesOutcome(input.predictedOutcome, input.predictedHomeScore!, input.predictedAwayScore!)) {
+      throw Object.assign(new Error("Correct score must match the selected win/draw/win result"), { status: 400 });
+    }
 
     const prediction = await prisma.prediction.upsert({
       where: { userId_matchId: { userId: user.id, matchId: input.matchId } },

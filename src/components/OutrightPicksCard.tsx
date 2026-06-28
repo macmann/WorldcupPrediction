@@ -11,6 +11,7 @@ import type { TranslationKey } from "@/lib/i18n";
 type PickSummary = {
   champion: string;
   secondRunnerUp: string;
+  thirdPlace: string;
   fairPlay: string;
   bestPlayer: string;
   bestGk: string;
@@ -83,6 +84,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
   const [data, setData] = useState<OutrightOptionsPayload | null>(null);
   const [championTeamId, setChampionTeamId] = useState("");
   const [secondRunnerUpTeamId, setSecondRunnerUpTeamId] = useState("");
+  const [thirdPlaceTeamId, setThirdPlaceTeamId] = useState("");
   const [fairPlayTeamId, setFairPlayTeamId] = useState("");
   const [bestPlayerTeamId, setBestPlayerTeamId] = useState("");
   const [bestPlayerId, setBestPlayerId] = useState("");
@@ -111,6 +113,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
         setData(payload);
         setChampionTeamId(payload.outright?.championTeamId ?? payload.options.teams[0]?.id ?? "");
         setSecondRunnerUpTeamId(payload.outright?.secondRunnerUpTeamId ?? payload.options.teams[0]?.id ?? "");
+        setThirdPlaceTeamId(payload.outright?.thirdPlaceTeamId ?? payload.options.teams[0]?.id ?? "");
         setFairPlayTeamId(payload.outright?.fairPlayTeamId ?? payload.options.teams[0]?.id ?? "");
         const savedBestPlayerId = payload.outright?.bestPlayerId ?? "";
         const savedBestGkId = payload.outright?.bestGkId ?? "";
@@ -125,7 +128,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
         setYoungPlayerId(savedYoungPlayerId);
         setYoungPlayerTeamId(teamIdForPlayer(payload.options.players, savedYoungPlayerId));
         if (payload.outright) {
-          setSavedPicks({ champion: payload.outright.champion, secondRunnerUp: payload.outright.secondRunnerUp, fairPlay: payload.outright.fairPlay, bestPlayer: payload.outright.bestPlayer, bestGk: payload.outright.bestGk, goldenBoot: payload.outright.goldenBoot, youngPlayer: payload.outright.youngPlayer });
+          setSavedPicks({ champion: payload.outright.champion, secondRunnerUp: payload.outright.secondRunnerUp, thirdPlace: payload.outright.thirdPlace ?? "—", fairPlay: payload.outright.fairPlay, bestPlayer: payload.outright.bestPlayer, bestGk: payload.outright.bestGk, goldenBoot: payload.outright.goldenBoot, youngPlayer: payload.outright.youngPlayer });
           setIsEditing(false);
         } else {
           setIsEditing(true);
@@ -147,13 +150,14 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
         const response = await fetch("/api/predictions/outrights", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ championTeamId, secondRunnerUpTeamId, fairPlayTeamId, bestPlayerId, bestGkId, goldenBootPlayerId, youngPlayerId, tournamentId: data?.tournament.id })
+          body: JSON.stringify({ championTeamId, secondRunnerUpTeamId, thirdPlaceTeamId, fairPlayTeamId, bestPlayerId, bestGkId, goldenBootPlayerId, youngPlayerId, tournamentId: data?.tournament.id })
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error ?? t("outright.saveError"));
         const nextSummary = {
           champion: getName(data?.options.teams ?? [], championTeamId),
           secondRunnerUp: getName(data?.options.teams ?? [], secondRunnerUpTeamId),
+          thirdPlace: getName(data?.options.teams ?? [], thirdPlaceTeamId),
           fairPlay: getName(data?.options.teams ?? [], fairPlayTeamId),
           bestPlayer: getName(data?.options.players ?? [], bestPlayerId),
           bestGk: getName(data?.options.goalkeepers ?? [], bestGkId),
@@ -214,6 +218,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
           <dl className="grid grid-cols-1 gap-3 text-sm">
             <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.tournamentWinner")}</dt><dd className="font-bold">{summary.champion}</dd></div>
             <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.secondRunnerUp")}</dt><dd className="font-bold">{summary.secondRunnerUp}</dd></div>
+            <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.thirdPlace")}</dt><dd className="font-bold">{summary.thirdPlace}</dd></div>
             <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.goldenBall")}</dt><dd className="font-bold">{summary.bestPlayer}</dd></div>
             <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.goldenGlove")}</dt><dd className="font-bold">{summary.bestGk}</dd></div>
             <div className="flex justify-between rounded-2xl bg-slate-100 p-3"><dt>{t("outright.goldenBoot")}</dt><dd className="font-bold">{summary.goldenBoot}</dd></div>
@@ -232,6 +237,12 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
           
           <label className="block text-sm font-black">{t("outright.secondRunnerUp")}
             <select value={secondRunnerUpTeamId} onChange={(event) => setSecondRunnerUpTeamId(event.target.value)} disabled={!liveCanEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+              {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </label>
+
+          <label className="block text-sm font-black">{t("outright.thirdPlace")}
+            <select value={thirdPlaceTeamId} onChange={(event) => setThirdPlaceTeamId(event.target.value)} disabled={!liveCanEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
