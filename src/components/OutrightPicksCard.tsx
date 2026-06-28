@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Card, SectionTitle } from "@/components/Cards";
 import { Countdown } from "@/components/Countdown";
 import { formatAppDateTime } from "@/lib/dateTime";
+import { OUTRIGHT_SCORING_RULES } from "@/lib/scoring";
 import type { OutrightOptionsPayload } from "@/lib/frontendData";
 import { useStore } from "@/store/useStore";
 import type { TranslationKey } from "@/lib/i18n";
@@ -18,6 +19,38 @@ type PickSummary = {
   goldenBoot: string;
   youngPlayer: string;
 };
+
+const scoringRuleLabels: Record<(typeof OUTRIGHT_SCORING_RULES)[number]["key"], TranslationKey> = {
+  champion: "outright.tournamentWinner",
+  secondRunnerUp: "outright.secondRunnerUp",
+  thirdPlace: "outright.thirdPlace",
+  goldenBall: "outright.goldenBall",
+  goldenGlove: "outright.goldenGlove",
+  goldenBoot: "outright.goldenBoot",
+  youngPlayer: "outright.youngPlayer",
+  fairPlay: "outright.fairPlay"
+};
+
+function PointsRules({ t }: { t: (key: TranslationKey) => string }) {
+  return (
+    <section className="mt-4 rounded-3xl border border-emerald-100 bg-emerald-50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-emerald-700">{t("outright.pointsRules")}</p>
+          <p className="mt-1 text-sm font-bold text-emerald-950">{t("outright.pointsRulesHelp")}</p>
+        </div>
+      </div>
+      <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {OUTRIGHT_SCORING_RULES.map((rule) => (
+          <div key={rule.key} className="flex items-center justify-between gap-3 rounded-2xl bg-white/80 px-3 py-2 text-sm shadow-sm">
+            <dt className="font-bold text-slate-700">{t(scoringRuleLabels[rule.key])}</dt>
+            <dd className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800">{rule.points} {t("common.pointsShort")}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
 
 function getName(options: { id: string; name: string }[], id: string) {
   return options.find((option) => option.id === id)?.name ?? "—";
@@ -201,6 +234,8 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
       <SectionTitle eyebrow={completed ? t("outright.savedPicks") : t("outright.tournamentPicks")} title={t("outright.chooseWinners")} />
       <p className="mt-2 text-sm font-semibold text-slate-500">{t("outright.description")}</p>
       <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{statusMessage}</p>
+
+      <PointsRules t={t} />
 
       <div className="mt-4 rounded-3xl bg-gradient-to-br from-navy to-emerald-800 p-4 text-white">
         <div className="mb-3 flex items-center justify-between gap-3">

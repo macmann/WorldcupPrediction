@@ -1,9 +1,7 @@
 import { isEligibleForAward } from "../lib/playerMaster";
 import { prisma } from "../lib/prisma";
 import { captureLeagueRankSnapshots } from "../lib/rankSnapshots";
-
-const GOLDEN_BALL_POINTS = 5;
-const GOLDEN_GLOVE_POINTS = 3;
+import { OUTRIGHT_POINTS } from "../lib/scoring";
 
 export async function settleTournamentOutrights(tournamentId: string, goldenBallPlayerId: string, goldenGlovePlayerId: string) {
   const settledAt = new Date();
@@ -26,8 +24,8 @@ export async function settleTournamentOutrights(tournamentId: string, goldenBall
     let awardedUsers = 0;
 
     for (const outright of outrights) {
-      const points = (outright.bestPlayerId === goldenBallPlayerId ? GOLDEN_BALL_POINTS : 0) +
-        (outright.bestGkId === goldenGlovePlayerId ? GOLDEN_GLOVE_POINTS : 0);
+      const points = (outright.bestPlayerId === goldenBallPlayerId ? OUTRIGHT_POINTS.goldenBall : 0) +
+        (outright.bestGkId === goldenGlovePlayerId ? OUTRIGHT_POINTS.goldenGlove : 0);
       if (points > 0) awardedUsers += 1;
       await tx.outright.update({ where: { userId: outright.userId }, data: { pointsAwarded: points } });
     }

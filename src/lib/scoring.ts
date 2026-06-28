@@ -5,6 +5,19 @@ export type ScoreLine = {
 
 export type MatchOutcome = "HOME" | "DRAW" | "AWAY";
 
+export const OUTRIGHT_SCORING_RULES = [
+  { key: "champion", points: 10 },
+  { key: "secondRunnerUp", points: 5 },
+  { key: "thirdPlace", points: 4 },
+  { key: "goldenBall", points: 5 },
+  { key: "goldenGlove", points: 3 },
+  { key: "goldenBoot", points: 3 },
+  { key: "youngPlayer", points: 3 },
+  { key: "fairPlay", points: 2 }
+] as const;
+
+export const OUTRIGHT_POINTS = Object.fromEntries(OUTRIGHT_SCORING_RULES.map((rule) => [rule.key, rule.points])) as Record<(typeof OUTRIGHT_SCORING_RULES)[number]["key"], number>;
+
 export type StageType = "GROUP" | "ROUND_OF_32" | "ROUND_OF_16" | "QUARTER_FINAL" | "SEMI_FINAL" | "THIRD_PLACE" | "FINAL";
 
 function outcome(score: ScoreLine): MatchOutcome {
@@ -30,8 +43,8 @@ export function calculateOutrightPoints(
   winners: { championTeamId: string; bestPlayerId: string; bestGkId: string }
 ) {
   return (
-    (picks.championTeamId === winners.championTeamId ? 10 : 0) +
-    (picks.bestPlayerId === winners.bestPlayerId ? 5 : 0) +
-    (picks.bestGkId === winners.bestGkId ? 3 : 0)
+    (picks.championTeamId === winners.championTeamId ? OUTRIGHT_POINTS.champion : 0) +
+    (picks.bestPlayerId === winners.bestPlayerId ? OUTRIGHT_POINTS.goldenBall : 0) +
+    (picks.bestGkId === winners.bestGkId ? OUTRIGHT_POINTS.goldenGlove : 0)
   );
 }

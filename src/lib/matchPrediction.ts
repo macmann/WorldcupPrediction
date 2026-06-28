@@ -10,6 +10,11 @@ export function scoreMatchesOutcome(outcome: MatchOutcome, homeScore: number, aw
   return outcomeFromScore(homeScore, awayScore) === outcome;
 }
 
+export function knockoutScoreMatchesAdvancingTeam(outcome: MatchOutcome, homeScore: number, awayScore: number) {
+  if (outcome === "DRAW") return false;
+  const scoreOutcome = outcomeFromScore(homeScore, awayScore);
+  return scoreOutcome === outcome || scoreOutcome === "DRAW";
+}
 
 export function isKnockoutStage(stage?: string | null) {
   return Boolean(stage && stage !== "GROUP");
