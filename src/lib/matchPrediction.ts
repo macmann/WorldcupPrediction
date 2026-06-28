@@ -9,3 +9,8 @@ export function outcomeFromScore(homeScore: number, awayScore: number): MatchOut
 export function scoreMatchesOutcome(outcome: MatchOutcome, homeScore: number, awayScore: number) {
   return outcomeFromScore(homeScore, awayScore) === outcome;
 }
+
+
+export function isKnockoutStage(stage?: string | null) {
+  return Boolean(stage && stage !== "GROUP");
+}

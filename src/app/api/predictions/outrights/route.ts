@@ -13,6 +13,7 @@ const schema = z.object({
   tournamentId: z.string().uuid().optional(),
   championTeamId: z.string().uuid(),
   secondRunnerUpTeamId: z.string().uuid(),
+  thirdPlaceTeamId: z.string().uuid().optional(),
   fairPlayTeamId: z.string().uuid(),
   bestPlayerId: z.string().uuid(),
   bestGkId: z.string().uuid(),
@@ -60,6 +61,7 @@ export async function GET(request: Request) {
       include: {
         championTeam: true,
         secondRunnerUpTeam: true,
+        thirdPlaceTeam: true,
         fairPlayTeam: true,
         bestPlayer: { include: { team: true } },
         bestGoalkeeper: { include: { team: true } },
@@ -87,6 +89,7 @@ export async function GET(request: Request) {
       outright: outright ? {
         championTeamId: outright.championTeamId,
         secondRunnerUpTeamId: outright.secondRunnerUpTeamId,
+        thirdPlaceTeamId: outright.thirdPlaceTeamId,
         fairPlayTeamId: outright.fairPlayTeamId,
         bestPlayerId: outright.bestPlayerId,
         bestGkId: outright.bestGkId,
@@ -94,6 +97,7 @@ export async function GET(request: Request) {
         youngPlayerId: outright.youngPlayerId,
         champion: optionName(outright.championTeam),
         secondRunnerUp: optionName(outright.secondRunnerUpTeam),
+        thirdPlace: outright.thirdPlaceTeam ? optionName(outright.thirdPlaceTeam) : null,
         fairPlay: optionName(outright.fairPlayTeam),
         bestPlayer: optionName(outright.bestPlayer),
         bestGk: optionName(outright.bestGoalkeeper),
@@ -122,9 +126,10 @@ export async function POST(request: Request) {
     const settings = await prisma.appSetting.findUnique({ where: { id: 1 }, select: { playerCatalogSource: true } });
     const playerCatalogSource = normalizePlayerCatalogSource(settings?.playerCatalogSource);
 
-    const [championTeam, secondRunnerUpTeam, fairPlayTeam, bestPlayer, bestGoalkeeper, goldenBootPlayer, youngPlayer] = await Promise.all([
+    const [championTeam, secondRunnerUpTeam, thirdPlaceTeam, fairPlayTeam, bestPlayer, bestGoalkeeper, goldenBootPlayer, youngPlayer] = await Promise.all([
       prisma.team.findUnique({ where: { id: input.championTeamId }, select: { tournamentId: true } }),
       prisma.team.findUnique({ where: { id: input.secondRunnerUpTeamId }, select: { tournamentId: true } }),
+      input.thirdPlaceTeamId ? prisma.team.findUnique({ where: { id: input.thirdPlaceTeamId }, select: { tournamentId: true } }) : Promise.resolve(null),
       prisma.team.findUnique({ where: { id: input.fairPlayTeamId }, select: { tournamentId: true } }),
       prisma.player.findUnique({ where: { id: input.bestPlayerId }, select: { tournamentId: true, source: true } }),
       prisma.player.findUnique({ where: { id: input.bestGkId }, select: { tournamentId: true, position: true, isGoalkeeper: true, source: true } }),
@@ -149,6 +154,7 @@ export async function POST(request: Request) {
     if (
       championTeam.tournamentId !== tournamentId ||
       secondRunnerUpTeam.tournamentId !== tournamentId ||
+      (thirdPlaceTeam !== null && thirdPlaceTeam.tournamentId !== tournamentId) ||
       fairPlayTeam.tournamentId !== tournamentId ||
       bestPlayer.tournamentId !== tournamentId ||
       bestGoalkeeper.tournamentId !== tournamentId ||
@@ -167,11 +173,11 @@ export async function POST(request: Request) {
       const saved = await tx.outright.upsert({
         where: { userId: user.id },
         create: {
-          userId: user.id, tournamentId, championTeamId: input.championTeamId, secondRunnerUpTeamId: input.secondRunnerUpTeamId, fairPlayTeamId: input.fairPlayTeamId,
+          userId: user.id, tournamentId, championTeamId: input.championTeamId, secondRunnerUpTeamId: input.secondRunnerUpTeamId, thirdPlaceTeamId: input.thirdPlaceTeamId ?? null, fairPlayTeamId: input.fairPlayTeamId,
           bestPlayerId: input.bestPlayerId, bestGkId: input.bestGkId, goldenBootPlayerId: input.goldenBootPlayerId, youngPlayerId: input.youngPlayerId
         },
         update: {
-          tournamentId, championTeamId: input.championTeamId, secondRunnerUpTeamId: input.secondRunnerUpTeamId, fairPlayTeamId: input.fairPlayTeamId,
+          tournamentId, championTeamId: input.championTeamId, secondRunnerUpTeamId: input.secondRunnerUpTeamId, thirdPlaceTeamId: input.thirdPlaceTeamId ?? null, fairPlayTeamId: input.fairPlayTeamId,
           bestPlayerId: input.bestPlayerId, bestGkId: input.bestGkId, goldenBootPlayerId: input.goldenBootPlayerId, youngPlayerId: input.youngPlayerId
         }
       });
