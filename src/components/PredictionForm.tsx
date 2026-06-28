@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LockIcon } from "@/components/Icons";
 import { TeamName, teamNameWithFlag } from "@/components/TeamName";
-import { isKnockoutStage, scoreMatchesOutcome } from "@/lib/matchPrediction";
+import { isKnockoutStage, knockoutScoreMatchesAdvancingTeam, scoreMatchesOutcome } from "@/lib/matchPrediction";
 import { useStore } from "@/store/useStore";
 import type { Match, MatchOutcome } from "@/lib/frontendData";
 
@@ -49,7 +49,7 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
   const predictedHomeScore = hasCompleteScore ? Number(home) : null;
   const predictedAwayScore = hasCompleteScore ? Number(away) : null;
   const hasValidScoreNumbers = predictedHomeScore !== null && predictedAwayScore !== null && !Number.isNaN(predictedHomeScore) && !Number.isNaN(predictedAwayScore);
-  const scoreOutcomeMismatch = !knockout && selectedOutcome && hasValidScoreNumbers && !scoreMatchesOutcome(selectedOutcome, predictedHomeScore, predictedAwayScore);
+  const scoreOutcomeMismatch = selectedOutcome && hasValidScoreNumbers && !(knockout ? knockoutScoreMatchesAdvancingTeam(selectedOutcome, predictedHomeScore, predictedAwayScore) : scoreMatchesOutcome(selectedOutcome, predictedHomeScore, predictedAwayScore));
   const canSavePrediction = Boolean(selectedOutcome && hasValidScoreNumbers && !scoreOutcomeMismatch);
   const selectedOutcomeLabel = selectedOutcome ? outcomeLabel(selectedOutcome, match, t) : t("prediction.selectedResult");
 
@@ -115,7 +115,7 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
         </div>
         {scoreOutcomeMismatch && (
           <p className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-center text-xs font-bold text-red-600">
-            {t("prediction.scoreMismatchPrefix")} {selectedOutcomeLabel}. {t("prediction.scoreMismatchSuffix")}
+            {knockout ? t("prediction.knockoutScoreMismatch") : `${t("prediction.scoreMismatchPrefix")} ${selectedOutcomeLabel}. ${t("prediction.scoreMismatchSuffix")}`}
           </p>
         )}
       </section>

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
-import { isKnockoutStage, scoreMatchesOutcome } from "@/lib/matchPrediction";
+import { isKnockoutStage, knockoutScoreMatchesAdvancingTeam, scoreMatchesOutcome } from "@/lib/matchPrediction";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
@@ -42,8 +42,13 @@ export async function POST(request: Request) {
     if (knockout && input.predictedOutcome === MatchOutcome.DRAW) {
       throw Object.assign(new Error("Draw predictions are not allowed for knockout-stage matches; choose the team that will advance"), { status: 400 });
     }
-    if (!knockout && input.predictedOutcome && input.hasScore && !scoreMatchesOutcome(input.predictedOutcome, input.predictedHomeScore!, input.predictedAwayScore!)) {
-      throw Object.assign(new Error("Correct score must match the selected win/draw/win result"), { status: 400 });
+    if (input.predictedOutcome && input.hasScore) {
+      const scoreIsConsistent = knockout
+        ? knockoutScoreMatchesAdvancingTeam(input.predictedOutcome, input.predictedHomeScore!, input.predictedAwayScore!)
+        : scoreMatchesOutcome(input.predictedOutcome, input.predictedHomeScore!, input.predictedAwayScore!);
+      if (!scoreIsConsistent) {
+        throw Object.assign(new Error(knockout ? "The exact score does not match your selected advancing team." : "Correct score must match the selected win/draw/win result"), { status: 400 });
+      }
     }
 
     const prediction = await prisma.prediction.upsert({
