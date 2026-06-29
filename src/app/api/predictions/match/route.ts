@@ -14,7 +14,9 @@ const schema = z.object({
   predictedHomeScore: z.number().int().min(0).max(30).optional(),
   predicted_home_score: z.number().int().min(0).max(30).optional(),
   predictedAwayScore: z.number().int().min(0).max(30).optional(),
-  predicted_away_score: z.number().int().min(0).max(30).optional()
+  predicted_away_score: z.number().int().min(0).max(30).optional(),
+  predictedPenaltyShootout: z.boolean().nullable().optional(),
+  predicted_penalty_shootout: z.boolean().nullable().optional()
 }).strict().transform((input, ctx) => {
   const matchId = input.matchId ?? input.match_id;
   const predictedOutcome = input.predictedOutcome ?? input.predicted_outcome;
@@ -22,12 +24,13 @@ const schema = z.object({
   const hasAwayScore = input.predictedAwayScore !== undefined || input.predicted_away_score !== undefined;
   const predictedHomeScore = input.predictedHomeScore ?? input.predicted_home_score;
   const predictedAwayScore = input.predictedAwayScore ?? input.predicted_away_score;
+  const predictedPenaltyShootout = input.predictedPenaltyShootout ?? input.predicted_penalty_shootout ?? null;
 
   if (!matchId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["match_id"], message: "match_id is required" });
   if (!predictedOutcome) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["predicted_outcome"], message: "Choose a match winner" });
   if (hasHomeScore !== hasAwayScore || !hasHomeScore) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["predicted_home_score"], message: "Both predicted score values are required" });
 
-  return { matchId: matchId!, predictedOutcome, predictedHomeScore, predictedAwayScore, hasScore: hasHomeScore && hasAwayScore };
+  return { matchId: matchId!, predictedOutcome, predictedHomeScore, predictedAwayScore, predictedPenaltyShootout, hasScore: hasHomeScore && hasAwayScore };
 });
 
 export async function POST(request: Request) {
@@ -39,6 +42,12 @@ export async function POST(request: Request) {
     if (!match.isEnabled || match.tournament?.isActive === false) throw Object.assign(new Error("This match is not available for predictions"), { status: 403 });
     if (new Date() >= match.kickoffTime) throw Object.assign(new Error("Predictions lock at kickoff"), { status: 403 });
     const knockout = isKnockoutStage(match.stage);
+    if (knockout && input.predictedPenaltyShootout === null) {
+      throw Object.assign(new Error("Choose whether a post-extra-time penalty shoot-out will happen"), { status: 400 });
+    }
+    if (!knockout && input.predictedPenaltyShootout !== null) {
+      throw Object.assign(new Error("Penalty shoot-out predictions are only available for knockout-stage matches"), { status: 400 });
+    }
     if (knockout && input.predictedOutcome === MatchOutcome.DRAW) {
       throw Object.assign(new Error("Draw predictions are not allowed for knockout-stage matches; choose the team that will advance"), { status: 400 });
     }
@@ -58,12 +67,14 @@ export async function POST(request: Request) {
         matchId: input.matchId,
         predictedOutcome: input.predictedOutcome ?? null,
         predictedHomeScore: input.hasScore ? input.predictedHomeScore! : null,
-        predictedAwayScore: input.hasScore ? input.predictedAwayScore! : null
+        predictedAwayScore: input.hasScore ? input.predictedAwayScore! : null,
+        predictedPenaltyShootout: knockout ? input.predictedPenaltyShootout : null
       },
       update: {
         predictedOutcome: input.predictedOutcome,
         predictedHomeScore: input.predictedHomeScore,
         predictedAwayScore: input.predictedAwayScore,
+        predictedPenaltyShootout: knockout ? input.predictedPenaltyShootout : null,
         pointsAwarded: null,
         isExactScore: false,
         isCorrectOutcome: false,

@@ -24,9 +24,11 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
   const currentOutcome = optimistic?.predictedOutcome ?? match.prediction?.predictedOutcome ?? null;
   const currentHome = optimistic?.predictedHomeScore ?? match.prediction?.predictedHomeScore;
   const currentAway = optimistic?.predictedAwayScore ?? match.prediction?.predictedAwayScore;
+  const currentPenaltyShootout = optimistic?.predictedPenaltyShootout ?? match.prediction?.predictedPenaltyShootout ?? null;
   const [selectedOutcome, setSelectedOutcome] = useState<MatchOutcome | null>(currentOutcome);
   const [home, setHome] = useState(currentHome?.toString() ?? "");
   const [away, setAway] = useState(currentAway?.toString() ?? "");
+  const [penaltyShootout, setPenaltyShootout] = useState<boolean | null>(currentPenaltyShootout);
   const locked = useMemo(() => lockedByServerTime(match, new Date(serverNowIso)), [match, serverNowIso]);
   const knockout = isKnockoutStage(match.stage);
 
@@ -34,7 +36,8 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
     setSelectedOutcome(currentOutcome);
     setHome(currentHome?.toString() ?? "");
     setAway(currentAway?.toString() ?? "");
-  }, [currentAway, currentHome, currentOutcome]);
+    setPenaltyShootout(currentPenaltyShootout);
+  }, [currentAway, currentHome, currentOutcome, currentPenaltyShootout]);
 
   async function postPrediction(body: Record<string, unknown>) {
     const response = await fetch("/api/predictions/match", {
@@ -50,16 +53,16 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
   const predictedAwayScore = hasCompleteScore ? Number(away) : null;
   const hasValidScoreNumbers = predictedHomeScore !== null && predictedAwayScore !== null && !Number.isNaN(predictedHomeScore) && !Number.isNaN(predictedAwayScore);
   const scoreOutcomeMismatch = selectedOutcome && hasValidScoreNumbers && !(knockout ? knockoutScoreMatchesAdvancingTeam(selectedOutcome, predictedHomeScore, predictedAwayScore) : scoreMatchesOutcome(selectedOutcome, predictedHomeScore, predictedAwayScore));
-  const canSavePrediction = Boolean(selectedOutcome && hasValidScoreNumbers && !scoreOutcomeMismatch);
+  const canSavePrediction = Boolean(selectedOutcome && hasValidScoreNumbers && !scoreOutcomeMismatch && (!knockout || penaltyShootout !== null));
   const selectedOutcomeLabel = selectedOutcome ? outcomeLabel(selectedOutcome, match, t) : t("prediction.selectedResult");
 
   function savePrediction() {
-    if (!selectedOutcome || !hasValidScoreNumbers || scoreOutcomeMismatch) return;
+    if (!selectedOutcome || !hasValidScoreNumbers || scoreOutcomeMismatch || (knockout && penaltyShootout === null)) return;
 
-    setOptimisticPrediction({ matchId: match.id, predictedOutcome: selectedOutcome, predictedHomeScore, predictedAwayScore, status: "saving" });
+    setOptimisticPrediction({ matchId: match.id, predictedOutcome: selectedOutcome, predictedHomeScore, predictedAwayScore, predictedPenaltyShootout: knockout ? penaltyShootout : null, status: "saving" });
     startTransition(async () => {
       try {
-        await postPrediction({ predicted_outcome: selectedOutcome, predicted_home_score: predictedHomeScore, predicted_away_score: predictedAwayScore });
+        await postPrediction({ predicted_outcome: selectedOutcome, predicted_home_score: predictedHomeScore, predicted_away_score: predictedAwayScore, predicted_penalty_shootout: knockout ? penaltyShootout : null });
         markPredictionStatus(match.id, "saved");
       } catch (error) {
         markPredictionStatus(match.id, "error", error instanceof Error ? error.message : t("prediction.saveError"));
@@ -119,6 +122,30 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
           </p>
         )}
       </section>
+
+      {knockout && (
+        <section className="rounded-3xl border border-slate-100 bg-slate-50 p-3">
+          <p className="text-xs font-black uppercase tracking-wider text-slate-400">PENALTY SHOOT-OUT</p>
+          <p className="text-sm font-bold text-slate-600">Will there be a penalty shoot-out?</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Correct penalty shoot-out prediction scores 1 point. This means the post-extra-time shoot-out used to decide the winner, not a normal penalty kick during the match.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => {
+              const active = penaltyShootout === option.value;
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  disabled={locked || isPending}
+                  onClick={() => setPenaltyShootout(option.value)}
+                  className={`rounded-2xl px-2 py-3 text-sm font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${active ? "bg-navy text-white shadow-lg shadow-navy/20" : "bg-white text-slate-700 shadow-sm"}`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {!locked && (
         <button type="button" onClick={savePrediction} disabled={isPending || !canSavePrediction} className={`w-full rounded-2xl py-3 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300 disabled:shadow-none ${optimistic?.status === "saved" ? "bg-emerald-700" : "bg-emerald-600"}`}>

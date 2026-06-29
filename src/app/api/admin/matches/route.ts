@@ -33,7 +33,9 @@ export async function GET(request: Request) {
         homeScore90: true,
         awayScore90: true,
         homeScore: true,
-        awayScore: true
+        awayScore: true,
+        stage: true,
+        actualPenaltyShootout: true
       }
     });
 

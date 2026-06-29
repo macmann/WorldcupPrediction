@@ -4,6 +4,7 @@ export type MatchPrediction = {
   predictedOutcome?: MatchOutcome | null;
   predictedHomeScore?: number | null;
   predictedAwayScore?: number | null;
+  predictedPenaltyShootout?: boolean | null;
   pointsAwarded?: number | null;
   isExactScore?: boolean;
   isCorrectOutcome?: boolean;
@@ -28,6 +29,7 @@ export type Match = {
   awayScore?: number | null;
   homeScore90?: number | null;
   awayScore90?: number | null;
+  actualPenaltyShootout?: boolean | null;
   highlightUrl?: string | null;
   isLocked?: boolean;
   prediction?: MatchPrediction | null;
