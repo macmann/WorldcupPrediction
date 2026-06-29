@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { calculateMatchPoints, calculateOutrightPoints } from "../src/lib/scoring";
 
-test("awards three points for an exact 90-minute score prediction without double counting", () => {
-  assert.deepEqual(calculateMatchPoints({ outcome: "HOME", score: { home: 2, away: 1 } }, { home: 2, away: 1 }), { points: 3, exact: true, correctOutcome: true });
+test("awards five points when both the 90-minute exact score and result are correct", () => {
+  assert.deepEqual(calculateMatchPoints({ outcome: "HOME", score: { home: 2, away: 1 } }, { home: 2, away: 1 }), { points: 5, exact: true, correctOutcome: true });
 });
 
 test("awards two points for the correct winner/result prediction", () => {
@@ -13,7 +13,7 @@ test("awards two points for the correct winner/result prediction", () => {
 });
 
 test("uses an explicit knockout winner separately from the 90-minute exact score", () => {
-  assert.deepEqual(calculateMatchPoints({ outcome: "AWAY", score: { home: 1, away: 1 } }, { home: 1, away: 1 }, "AWAY"), { points: 3, exact: true, correctOutcome: true });
+  assert.deepEqual(calculateMatchPoints({ outcome: "AWAY", score: { home: 1, away: 1 } }, { home: 1, away: 1 }, "AWAY"), { points: 5, exact: true, correctOutcome: true });
   assert.deepEqual(calculateMatchPoints({ outcome: "HOME", score: { home: 1, away: 1 } }, { home: 1, away: 1 }, "AWAY"), { points: 3, exact: true, correctOutcome: false });
 });
 
