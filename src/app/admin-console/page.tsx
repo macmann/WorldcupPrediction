@@ -111,7 +111,7 @@ function predictionOutcomeLabel(outcome?: "HOME" | "DRAW" | "AWAY" | null) {
 
 function awardedPointsBreakdown(prediction: PredictionRow) {
   if (prediction.pointsAwarded === null || prediction.pointsAwarded === undefined) return "pending";
-  const outcomePoints = prediction.isCorrectOutcome ? 1 : 0;
+  const outcomePoints = prediction.isCorrectOutcome ? 2 : 0;
   const exactScorePoints = prediction.isExactScore ? 3 : 0;
   return `${outcomePoints},${exactScorePoints}`;
 }

@@ -32,7 +32,7 @@ export function calculateMatchPoints(predicted: { outcome?: MatchOutcome | null;
   const exactScore = predicted.score ? predicted.score.home === actual.home && predicted.score.away === actual.away : false;
 
   return {
-    points: exactScore ? 3 : correctOutcome ? 2 : 0,
+    points: (exactScore ? 3 : 0) + (correctOutcome ? 2 : 0),
     exact: exactScore,
     correctOutcome
   };
