@@ -26,15 +26,24 @@ function outcome(score: ScoreLine): MatchOutcome {
   return "DRAW";
 }
 
-export function calculateMatchPoints(predicted: { outcome?: MatchOutcome | null; score?: ScoreLine | null }, actual: ScoreLine, actualWinner?: MatchOutcome | null) {
+export function calculateMatchPoints(
+  predicted: { outcome?: MatchOutcome | null; score?: ScoreLine | null; penaltyShootout?: boolean | null },
+  actual: ScoreLine,
+  actualWinner?: MatchOutcome | null,
+  actualPenaltyShootout?: boolean | null
+) {
   const actualOutcome = actualWinner ?? outcome(actual);
   const correctOutcome = predicted.outcome === actualOutcome;
   const exactScore = predicted.score ? predicted.score.home === actual.home && predicted.score.away === actual.away : false;
+  const correctPenaltyShootout = actualPenaltyShootout === null || actualPenaltyShootout === undefined
+    ? false
+    : predicted.penaltyShootout === actualPenaltyShootout;
 
   return {
-    points: (exactScore ? 3 : 0) + (correctOutcome ? 2 : 0),
+    points: (exactScore ? 3 : 0) + (correctOutcome ? 2 : 0) + (correctPenaltyShootout ? 1 : 0),
     exact: exactScore,
-    correctOutcome
+    correctOutcome,
+    correctPenaltyShootout
   };
 }
 

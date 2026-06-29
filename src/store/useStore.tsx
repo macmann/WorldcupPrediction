@@ -19,6 +19,7 @@ export type OptimisticPrediction = {
   predictedOutcome?: MatchOutcome | null;
   predictedHomeScore?: number | null;
   predictedAwayScore?: number | null;
+  predictedPenaltyShootout?: boolean | null;
   status: "idle" | "saving" | "saved" | "error";
   error?: string;
 };
