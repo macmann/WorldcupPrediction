@@ -43,6 +43,7 @@ export type ExternalFixture = {
   awayScore: number | null;
   homeScore90: number | null;
   awayScore90: number | null;
+  actualPenaltyShootout?: boolean | null;
   venue?: string | null;
 };
 
@@ -116,6 +117,54 @@ function normalizeStage(stage?: string | null) {
 
 function parseScore(value: unknown) {
   return typeof value === "number" ? value : null;
+}
+
+function isPresent(value: unknown) {
+  return value !== undefined && value !== null && value !== "";
+}
+
+function parseBoolean(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1 ? true : value === 0 ? false : null;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "yes", "y", "1"].includes(normalized)) return true;
+    if (["false", "no", "n", "0"].includes(normalized)) return false;
+  }
+  return null;
+}
+
+export function footballDataPenaltyShootout(match: any): boolean | null {
+  const duration = String(match.score?.duration ?? "").toUpperCase();
+  if (duration === "PENALTY_SHOOTOUT" || duration === "PENALTIES") return true;
+  if (duration === "REGULAR" || duration === "EXTRA_TIME") return false;
+  if (isPresent(match.score?.penalties?.home) || isPresent(match.score?.penalties?.away)) return true;
+  return null;
+}
+
+export function genericPenaltyShootout(match: any): boolean | null {
+  const explicit = parseBoolean(
+    match.actual_penalty_shootout ??
+    match.actualPenaltyShootout ??
+    match.penalty_shootout ??
+    match.penaltyShootout ??
+    match.decided_by_penalties ??
+    match.decidedByPenalties
+  );
+  if (explicit !== null) return explicit;
+
+  const duration = String(match.duration ?? match.score?.duration ?? match.decided_by ?? match.decidedBy ?? "").toUpperCase();
+  if (["PENALTY_SHOOTOUT", "PENALTIES", "PENALTY", "PSO"].includes(duration)) return true;
+  if (["REGULAR", "EXTRA_TIME", "AET"].includes(duration)) return false;
+  if (
+    isPresent(match.home_penalties) ||
+    isPresent(match.away_penalties) ||
+    isPresent(match.homePenalties) ||
+    isPresent(match.awayPenalties) ||
+    isPresent(match.score?.penalties?.home) ||
+    isPresent(match.score?.penalties?.away)
+  ) return true;
+  return null;
 }
 
 function normalizeGroupName(groupName?: string | null) {
@@ -192,6 +241,7 @@ async function fetchFootballDataFixtures(competitionCode = config.worldCupCompet
       awayScore: match.score?.fullTime?.away ?? null,
       homeScore90: match.score?.regularTime?.home ?? (canUseFullTimeAsStandardTime ? match.score?.fullTime?.home : null) ?? null,
       awayScore90: match.score?.regularTime?.away ?? (canUseFullTimeAsStandardTime ? match.score?.fullTime?.away : null) ?? null,
+      actualPenaltyShootout: footballDataPenaltyShootout(match),
       venue: match.venue ?? null
     };
   });
@@ -223,6 +273,7 @@ async function fetchWc2026ApiFixtures(): Promise<ExternalFixture[]> {
       awayScore,
       homeScore90: parseScore(match.home_score_90 ?? match.homeScore90) ?? homeScore,
       awayScore90: parseScore(match.away_score_90 ?? match.awayScore90) ?? awayScore,
+      actualPenaltyShootout: genericPenaltyShootout(match),
       venue: match.stadium ?? match.venue ?? null
     };
   }).filter((match: ExternalFixture) => Number.isInteger(match.id) && Boolean(match.kickoffTime));

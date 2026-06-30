@@ -55,6 +55,7 @@ async function upsertFixture(fixture: ExternalFixture, tournamentId?: string | n
     awayScore: fixture.awayScore,
     homeScore90: fixture.homeScore90,
     awayScore90: fixture.awayScore90,
+    actualPenaltyShootout: fixture.actualPenaltyShootout ?? undefined,
     lastSyncedAt: new Date()
   };
 

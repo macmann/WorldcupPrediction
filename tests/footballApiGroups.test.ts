@@ -45,3 +45,22 @@ test("parseGroupPayload parses common nested standings statistics", async () => 
   assert.equal(group?.teams[2].played, 2);
   assert.equal(group?.teams[2].points, 3);
 });
+
+test("footballDataPenaltyShootout derives shoot-out results from football-data scores", async () => {
+  const { footballDataPenaltyShootout } = await import("../src/services/footballApi");
+
+  assert.equal(footballDataPenaltyShootout({ score: { duration: "PENALTY_SHOOTOUT" } }), true);
+  assert.equal(footballDataPenaltyShootout({ score: { duration: "REGULAR" } }), false);
+  assert.equal(footballDataPenaltyShootout({ score: { penalties: { home: 4, away: 3 } } }), true);
+  assert.equal(footballDataPenaltyShootout({ score: {} }), null);
+});
+
+test("genericPenaltyShootout parses common provider penalty fields", async () => {
+  const { genericPenaltyShootout } = await import("../src/services/footballApi");
+
+  assert.equal(genericPenaltyShootout({ actual_penalty_shootout: true }), true);
+  assert.equal(genericPenaltyShootout({ penaltyShootout: "no" }), false);
+  assert.equal(genericPenaltyShootout({ decidedBy: "PSO" }), true);
+  assert.equal(genericPenaltyShootout({ home_penalties: 5, away_penalties: 4 }), true);
+  assert.equal(genericPenaltyShootout({}), null);
+});
