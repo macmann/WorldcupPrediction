@@ -1,4 +1,3 @@
-import { StageType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -8,6 +7,9 @@ import { jsonError } from "@/lib/http";
 import { isEligibleForAward, normalizePlayerCatalogSource } from "@/lib/playerMaster";
 import { ensurePlayerCatalogColumns, prisma } from "@/lib/prisma";
 import { getOutrightOptions, syncOutrightCatalog } from "@/services/outrightCatalog";
+
+const WC26_TOURNAMENT_PREDICTION_LOCK_TIME = new Date("2026-07-09T00:00:00.000Z");
+const WC26_TOURNAMENT_PREDICTION_LOCK_REASON = "Prediction is open until 9th July 2026";
 
 const schema = z.object({
   tournamentId: z.string().uuid().optional(),
@@ -21,20 +23,9 @@ const schema = z.object({
   youngPlayerId: z.string().uuid()
 }).strict();
 
-async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
-  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { startsAt: true } });
-  if (!tournament) throw Object.assign(new Error("Tournament not found"), { status: 404 });
-
-  const firstRoundOf16Match = await prisma.match.findFirst({
-    where: {
-      stage: StageType.ROUND_OF_16,
-      OR: [{ tournamentId }, { tournamentId: null }]
-    },
-    orderBy: { kickoffTime: "asc" },
-    select: { kickoffTime: true }
-  });
-
-  return firstRoundOf16Match?.kickoffTime ?? config.outrightLockTime ?? tournament.startsAt;
+function resolveWc26TournamentPredictionLockTime() {
+  if (Number.isNaN(config.outrightLockTime.getTime())) return WC26_TOURNAMENT_PREDICTION_LOCK_TIME;
+  return config.outrightLockTime > WC26_TOURNAMENT_PREDICTION_LOCK_TIME ? config.outrightLockTime : WC26_TOURNAMENT_PREDICTION_LOCK_TIME;
 }
 
 function optionName(option: { flagEmoji?: string | null; name: string; team?: { flagEmoji?: string | null; shortName?: string | null; name: string } | null }) {
@@ -70,7 +61,7 @@ export async function GET(request: Request) {
       }
     });
 
-    const wc26TournamentPredictionLockTime = await resolveWc26TournamentPredictionLockTime(options.tournament.id);
+    const wc26TournamentPredictionLockTime = resolveWc26TournamentPredictionLockTime();
     const isWc26TournamentPredictionLocked = new Date() >= wc26TournamentPredictionLockTime;
 
     return NextResponse.json({
@@ -83,6 +74,8 @@ export async function GET(request: Request) {
       canEdit: !isWc26TournamentPredictionLocked,
       is_wc26_tournament_prediction_locked: isWc26TournamentPredictionLocked,
       wc26_tournament_prediction_lock_time: wc26TournamentPredictionLockTime,
+      wc26_tournament_prediction_lock_round: "Round of 8",
+      wc26_tournament_prediction_lock_reason: WC26_TOURNAMENT_PREDICTION_LOCK_REASON,
       options: {
         teams: options.teams.map((team) => ({ id: team.id, name: optionName(team), groupName: team.groupName })),
         players: options.players.map((player) => ({ id: player.id, name: player.name, teamName: player.team?.name ?? null, teamId: player.teamId ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
@@ -167,9 +160,9 @@ export async function POST(request: Request) {
       throw Object.assign(new Error("All outright selections must belong to the same tournament"), { status: 400 });
     }
 
-    const wc26TournamentPredictionLockTime = await resolveWc26TournamentPredictionLockTime(tournamentId);
+    const wc26TournamentPredictionLockTime = resolveWc26TournamentPredictionLockTime();
     if (new Date() >= wc26TournamentPredictionLockTime) {
-      throw Object.assign(new Error("WC26 tournament predictions are already locked."), { status: 403 });
+      throw Object.assign(new Error("WC26 tournament predictions are locked after 9th July 2026."), { status: 403 });
     }
 
     const outright = await prisma.$transaction(async (tx) => {
