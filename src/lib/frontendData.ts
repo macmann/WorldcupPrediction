@@ -67,6 +67,7 @@ export type OutrightOptionsPayload = {
   is_wc26_tournament_prediction_locked: boolean;
   wc26_tournament_prediction_lock_time: string;
   wc26_tournament_prediction_lock_round: "Round of 8";
+  wc26_tournament_prediction_lock_reason: string;
   options: {
     teams: OutrightOption[];
     players: OutrightOption[];
