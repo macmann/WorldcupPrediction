@@ -21,7 +21,7 @@ const schema = z.object({
   youngPlayerId: z.string().uuid()
 }).strict();
 
-export async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
+async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { startsAt: true } });
   if (!tournament) throw Object.assign(new Error("Tournament not found"), { status: 404 });
 
