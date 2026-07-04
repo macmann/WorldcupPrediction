@@ -82,8 +82,7 @@ export default function OnboardingPage() {
     if (isLoading) return "Loading live tournament options…";
     if (isLocked) return "WC26 tournament predictions are locked after the first Round of 8 match starts.";
     if (data?.message) return data.message;
-    if (data?.source === "live-provider") return "Options are synced from the configured live football provider.";
-    return "Options are loaded from your tournament database.";
+    return "WC26 tournament predictions are open until the first Round of 8 match starts.";
   }, [data, isLoading, isLocked]);
   const canSubmit = Boolean(data && !isLocked && hasCompleteOptions(data) && !isPending);
 

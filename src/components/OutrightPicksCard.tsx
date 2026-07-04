@@ -226,8 +226,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
     if (isLoading) return t("outright.loading");
     if (isLocked) return t("outright.lockedMessage");
     if (data?.message) return data.message;
-    if (data?.source === "live-provider") return t("outright.liveProvider");
-    return t("outright.databaseProvider");
+    return t("outright.openMessage");
   }, [data, isLoading, isLocked]);
 
   return (

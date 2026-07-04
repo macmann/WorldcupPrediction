@@ -9,6 +9,8 @@ import { isEligibleForAward, normalizePlayerCatalogSource } from "@/lib/playerMa
 import { ensurePlayerCatalogColumns, prisma } from "@/lib/prisma";
 import { getOutrightOptions, syncOutrightCatalog } from "@/services/outrightCatalog";
 
+const WC26_ROUND_OF_8_FALLBACK_LOCK_TIME = new Date("2026-07-09T20:00:00.000Z");
+
 const schema = z.object({
   tournamentId: z.string().uuid().optional(),
   championTeamId: z.string().uuid(),
@@ -21,8 +23,13 @@ const schema = z.object({
   youngPlayerId: z.string().uuid()
 }).strict();
 
+function resolveConfiguredRoundOf8FallbackLockTime() {
+  if (Number.isNaN(config.outrightLockTime.getTime())) return WC26_ROUND_OF_8_FALLBACK_LOCK_TIME;
+  return config.outrightLockTime > WC26_ROUND_OF_8_FALLBACK_LOCK_TIME ? config.outrightLockTime : WC26_ROUND_OF_8_FALLBACK_LOCK_TIME;
+}
+
 async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
-  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { startsAt: true } });
+  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { id: true } });
   if (!tournament) throw Object.assign(new Error("Tournament not found"), { status: 404 });
 
   const firstRoundOf8Match = await prisma.match.findFirst({
@@ -41,6 +48,7 @@ async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
     select: { kickoffTime: true }
   });
 
+  return firstRoundOf8Match?.kickoffTime ?? resolveConfiguredRoundOf8FallbackLockTime();
   return firstRoundOf8Match?.kickoffTime ?? config.outrightLockTime ?? tournament.startsAt;
 }
 
