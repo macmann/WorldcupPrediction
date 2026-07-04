@@ -221,7 +221,7 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
   const lockTarget = data?.wc26_tournament_prediction_lock_time ?? data?.tournament.outrightLockAt;
   const lockLabel = lockTarget
     ? formatAppDateTime(lockTarget)
-    : "the Round of 16";
+    : t("outright.roundOf8");
   const statusMessage = useMemo(() => {
     if (isLoading) return t("outright.loading");
     if (isLocked) return t("outright.lockedMessage");

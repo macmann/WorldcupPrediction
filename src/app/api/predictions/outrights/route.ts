@@ -25,16 +25,23 @@ async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { startsAt: true } });
   if (!tournament) throw Object.assign(new Error("Tournament not found"), { status: 404 });
 
-  const firstRoundOf16Match = await prisma.match.findFirst({
+  const firstRoundOf8Match = await prisma.match.findFirst({
     where: {
-      stage: StageType.ROUND_OF_16,
-      OR: [{ tournamentId }, { tournamentId: null }]
+      AND: [
+        { OR: [{ tournamentId }, { tournamentId: null }] },
+        {
+          OR: [
+            { stage: StageType.QUARTER_FINAL },
+            { groupName: { in: ["Quarter Final", "Quarterfinal", "Round of 8", "Round 8"], mode: "insensitive" } }
+          ]
+        }
+      ]
     },
     orderBy: { kickoffTime: "asc" },
     select: { kickoffTime: true }
   });
 
-  return firstRoundOf16Match?.kickoffTime ?? config.outrightLockTime ?? tournament.startsAt;
+  return firstRoundOf8Match?.kickoffTime ?? config.outrightLockTime ?? tournament.startsAt;
 }
 
 function optionName(option: { flagEmoji?: string | null; name: string; team?: { flagEmoji?: string | null; shortName?: string | null; name: string } | null }) {
@@ -83,6 +90,7 @@ export async function GET(request: Request) {
       canEdit: !isWc26TournamentPredictionLocked,
       is_wc26_tournament_prediction_locked: isWc26TournamentPredictionLocked,
       wc26_tournament_prediction_lock_time: wc26TournamentPredictionLockTime,
+      wc26_tournament_prediction_lock_round: "Round of 8",
       options: {
         teams: options.teams.map((team) => ({ id: team.id, name: optionName(team), groupName: team.groupName })),
         players: options.players.map((player) => ({ id: player.id, name: player.name, teamName: player.team?.name ?? null, teamId: player.teamId ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
