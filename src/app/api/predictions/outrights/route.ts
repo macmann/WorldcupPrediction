@@ -21,7 +21,7 @@ const schema = z.object({
   youngPlayerId: z.string().uuid()
 }).strict();
 
-async function resolveOutrightLockDeadline(tournamentId: string) {
+export async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId }, select: { startsAt: true } });
   if (!tournament) throw Object.assign(new Error("Tournament not found"), { status: 404 });
 
@@ -70,16 +70,19 @@ export async function GET(request: Request) {
       }
     });
 
-    const outrightLockDeadline = await resolveOutrightLockDeadline(options.tournament.id);
+    const wc26TournamentPredictionLockTime = await resolveWc26TournamentPredictionLockTime(options.tournament.id);
+    const isWc26TournamentPredictionLocked = new Date() >= wc26TournamentPredictionLockTime;
 
     return NextResponse.json({
       tournament: {
         id: options.tournament.id,
         name: options.tournament.name,
         startsAt: options.tournament.startsAt,
-        outrightLockAt: outrightLockDeadline
+        outrightLockAt: wc26TournamentPredictionLockTime
       },
-      canEdit: new Date() < outrightLockDeadline,
+      canEdit: !isWc26TournamentPredictionLocked,
+      is_wc26_tournament_prediction_locked: isWc26TournamentPredictionLocked,
+      wc26_tournament_prediction_lock_time: wc26TournamentPredictionLockTime,
       options: {
         teams: options.teams.map((team) => ({ id: team.id, name: optionName(team), groupName: team.groupName })),
         players: options.players.map((player) => ({ id: player.id, name: player.name, teamName: player.team?.name ?? null, teamId: player.teamId ?? null, position: player.position, isGoalkeeper: player.isGoalkeeper, groupName: player.team?.groupName ?? null })),
@@ -164,9 +167,9 @@ export async function POST(request: Request) {
       throw Object.assign(new Error("All outright selections must belong to the same tournament"), { status: 400 });
     }
 
-    const outrightLockDeadline = await resolveOutrightLockDeadline(tournamentId);
-    if (new Date() >= outrightLockDeadline) {
-      throw Object.assign(new Error("Outright picks are locked because the Round of 16 has started"), { status: 403 });
+    const wc26TournamentPredictionLockTime = await resolveWc26TournamentPredictionLockTime(tournamentId);
+    if (new Date() >= wc26TournamentPredictionLockTime) {
+      throw Object.assign(new Error("WC26 tournament predictions are already locked."), { status: 403 });
     }
 
     const outright = await prisma.$transaction(async (tx) => {

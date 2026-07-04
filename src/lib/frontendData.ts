@@ -64,6 +64,8 @@ export type OutrightOption = {
 export type OutrightOptionsPayload = {
   tournament: { id: string; name: string; startsAt: string; outrightLockAt: string };
   canEdit: boolean;
+  is_wc26_tournament_prediction_locked: boolean;
+  wc26_tournament_prediction_lock_time: string;
   options: {
     teams: OutrightOption[];
     players: OutrightOption[];
