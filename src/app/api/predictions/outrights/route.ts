@@ -49,6 +49,7 @@ async function resolveWc26TournamentPredictionLockTime(tournamentId: string) {
   });
 
   return firstRoundOf8Match?.kickoffTime ?? resolveConfiguredRoundOf8FallbackLockTime();
+  return firstRoundOf8Match?.kickoffTime ?? config.outrightLockTime ?? tournament.startsAt;
 }
 
 function optionName(option: { flagEmoji?: string | null; name: string; team?: { flagEmoji?: string | null; shortName?: string | null; name: string } | null }) {
