@@ -210,14 +210,15 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
   const eligibleGoalkeepers = (data?.options.goalkeepers ?? []).filter(isGoalkeeper);
   const eligibleGoldenBootPlayers = (data?.options.goldenBootPlayers ?? []).filter((player) => !isGoalkeeper(player));
   const completed = Boolean(summary);
-  const liveCanEdit = Boolean(data?.canEdit ?? canEdit);
+  const apiLocked = data?.is_wc26_tournament_prediction_locked ?? (data?.canEdit === false);
+  const liveCanEdit = Boolean((data ? !apiLocked : canEdit));
   const hasSelectedAllAwardPlayers = awardSelectionIsValid(data?.options.players ?? [], bestPlayerTeamId, bestPlayerId)
     && awardSelectionIsValid(eligibleGoalkeepers, bestGkTeamId, bestGkId)
     && awardSelectionIsValid(eligibleGoldenBootPlayers, goldenBootTeamId, goldenBootPlayerId)
     && awardSelectionIsValid(data?.options.players ?? [], youngPlayerTeamId, youngPlayerId);
   const canSubmit = liveCanEdit && hasCompleteOptions(data) && hasSelectedAllAwardPlayers && !isPending;
-  const isLocked = data?.canEdit === false || (!isLoading && !liveCanEdit);
-  const lockTarget = data?.tournament.outrightLockAt;
+  const isLocked = Boolean(apiLocked) || (!isLoading && !liveCanEdit);
+  const lockTarget = data?.wc26_tournament_prediction_lock_time ?? data?.tournament.outrightLockAt;
   const lockLabel = lockTarget
     ? formatAppDateTime(lockTarget)
     : "the Round of 16";
@@ -233,7 +234,10 @@ export function OutrightPicksCard({ canEdit }: { canEdit: boolean }) {
     <Card>
       <SectionTitle eyebrow={completed ? t("outright.savedPicks") : t("outright.tournamentPicks")} title={t("outright.chooseWinners")} />
       <p className="mt-2 text-sm font-semibold text-slate-500">{t("outright.description")}</p>
-      <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{statusMessage}</p>
+      <div className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+        <p>{statusMessage}</p>
+        {isLocked && lockTarget ? <p className="mt-1">{t("outright.lockedSince")}: {formatAppDateTime(lockTarget)}</p> : null}
+      </div>
 
       <PointsRules t={t} />
 

@@ -76,13 +76,16 @@ export default function OnboardingPage() {
     });
   }
 
+  const isLocked = Boolean(data?.is_wc26_tournament_prediction_locked ?? data?.canEdit === false);
+
   const statusMessage = useMemo(() => {
     if (isLoading) return "Loading live tournament options…";
+    if (isLocked) return "WC26 tournament predictions are locked after the first Round of 16 match starts.";
     if (data?.message) return data.message;
     if (data?.source === "live-provider") return "Options are synced from the configured live football provider.";
     return "Options are loaded from your tournament database.";
-  }, [data, isLoading]);
-  const canSubmit = Boolean(data?.canEdit && hasCompleteOptions(data) && !isPending);
+  }, [data, isLoading, isLocked]);
+  const canSubmit = Boolean(data && !isLocked && hasCompleteOptions(data) && !isPending);
 
   return (
     <main className="min-h-dvh bg-gradient-to-b from-navy to-emerald-950 px-4 pb-8 pt-8 text-white">
@@ -99,7 +102,7 @@ export default function OnboardingPage() {
 
       <Card className="mt-6 text-slate-950">
         <SectionTitle eyebrow="Required" title="Outright picks" />
-        <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{data?.canEdit === false ? "Outright picks are locked because the Round of 16 has started." : statusMessage}</p>
+        <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{statusMessage}</p>
         <div className="mt-4 rounded-3xl bg-gradient-to-br from-navy to-emerald-800 p-4 text-white">
           <p className="text-xs font-black uppercase tracking-widest text-emerald-200">Selection deadline</p>
           <p className="mt-1 text-sm font-bold">Closes when the Round of 16 starts</p>
@@ -109,48 +112,48 @@ export default function OnboardingPage() {
         </div>
         <div className="mt-5 space-y-4">
           <label className="block text-sm font-black">World Cup Champion
-            <select value={championTeamId} onChange={(event) => setChampionTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={championTeamId} onChange={(event) => setChampionTeamId(event.target.value)} disabled={isLocked || !data || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-black">1st Runner-up
-            <select value={secondRunnerUpTeamId} onChange={(event) => setSecondRunnerUpTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={secondRunnerUpTeamId} onChange={(event) => setSecondRunnerUpTeamId(event.target.value)} disabled={isLocked || !data || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-black">3rd Place
-            <select value={thirdPlaceTeamId} onChange={(event) => setThirdPlaceTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={thirdPlaceTeamId} onChange={(event) => setThirdPlaceTeamId(event.target.value)} disabled={isLocked || !data || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-black">Golden Ball
-            <select value={bestPlayerId} onChange={(event) => setBestPlayerId(event.target.value)} disabled={!data?.canEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={bestPlayerId} onChange={(event) => setBestPlayerId(event.target.value)} disabled={isLocked || !data || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-black">Golden Glove
-            <select value={bestGkId} onChange={(event) => setBestGkId(event.target.value)} disabled={!data?.canEdit || !data?.options.goalkeepers.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={bestGkId} onChange={(event) => setBestGkId(event.target.value)} disabled={isLocked || !data || !data?.options.goalkeepers.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.goalkeepers ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-black">Golden Boot
-            <select value={goldenBootPlayerId} onChange={(event) => setGoldenBootPlayerId(event.target.value)} disabled={!data?.canEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={goldenBootPlayerId} onChange={(event) => setGoldenBootPlayerId(event.target.value)} disabled={isLocked || !data || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-black">FIFA Young Player Award
-            <select value={youngPlayerId} onChange={(event) => setYoungPlayerId(event.target.value)} disabled={!data?.canEdit || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={youngPlayerId} onChange={(event) => setYoungPlayerId(event.target.value)} disabled={isLocked || !data || !data?.options.players.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.players ?? []).map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
             </select>
           </label>
           <label className="block text-sm font-black">FIFA Fair Play Trophy
-            <select value={fairPlayTeamId} onChange={(event) => setFairPlayTeamId(event.target.value)} disabled={!data?.canEdit || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
+            <select value={fairPlayTeamId} onChange={(event) => setFairPlayTeamId(event.target.value)} disabled={isLocked || !data || !data?.options.teams.length} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 font-bold disabled:bg-slate-100">
               {(data?.options.teams ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
           </label>
         </div>
         {error && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
-        <button type="button" onClick={submit} disabled={!canSubmit} className="mt-5 w-full rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300">{isPending ? "Saving picks…" : data?.canEdit === false ? "Picks are locked" : "Save picks & enter"}</button>
+        <button type="button" onClick={submit} disabled={!canSubmit} className="mt-5 w-full rounded-2xl bg-emerald-600 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition active:scale-[0.98] disabled:bg-slate-300">{isPending ? "Saving picks…" : isLocked ? "Picks are locked" : "Save picks & enter"}</button>
       </Card>
     </main>
   );
