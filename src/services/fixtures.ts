@@ -5,10 +5,10 @@ import { fetchFootballDataCompetitionFixtures, fetchWorldCupFixtures, type Exter
 import { enqueueScoringJob } from "../jobs/scoringEngine.job";
 
 function mapStage(stage?: string | null): StageType {
-  const normalized = stage?.toUpperCase().replaceAll("-", "_");
+  const normalized = stage?.toUpperCase().replaceAll("-", "_").replaceAll(" ", "_");
   if (normalized === "LAST_32" || normalized === "ROUND_OF_32") return StageType.ROUND_OF_32;
   if (normalized === "LAST_16" || normalized === "ROUND_OF_16") return StageType.ROUND_OF_16;
-  if (normalized === "QUARTER_FINALS" || normalized === "QUARTER_FINAL") return StageType.QUARTER_FINAL;
+  if (normalized === "QUARTER_FINALS" || normalized === "QUARTER_FINAL" || normalized === "QUARTERFINAL" || normalized === "ROUND_OF_8" || normalized === "ROUND_8") return StageType.QUARTER_FINAL;
   if (normalized === "SEMI_FINALS" || normalized === "SEMI_FINAL") return StageType.SEMI_FINAL;
   if (normalized === "THIRD_PLACE") return StageType.THIRD_PLACE;
   if (normalized === "FINAL") return StageType.FINAL;

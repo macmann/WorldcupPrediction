@@ -80,10 +80,9 @@ export default function OnboardingPage() {
 
   const statusMessage = useMemo(() => {
     if (isLoading) return "Loading live tournament options…";
-    if (isLocked) return "WC26 tournament predictions are locked after the first Round of 16 match starts.";
+    if (isLocked) return "WC26 tournament predictions are locked after the first Round of 8 match starts.";
     if (data?.message) return data.message;
-    if (data?.source === "live-provider") return "Options are synced from the configured live football provider.";
-    return "Options are loaded from your tournament database.";
+    return "WC26 tournament predictions are open until the first Round of 8 match starts.";
   }, [data, isLoading, isLocked]);
   const canSubmit = Boolean(data && !isLocked && hasCompleteOptions(data) && !isPending);
 
@@ -98,14 +97,14 @@ export default function OnboardingPage() {
           <h1 className="mt-2 text-3xl font-black tracking-tight">Lock your tournament outrights</h1>
         </div>
       </div>
-      <p className="mt-3 text-sm font-medium text-emerald-50">Choose your tournament winner and award picks before entering the app. These picks stay open until the Round of 16 starts.</p>
+      <p className="mt-3 text-sm font-medium text-emerald-50">Choose your tournament winner and award picks before entering the app. These picks stay open until the first Round of 8 / Quarter Final match starts.</p>
 
       <Card className="mt-6 text-slate-950">
         <SectionTitle eyebrow="Required" title="Outright picks" />
         <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{statusMessage}</p>
         <div className="mt-4 rounded-3xl bg-gradient-to-br from-navy to-emerald-800 p-4 text-white">
           <p className="text-xs font-black uppercase tracking-widest text-emerald-200">Selection deadline</p>
-          <p className="mt-1 text-sm font-bold">Closes when the Round of 16 starts</p>
+          <p className="mt-1 text-sm font-bold">Locks when the first Round of 8 / Quarter Final match starts</p>
           <div className="mt-3">
             {data?.tournament.outrightLockAt ? <Countdown target={data.tournament.outrightLockAt} /> : <p className="text-sm font-bold text-emerald-50">Deadline syncing…</p>}
           </div>
