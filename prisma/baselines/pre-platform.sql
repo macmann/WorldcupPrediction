@@ -670,4 +670,3 @@ ALTER TABLE "outright_settlements" ADD CONSTRAINT "outright_settlements_golden_b
 
 -- AddForeignKey
 ALTER TABLE "outright_settlements" ADD CONSTRAINT "outright_settlements_golden_glove_player_id_fkey" FOREIGN KEY ("golden_glove_player_id") REFERENCES "players"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
