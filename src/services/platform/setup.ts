@@ -16,13 +16,21 @@ export async function seedPickRules(seasonId: string, tx: Tx = prisma) {
 export async function bootstrapPremierLeague() {
   await seedAchievements();
   return prisma.$transaction(async tx => {
-    const competition = await tx.competition.upsert({
-      where: { slug: "premier-league" },
-      create: { name: "Premier League", shortName: "PL", slug: "premier-league", region: "England", type: "LEAGUE", provider: "football-data", providerCode: "PL", displayPriority: 0 }, update: {}
-    });
+    // A migrated EPL tournament already owns the provider identity, even when
+    // its slug is legacy-prefixed. Reuse it instead of creating a duplicate PL.
+    const providerCompetition = await tx.competition.findUnique({ where: { provider_providerCode: { provider: "football-data", providerCode: "PL" } } });
+    const slugCompetition = await tx.competition.findUnique({ where: { slug: "premier-league" } });
+    if (slugCompetition && (slugCompetition.provider !== "football-data" || slugCompetition.providerCode !== "PL")) {
+      throw Object.assign(new Error("The premier-league slug belongs to another provider configuration. Review that competition before configuring EPL."), { status: 409 });
+    }
+    const existingCompetition = providerCompetition ?? slugCompetition;
+    const competition = existingCompetition
+      ? await tx.competition.update({ where: { id: existingCompetition.id }, data: { type: "LEAGUE", displayPriority: 0 } })
+      : await tx.competition.create({ data: { name: "Premier League", shortName: "PL", slug: "premier-league", region: "England", type: "LEAGUE", provider: "football-data", providerCode: "PL", displayPriority: 0 } });
+    const hasCurrentSeason = await tx.season.count({ where: { competitionId: competition.id, isCurrent: true } }) > 0;
     const season = await tx.season.upsert({
       where: { competitionId_displayName: { competitionId: competition.id, displayName: "2026/27" } },
-      create: { competitionId: competition.id, displayName: "2026/27", startsAt: new Date("2026-07-01T00:00:00Z"), endsAt: new Date("2027-06-30T23:59:59Z"), providerSeason: 2026, usesGameweeks: true, isCurrent: true, status: "ACTIVE", timezone: "Europe/London" }, update: {}
+      create: { competitionId: competition.id, displayName: "2026/27", startsAt: new Date("2026-07-01T00:00:00Z"), endsAt: new Date("2027-06-30T23:59:59Z"), providerSeason: 2026, usesGameweeks: true, isCurrent: !hasCurrentSeason, status: "ACTIVE", timezone: "Europe/London" }, update: {}
     });
     for (let number = 1; number <= 38; number++) {
       await tx.gameweek.upsert({ where: { seasonId_number: { seasonId: season.id, number } }, create: { seasonId: season.id, number }, update: {} });
