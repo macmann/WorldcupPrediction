@@ -1,10 +1,9 @@
+import { submitPrediction } from "@/services/platform/gameplay";
 import { MatchOutcome } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
-import { isKnockoutStage, knockoutScoreMatchesAdvancingTeam, scoreMatchesOutcome } from "@/lib/matchPrediction";
-import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
   matchId: z.number().int().positive().optional(),
@@ -37,51 +36,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const input = schema.parse(await request.json());
-    const match = await prisma.match.findUnique({ where: { id: input.matchId }, select: { kickoffTime: true, isEnabled: true, stage: true, tournament: { select: { isActive: true } } } });
-    if (!match) throw Object.assign(new Error("Match not found"), { status: 404 });
-    if (!match.isEnabled || match.tournament?.isActive === false) throw Object.assign(new Error("This match is not available for predictions"), { status: 403 });
-    if (new Date() >= match.kickoffTime) throw Object.assign(new Error("Predictions lock at kickoff"), { status: 403 });
-    const knockout = isKnockoutStage(match.stage);
-    if (knockout && input.predictedPenaltyShootout === null) {
-      throw Object.assign(new Error("Choose whether a post-extra-time penalty shoot-out will happen"), { status: 400 });
-    }
-    if (!knockout && input.predictedPenaltyShootout !== null) {
-      throw Object.assign(new Error("Penalty shoot-out predictions are only available for knockout-stage matches"), { status: 400 });
-    }
-    if (knockout && input.predictedOutcome === MatchOutcome.DRAW) {
-      throw Object.assign(new Error("Draw predictions are not allowed for knockout-stage matches; choose the team that will advance"), { status: 400 });
-    }
-    if (input.predictedOutcome && input.hasScore) {
-      const scoreIsConsistent = knockout
-        ? knockoutScoreMatchesAdvancingTeam(input.predictedOutcome, input.predictedHomeScore!, input.predictedAwayScore!)
-        : scoreMatchesOutcome(input.predictedOutcome, input.predictedHomeScore!, input.predictedAwayScore!);
-      if (!scoreIsConsistent) {
-        throw Object.assign(new Error(knockout ? "The exact score does not match your selected advancing team." : "Correct score must match the selected win/draw/win result"), { status: 400 });
-      }
-    }
-
-    const prediction = await prisma.prediction.upsert({
-      where: { userId_matchId: { userId: user.id, matchId: input.matchId } },
-      create: {
-        userId: user.id,
-        matchId: input.matchId,
-        predictedOutcome: input.predictedOutcome ?? null,
-        predictedHomeScore: input.hasScore ? input.predictedHomeScore! : null,
-        predictedAwayScore: input.hasScore ? input.predictedAwayScore! : null,
-        predictedPenaltyShootout: knockout ? input.predictedPenaltyShootout : null
-      },
-      update: {
-        predictedOutcome: input.predictedOutcome,
-        predictedHomeScore: input.predictedHomeScore,
-        predictedAwayScore: input.predictedAwayScore,
-        predictedPenaltyShootout: knockout ? input.predictedPenaltyShootout : null,
-        pointsAwarded: null,
-        isExactScore: false,
-        isCorrectOutcome: false,
-        isLocked: false,
-        scoredAt: null
-      }
-    });
+    const prediction = await submitPrediction(user.id, { matchId: input.matchId, predictedOutcome: input.predictedOutcome!, predictedHomeScore: input.predictedHomeScore!, predictedAwayScore: input.predictedAwayScore!, predictedPenaltyShootout: input.predictedPenaltyShootout });
 
     return NextResponse.json({ prediction });
   } catch (error) {

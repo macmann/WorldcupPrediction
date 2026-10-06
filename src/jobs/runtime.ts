@@ -1,9 +1,10 @@
+import { schedulePlatformMaintenance, processPlatformMaintenance, platformMaintenanceJobName } from "./platformMaintenance.job";
 import { pathToFileURL } from "node:url";
 import { Worker } from "bullmq";
 import { closeQueues, getConnection } from "./queues";
 import { fixtureSyncJobName, processFixtureSyncJob, scheduleFixtureSyncJob } from "./fixtureSync.job";
 import { liveScorePollJobName, processLiveScorePollJob, scheduleLiveScorePollJob } from "./liveScorePoll.job";
-import { processScoringEngineJob, scoringEngineJobName } from "./scoringEngine.job";
+import { processScoringEngineJob, scoringEngineJobName, processSeasonScoringJob, seasonScoringJobName } from "./scoringEngine.job";
 
 let started = false;
 let workers: Worker[] = [];
@@ -11,7 +12,8 @@ let workers: Worker[] = [];
 export async function scheduleRecurringJobs() {
   await Promise.all([
     scheduleFixtureSyncJob(),
-    scheduleLiveScorePollJob()
+    scheduleLiveScorePollJob(),
+    schedulePlatformMaintenance()
   ]);
 }
 
@@ -23,6 +25,7 @@ export async function startBackgroundJobs() {
         "fixtures",
         async (job) => {
           if (job.name === fixtureSyncJobName) return processFixtureSyncJob(job);
+          if (job.name === platformMaintenanceJobName) return processPlatformMaintenance();
           throw new Error(`Unknown fixtures job: ${job.name}`);
         },
         { connection: getConnection(), concurrency: 2 }
@@ -39,6 +42,7 @@ export async function startBackgroundJobs() {
         "scoring",
         async (job) => {
           if (job.name === scoringEngineJobName) return processScoringEngineJob(job);
+          if (job.name === seasonScoringJobName) return processSeasonScoringJob(job);
           throw new Error(`Unknown scoring job: ${job.name}`);
         },
         { connection: getConnection(), concurrency: 8 }

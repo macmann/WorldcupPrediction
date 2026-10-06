@@ -9,7 +9,7 @@ import { useStore } from "@/store/useStore";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser } = useStore();
+  const { setUser, t } = useStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -103,7 +103,7 @@ export default function LoginPage() {
             <span className="absolute -top-2 h-7 w-7 rotate-45 rounded bg-amber-300/90 shadow-[0_0_22px_rgba(251,191,36,0.45)]" />
             <PlatformLogo className="relative h-24 w-24 drop-shadow-[0_8px_20px_rgba(0,0,0,0.45)]" />
           </div>
-          <p className="mt-5 bg-[linear-gradient(92deg,#f8fafc_0%,#94a3b8_38%,#ffffff_55%,#64748b_100%)] bg-clip-text text-sm font-black uppercase tracking-[0.42em] text-transparent drop-shadow-[0_2px_12px_rgba(255,255,255,0.16)]">FFM - WC2026</p>
+          <p className="mt-5 bg-[linear-gradient(92deg,#f8fafc_0%,#94a3b8_38%,#ffffff_55%,#64748b_100%)] bg-clip-text text-sm font-black uppercase tracking-[0.42em] text-transparent drop-shadow-[0_2px_12px_rgba(255,255,255,0.16)]">{t("platform.title")}</p>
           <p className="mt-4 max-w-[20rem] text-sm font-semibold leading-6 text-emerald-50/88">Log in to unlock your dashboard, make match predictions, and choose your Champion, Best Player, and Best Goalkeeper.</p>
         </section>
 

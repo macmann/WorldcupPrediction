@@ -171,6 +171,7 @@ export async function POST(request: Request) {
     }
 
     const tournamentId = input.tournamentId ?? championTeam.tournamentId;
+    if (!tournamentId) throw Object.assign(new Error("Use Season Picks for seasonal catalogs"), { status: 400 });
     if (
       championTeam.tournamentId !== tournamentId ||
       secondRunnerUpTeam.tournamentId !== tournamentId ||

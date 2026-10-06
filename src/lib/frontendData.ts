@@ -11,6 +11,8 @@ export type MatchPrediction = {
 };
 
 export type Match = {
+  legacyKnockout?: boolean;
+  outcomePoints?: number;
   id: number;
   matchday?: string | number | null;
   stage?: string | null;

@@ -8,21 +8,10 @@ import { useStore } from "@/store/useStore";
 const tabs = [
   { href: "/dashboard", labelKey: "nav.home", icon: HomeIcon },
   { href: "/predict", labelKey: "nav.predict", icon: BallIcon },
-  { href: "/winners", labelKey: "nav.winners", icon: WC26Icon },
   { href: "/leagues", labelKey: "nav.leagues", icon: UsersIcon },
-  { href: "/history", labelKey: "nav.history", icon: HistoryIcon }
+  { href: "/stats", labelKey: "platform.stats", icon: HistoryIcon },
+  { href: "/profile", labelKey: "platform.profile", icon: UsersIcon }
 ] as const;
-
-function WC26Icon({ className }: { className?: string }) {
-  return (
-    <img
-      src="https://i.ibb.co/Q7pgQJ6R/viber-image-2026-06-01-14-13-33-275.jpg"
-      alt=""
-      className={`rounded-md object-cover ${className ?? ""}`}
-      loading="lazy"
-    />
-  );
-}
 
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";

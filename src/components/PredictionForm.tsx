@@ -17,7 +17,7 @@ function outcomeLabel(outcome: MatchOutcome, match: Match, t: ReturnType<typeof 
   return t("prediction.draw");
 }
 
-export function PredictionForm({ match, serverNowIso }: { match: Match; serverNowIso: string }) {
+export function PredictionForm({ match, serverNowIso, onSaved }: { match: Match; serverNowIso: string; onSaved?: () => void }) {
   const { predictions, setOptimisticPrediction, markPredictionStatus, t } = useStore();
   const [isPending, startTransition] = useTransition();
   const optimistic = predictions[match.id];
@@ -30,7 +30,7 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
   const [away, setAway] = useState(currentAway?.toString() ?? "");
   const [penaltyShootout, setPenaltyShootout] = useState<boolean | null>(currentPenaltyShootout);
   const locked = useMemo(() => lockedByServerTime(match, new Date(serverNowIso)), [match, serverNowIso]);
-  const knockout = isKnockoutStage(match.stage);
+  const knockout = (match.legacyKnockout ?? true) && isKnockoutStage(match.stage);
 
   useEffect(() => {
     setSelectedOutcome(currentOutcome);
@@ -64,6 +64,7 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
       try {
         await postPrediction({ predicted_outcome: selectedOutcome, predicted_home_score: predictedHomeScore, predicted_away_score: predictedAwayScore, predicted_penalty_shootout: knockout ? penaltyShootout : null });
         markPredictionStatus(match.id, "saved");
+        onSaved?.();
       } catch (error) {
         markPredictionStatus(match.id, "error", error instanceof Error ? error.message : t("prediction.saveError"));
       }
@@ -79,7 +80,7 @@ export function PredictionForm({ match, serverNowIso }: { match: Match; serverNo
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase tracking-wider text-slate-400">{knockout ? t("prediction.pickWinner") : t("prediction.winDrawWin")}</p>
-            <p className="text-sm font-bold text-slate-600">{t("prediction.correctResultHelp")}</p>
+            <p className="text-sm font-bold text-slate-600">{match.outcomePoints === 1 ? t("platform.outcomeHelp") : t("prediction.correctResultHelp")}</p>
           </div>
           {currentOutcome && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{outcomeLabel(currentOutcome, match, t)}</span>}
         </div>

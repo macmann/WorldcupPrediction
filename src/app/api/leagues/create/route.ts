@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
+import { cookies } from "next/headers";
+import { resolveSeason } from "@/services/platform/views";
+import { linkLeagueSeason } from "@/services/platform/gameplay";
+import { seasonTransaction } from "@/services/platform/transactions";
 import { prisma } from "@/lib/prisma";
 
 const schema = z.object({ name: z.string().trim().min(3).max(80) }).strict();
@@ -38,6 +42,8 @@ export async function POST(request: Request) {
       }
     }
 
+    const season = await resolveSeason(cookies().get("football_season")?.value);
+    if (league && season) await seasonTransaction(season.id, tx => linkLeagueSeason(tx, league!.id, season.id));
     return NextResponse.json({ league }, { status: 201 });
   } catch (error) {
     return jsonError(error);

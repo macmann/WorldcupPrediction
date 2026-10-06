@@ -53,8 +53,8 @@ export async function getPublicUserProfile(userId: string): Promise<PublicUserPr
   const lockedMatchWhere = {
     isEnabled: true,
     OR: [
-      { kickoffTime: { lte: now } },
-      { status: { not: MatchStatus.SCHEDULED } }
+      { predictionLockAt: { lte: now } },
+      { predictionLockAt: null, kickoffTime: { lte: now } }
     ]
   };
 

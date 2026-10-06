@@ -1,4 +1,5 @@
 "use client";
+import { CompetitionSelector } from "@/components/CompetitionSelector";
 
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
@@ -8,7 +9,7 @@ import { AnnouncementBanner } from "@/components/SystemStatusGate";
 import { AnnouncementPopup } from "@/components/AnnouncementPopup";
 import { useStore } from "@/store/useStore";
 
-export function AppShell({ children, title = "FFM - WC2026", eyebrow }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
+export function AppShell({ children, title, eyebrow }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
   const { t } = useStore();
 
   return (
@@ -21,10 +22,11 @@ export function AppShell({ children, title = "FFM - WC2026", eyebrow }: { childr
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">{eyebrow ?? t("app.eyebrow")}</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">{title}</h1>
+            <h1 className="mt-2 text-3xl font-black tracking-tight">{title ?? t("platform.title")}</h1>
           </div>
           <UserProfile />
         </div>
+        <CompetitionSelector />
       </header>
       <AnnouncementBanner />
       <section className="-mt-4 min-h-[calc(100vh-8rem)] space-y-5 rounded-t-[2rem] bg-slate-50 px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-5">{children}</section>

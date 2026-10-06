@@ -1,0 +1,5 @@
+INSERT INTO users (id, email, display_name, global_points) VALUES ('11111111-1111-4111-8111-111111111111', 'legacy@example.invalid', 'Legacy Player', 5);
+INSERT INTO tournaments (id, name, slug, starts_at, ends_at, external_id, updated_at) VALUES ('22222222-2222-4222-8222-222222222222', 'World Cup 2026', 'world-cup-2026', '2026-06-11', '2026-07-19', 'football-data:WC', now());
+INSERT INTO matches (id, tournament_id, external_id, home_team, away_team, kickoff_time, status, home_score, away_score, updated_at) VALUES (537000, '22222222-2222-4222-8222-222222222222', '537000', 'Legacy A', 'Legacy B', '2026-06-12', 'FINISHED', 2, 1, now());
+INSERT INTO predictions (id, user_id, match_id, predicted_outcome, predicted_home_score, predicted_away_score, points_awarded, is_exact_score, is_correct_outcome, submitted_at, updated_at) VALUES ('33333333-3333-4333-8333-333333333333', '11111111-1111-4111-8111-111111111111', 537000, 'HOME', 2, 1, 5, true, true, '2026-06-10', '2026-06-10');
+INSERT INTO matches (id, home_team, away_team, kickoff_time, updated_at) VALUES (537001, 'Unmapped A', 'Unmapped B', '2026-06-12', now());

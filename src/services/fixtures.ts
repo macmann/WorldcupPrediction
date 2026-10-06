@@ -2,6 +2,7 @@ import { MatchStatus, StageType, type Tournament } from "@prisma/client";
 import { ensureTournamentSyncColumn, prisma } from "../lib/prisma";
 import { config } from "../lib/config";
 import { fetchFootballDataCompetitionFixtures, fetchWorldCupFixtures, type ExternalFixture } from "./footballApi";
+import { ingestSeasonFixtures } from "./platform/fixtures";
 import { enqueueScoringJob } from "../jobs/scoringEngine.job";
 
 function mapStage(stage?: string | null): StageType {
@@ -78,12 +79,12 @@ async function ingestFixtureBatch(fixtures: ExternalFixture[], tournamentId?: st
   let upserted = 0;
   let queuedForScoring = 0;
   for (const fixture of fixtures) {
-    await upsertFixture(fixture, tournamentId);
+    const storedMatch = await upsertFixture(fixture, tournamentId);
     upserted += 1;
     const standardTimeHome = fixture.homeScore90 ?? fixture.homeScore;
     const standardTimeAway = fixture.awayScore90 ?? fixture.awayScore;
     if (fixture.status === MatchStatus.FINISHED && standardTimeHome !== null && standardTimeAway !== null) {
-      const scoringJob = await enqueueScoringJob(fixture.id);
+      const scoringJob = await enqueueScoringJob(storedMatch.id);
       if (scoringJob) queuedForScoring += 1;
     }
   }
@@ -108,6 +109,10 @@ export async function ingestFixtures() {
   });
 
   const results = [];
+  for (const season of await prisma.season.findMany({ where: { legacyTournamentId: null, status: { in: ["UPCOMING", "ACTIVE"] }, competition: { isActive: true } }, include: { competition: true } })) {
+    try { const result = await ingestSeasonFixtures(season.id); results.push({ tournament: `${season.competition.name} ${season.displayName}`, ...result, queuedForScoring: 1 }); }
+    catch (error) { results.push({ tournament: season.competition.name, upserted: 0, queuedForScoring: 0, error: error instanceof Error ? error.message : "Sync failed" }); }
+  }
   for (const tournament of externalTournaments) {
     try {
       const result = await ingestTournamentFixtures(tournament);
@@ -120,7 +125,8 @@ export async function ingestFixtures() {
   }
 
   const hasExternalWorldCup = externalTournaments.some((tournament) => footballDataCode(tournament.externalId) === config.worldCupCompetitionCode);
-  if (!hasExternalWorldCup) {
+  const needsLegacyFallback = await prisma.match.count({ where: { seasonId: null } }) > 0 || await prisma.tournament.count({ where: { isActive: true, externalId: null } }) > 0;
+  if (!hasExternalWorldCup && needsLegacyFallback && (config.wc2026ApiKey || config.footballApiKey)) {
     const fixtures = await fetchWorldCupFixtures();
     if (fixtures.length > 0 || externalTournaments.length === 0) {
       const result = await ingestFixtureBatch(fixtures);
@@ -131,12 +137,13 @@ export async function ingestFixtures() {
   return {
     upserted: results.reduce((total, result) => total + result.upserted, 0),
     queuedForScoring: results.reduce((total, result) => total + result.queuedForScoring, 0),
-    tournaments: results
+    tournaments: results,
+    errors: results.flatMap(result => "error" in result && result.error ? [result.error] : [])
   };
 }
 
 export async function syncLiveMatches() {
-  const liveMatches = await prisma.match.count({ where: { status: MatchStatus.LIVE } });
+  const liveMatches = await prisma.match.count({ where: { OR: [{ status: { in: [MatchStatus.LIVE, MatchStatus.PAUSED] } }, { status: MatchStatus.SCHEDULED, kickoffTime: { lte: new Date() } }] } });
   if (liveMatches === 0) return { skipped: true, reason: "No active live matches" };
   return ingestFixtures();
 }

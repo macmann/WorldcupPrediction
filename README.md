@@ -1,6 +1,38 @@
-# Football Fantasy Myanmar - WC 2026 Web App
+# Football Friends
 
-A standard Node.js/Next.js application for World Cup score predictions, private leagues, live fixture ingestion, and event-driven scoring. This project is designed to run natively with Node.js: no Dockerfile, no `docker-compose`, and no local container dependencies are required.
+A persistent social football prediction platform: Competition → Season → optional Gameweek → Match. Premier League is the first league configuration; historical World Cup tournaments remain accessible. Supports LEAGUE, KNOCKOUT and HYBRID competitions with separate scoring and historical standings. This project is designed to run natively with Node.js: no Dockerfile, no `docker-compose`, and no local container dependencies are required.
+
+## Seasonal platform
+
+The new mobile flow is Home, Predict, Leagues, Stats and Profile, with a competition/season selector. It includes Banker picks, season/Gameweek standings, champion history, season picks, rivals, achievements, streaks, rank history, H2H, crowd predictions, provisional live points, bonus questions, optional community-based upset scoring and an optional AI Pundit. English/Myanmar use the existing localization store.
+
+- [Rules and operational guide](docs/platform.md)
+- [Database migration and rollback notes](docs/platform-migration.md) — read before deploying or initializing a database.
+- Admin operations: `/admin-platform`; existing tournament/admin tools remain available.
+
+```bash
+npm ci
+# Configure .env first. Only for an EMPTY database:
+npm run platform:init-database
+npm run platform:bootstrap
+npm run dev
+```
+
+Existing production databases use the staged migration procedure, not the empty database initializer. `platform:bootstrap` creates PL / 2026/27 / 38 Gameweek configuration without inventing fixtures. Configure dates/provider year and sync fixtures/catalog in admin.
+
+```bash
+npm run typecheck
+npm test
+npm run test:integration # local PostgreSQL; isolated temporary database, deleted afterward
+npm run build
+npm run platform:recalculate -- <season-id>
+```
+
+## Football provider alternative
+
+[football-data.org](https://www.football-data.org/) is a separate service from API-Football and matches the existing adapter. Set `FOOTBALL_API_BASE_URL=https://api.football-data.org/v4` and its own `FOOTBALL_API_KEY`. Competition records hold codes such as `PL`; Season records hold provider year such as `2026`. No API-Football account or endpoint is used. Verify EPL coverage, rate limits, historical-season access, squad availability and live-score delay against your account plan before relying on live updates. Pricing was not verified during this implementation.
+
+Optional AI: set server-only `AI_PUNDIT_API_KEY` and configure provider/model/base URL/timeouts in the selected season. AI and upset scoring are disabled by default. Never put credentials in season JSON or client environment variables.
 
 ## Stack
 
