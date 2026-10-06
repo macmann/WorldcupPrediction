@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { formatAppDateTime } from "@/lib/dateTime";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { ButtonSpinner } from "@/components/ButtonSpinner";
@@ -500,6 +501,7 @@ export default function AdminConsole() {
         {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
         <AdminTwoFactorPanel admin={admin} setup={twoFactorSetup} code={twoFactorCode} disabled={isPending} onBeginSetup={beginTwoFactorSetup} onCodeChange={setTwoFactorCode} onConfirm={confirmTwoFactorSetup} />
 
+        <Link href="/admin-platform" className="inline-flex rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white">Competition / Season operations</Link>
         <AdminTabs activeTab={activeTab} isSuperAdmin={admin.isSuperAdmin} onChange={setActiveTab} />
 
         <section className="space-y-6">

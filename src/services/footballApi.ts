@@ -30,6 +30,8 @@ export type ExternalFixture = {
   id: number;
   externalId?: string;
   tournamentExternalId?: string | null;
+  homeBadgeUrl?: string | null;
+  awayBadgeUrl?: string | null;
   homeTeamExternalId?: string | null;
   awayTeamExternalId?: string | null;
   matchday?: number | null;
@@ -214,12 +216,16 @@ function compactCatalog(catalog: ExternalCatalog): ExternalCatalog {
   return { teams: [...teamsByName.values()], players: [...playersByNameAndTeam.values()] };
 }
 
-async function fetchFootballDataFixtures(competitionCode = config.worldCupCompetitionCode): Promise<ExternalFixture[]> {
+async function fetchFootballDataFixtures(competitionCode = config.worldCupCompetitionCode, season?: number): Promise<ExternalFixture[]> {
   const payload = await fetchJsonWithTimeout(
-    `${config.footballApiBaseUrl}/competitions/${competitionCode}/matches`,
+    `${config.footballApiBaseUrl}/competitions/${encodeURIComponent(competitionCode)}/matches${season ? `?season=${season}` : ""}`,
     { headers: { "X-Auth-Token": config.footballApiKey }, cache: "no-store" },
     `Football API ${competitionCode} matches`
   );
+  return parseFootballDataFixtures(payload, competitionCode);
+}
+
+export function parseFootballDataFixtures(payload: any, competitionCode: string): ExternalFixture[] {
   return (payload.matches ?? []).map((match: any) => {
     const duration = match.score?.duration;
     const canUseFullTimeAsStandardTime = !duration || duration === "REGULAR";
@@ -228,6 +234,8 @@ async function fetchFootballDataFixtures(competitionCode = config.worldCupCompet
       id: match.id,
       externalId: competitionCode === config.worldCupCompetitionCode ? String(match.id) : `football-data:${match.id}`,
       tournamentExternalId: `football-data:${competitionCode}`,
+      homeBadgeUrl: match.homeTeam?.crest ?? null,
+      awayBadgeUrl: match.awayTeam?.crest ?? null,
       homeTeamExternalId: match.homeTeam?.id !== undefined && match.homeTeam?.id !== null ? String(match.homeTeam.id) : null,
       awayTeamExternalId: match.awayTeam?.id !== undefined && match.awayTeam?.id !== null ? String(match.awayTeam.id) : null,
       matchday: match.matchday ?? null,
@@ -390,9 +398,9 @@ async function firstWorkingProvider<T>(providers: Array<Provider<T>>): Promise<T
   return null;
 }
 
-export async function fetchFootballDataCompetitionFixtures(competitionCode: string): Promise<ExternalFixture[]> {
+export async function fetchFootballDataCompetitionFixtures(competitionCode: string, season?: number): Promise<ExternalFixture[]> {
   if (!config.footballApiKey) return [];
-  return fetchFootballDataFixtures(competitionCode);
+  return fetchFootballDataFixtures(competitionCode, season);
 }
 
 export async function fetchWorldCupFixtures(): Promise<ExternalFixture[]> {
@@ -544,4 +552,12 @@ export async function fetchWorldCupCatalog(): Promise<ExternalCatalog> {
     }
   }
   return compactCatalog({ teams: catalogs.flatMap((catalog) => catalog.teams), players: catalogs.flatMap((catalog) => catalog.players) });
+}
+
+
+export async function fetchSeasonCatalog(competitionCode: string, season: number): Promise<ExternalCatalog> {
+  if (!config.footballApiKey) throw new Error("FOOTBALL_API_KEY is required for football-data.org season catalogs");
+  const payload = await fetchJsonWithTimeout(`${config.footballApiBaseUrl}/competitions/${encodeURIComponent(competitionCode)}/teams?season=${season}`, { headers: { "X-Auth-Token": config.footballApiKey }, cache: "no-store" }, "Season team catalog");
+  const rawTeams = unwrapArray(payload, ["teams"]);
+  return { teams: rawTeams.map(parseTeam).filter(Boolean) as ExternalTeam[], players: rawTeams.flatMap((raw: any) => playersFromTeamPayload(raw, parseTeam(raw))) };
 }

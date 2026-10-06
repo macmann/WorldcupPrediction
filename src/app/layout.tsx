@@ -6,9 +6,9 @@ import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistratio
 import "./globals.css";
 
 export const metadata: Metadata = {
-  applicationName: "FFM - WC2026",
-  title: "FFM - WC2026",
-  description: "Predict scores, join private leagues, and climb the World Cup leaderboard.",
+  applicationName: "Football Friends",
+  title: "Football Friends",
+  description: "Predict scores, join private leagues, and compete across football seasons.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: ["/logo.svg", "/icon-192.png", "/icon-512.png"],

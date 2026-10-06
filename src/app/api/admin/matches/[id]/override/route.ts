@@ -23,6 +23,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const match = await prisma.match.update({
       where: { id },
       data: {
+        isResultOverride: true,
         homeScore: input.homeScore,
         awayScore: input.awayScore,
         homeScore90: input.homeScore,

@@ -21,7 +21,11 @@
     "postinstall": "prisma generate",
     "render-build": "prisma migrate deploy && prisma generate && next build",
     "render-start": "node --import tsx src/server.ts",
-    "prisma:repair": "node scripts/repair-prisma-install.mjs"
+    "prisma:repair": "node scripts/repair-prisma-install.mjs",
+    "platform:bootstrap": "node --env-file=.env --import tsx scripts/bootstrap-platform.ts",
+    "platform:recalculate": "node --env-file=.env --import tsx scripts/recalculate-platform.ts",
+    "test:integration": "node --env-file=.env --import tsx scripts/run-platform-tests.ts",
+    "platform:init-database": "node --env-file=.env --import tsx scripts/initialize-platform-database.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

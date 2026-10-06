@@ -22,6 +22,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const player = await prisma.player.findUnique({ where: { id: params.id }, select: { id: true, tournamentId: true, source: true } });
     if (!player) throw Object.assign(new Error("Player not found"), { status: 404 });
     if (player.source !== "MANUAL") throw Object.assign(new Error("Only manual player master rows can be edited here"), { status: 400 });
+    if (!player.tournamentId) throw Object.assign(new Error("Use season player administration for this player"), { status: 400 });
     const team = await prisma.team.upsert({
       where: { tournamentId_name: { tournamentId: player.tournamentId, name: input.nationalTeam } },
       create: { tournamentId: player.tournamentId, name: input.nationalTeam, flagEmoji: countryNameToFlagEmoji(input.nationalTeam), groupName: input.groupName },

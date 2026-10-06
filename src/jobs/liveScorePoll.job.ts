@@ -17,7 +17,7 @@ export async function scheduleLiveScorePollJob() {
 
 export async function processLiveScorePollJob(_job?: Job) {
   try {
-    const liveMatchCount = await prisma.match.count({ where: { status: MatchStatus.LIVE } });
+    const liveMatchCount = await prisma.match.count({ where: { OR: [{ status: { in: [MatchStatus.LIVE, MatchStatus.PAUSED] } }, { status: MatchStatus.SCHEDULED, kickoffTime: { lte: new Date() } }] } });
     const result = liveMatchCount === 0 ? { skipped: true, reason: "No active live matches" } : await syncLiveMatches();
     await recordAdminJobStatus(JOB_LIVE_SCORE_POLL, "Live score poll", { success: true, payload: result });
     return result;

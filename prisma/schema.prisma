@@ -62,23 +62,38 @@ enum AdminMessageAudienceType {
 }
 
 model User {
-  id                      String                   @id @default(uuid()) @db.Uuid
-  email                   String                   @unique
+  isSystem                Boolean                   @default(false) @map("is_system")
+  notificationSettings    Json                      @default("{}") @map("notification_settings")
+  seasonStandings         SeasonStanding[]
+  gameweekStandings       GameweekStanding[]
+  bankers                 GameweekBanker[]
+  seasonPicks             SeasonPick[]
+  rivals                  SeasonRival[]             @relation("RivalOwner")
+  rivalOf                 SeasonRival[]             @relation("RivalTarget")
+  achievements            UserAchievement[]
+  bonusAnswers            BonusAnswer[]
+  platformNotifications   PlatformNotification[]
+  h2hHome                 H2HFixture[]              @relation("H2HHome")
+  h2hAway                 H2HFixture[]              @relation("H2HAway")
+  seasonLeagueEntries     LeagueSeasonParticipant[]
+  aiGenerations           AIGeneration[]
+  id                      String                    @id @default(uuid()) @db.Uuid
+  email                   String                    @unique
   phone                   String?
-  passwordHash            String?                  @map("password_hash")
-  displayName             String                   @map("display_name")
-  avatarUrl               String?                  @map("avatar_url")
-  registrationTimestamp   DateTime                 @default(now()) @map("registration_timestamp") @db.Timestamptz(6)
-  globalPoints            Int                      @default(0) @map("global_points")
-  exactScoresCount        Int                      @default(0) @map("exact_scores_count")
-  correctOutcomesCount    Int                      @default(0) @map("correct_outcomes_count")
-  matchesPlayedCount      Int                      @default(0) @map("matches_played_count")
-  isAdmin                 Boolean                  @default(false) @map("is_admin")
-  isBanned                Boolean                  @default(false) @map("is_banned")
-  banReason               String?                  @map("ban_reason")
-  bannedAt                DateTime?                @map("banned_at") @db.Timestamptz(6)
-  onboardingCompletedAt   DateTime?                @map("onboarding_completed_at") @db.Timestamptz(6)
-  preferredLocale         String                   @default("en") @map("preferred_locale")
+  passwordHash            String?                   @map("password_hash")
+  displayName             String                    @map("display_name")
+  avatarUrl               String?                   @map("avatar_url")
+  registrationTimestamp   DateTime                  @default(now()) @map("registration_timestamp") @db.Timestamptz(6)
+  globalPoints            Int                       @default(0) @map("global_points")
+  exactScoresCount        Int                       @default(0) @map("exact_scores_count")
+  correctOutcomesCount    Int                       @default(0) @map("correct_outcomes_count")
+  matchesPlayedCount      Int                       @default(0) @map("matches_played_count")
+  isAdmin                 Boolean                   @default(false) @map("is_admin")
+  isBanned                Boolean                   @default(false) @map("is_banned")
+  banReason               String?                   @map("ban_reason")
+  bannedAt                DateTime?                 @map("banned_at") @db.Timestamptz(6)
+  onboardingCompletedAt   DateTime?                 @map("onboarding_completed_at") @db.Timestamptz(6)
+  preferredLocale         String                    @default("en") @map("preferred_locale")
   predictions             Prediction[]
   outrights               Outright?
   leagueMemberships       LeagueMember[]
@@ -152,6 +167,7 @@ model UserSession {
 }
 
 model Tournament {
+  generalizedSeason   Season?
   id                  String               @id @default(uuid()) @db.Uuid
   name                String
   slug                String               @unique
@@ -174,31 +190,38 @@ model Tournament {
 }
 
 model Team {
-  id                  String     @id @default(uuid()) @db.Uuid
-  tournamentId        String     @map("tournament_id") @db.Uuid
-  externalId          String?    @map("external_id")
+  seasonId            String?     @map("season_id") @db.Uuid
+  badgeUrl            String?     @map("badge_url")
+  season              Season?     @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  id                  String      @id @default(uuid()) @db.Uuid
+  tournamentId        String?     @map("tournament_id") @db.Uuid
+  externalId          String?     @map("external_id")
   name                String
-  shortName           String?    @map("short_name")
-  flagEmoji           String?    @map("flag_emoji")
-  groupName           String?    @map("group_name")
-  tournament          Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  shortName           String?     @map("short_name")
+  flagEmoji           String?     @map("flag_emoji")
+  groupName           String?     @map("group_name")
+  tournament          Tournament? @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   players             Player[]
-  homeMatches         Match[]    @relation("HomeTeam")
-  awayMatches         Match[]    @relation("AwayTeam")
-  championPicks       Outright[] @relation("ChampionTeam")
-  secondRunnerUpPicks Outright[] @relation("SecondRunnerUpTeam")
-  thirdPlacePicks      Outright[] @relation("ThirdPlaceTeam")
-  fairPlayPicks       Outright[] @relation("FairPlayTeam")
+  homeMatches         Match[]     @relation("HomeTeam")
+  awayMatches         Match[]     @relation("AwayTeam")
+  championPicks       Outright[]  @relation("ChampionTeam")
+  secondRunnerUpPicks Outright[]  @relation("SecondRunnerUpTeam")
+  thirdPlacePicks     Outright[]  @relation("ThirdPlaceTeam")
+  fairPlayPicks       Outright[]  @relation("FairPlayTeam")
 
   @@unique([tournamentId, name])
   @@unique([tournamentId, externalId])
+  @@unique([seasonId, externalId])
+  @@unique([seasonId, name])
   @@index([tournamentId, groupName])
   @@map("teams")
 }
 
 model Player {
+  seasonId               String?              @map("season_id") @db.Uuid
+  season                 Season?              @relation(fields: [seasonId], references: [id], onDelete: Restrict)
   id                     String               @id @default(uuid()) @db.Uuid
-  tournamentId           String               @map("tournament_id") @db.Uuid
+  tournamentId           String?              @map("tournament_id") @db.Uuid
   teamId                 String?              @map("team_id") @db.Uuid
   externalId             String?              @map("external_id")
   name                   String
@@ -206,7 +229,7 @@ model Player {
   position               String?
   isGoalkeeper           Boolean              @default(false) @map("is_goalkeeper")
   source                 String               @default("API")
-  tournament             Tournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournament             Tournament?          @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   team                   Team?                @relation(fields: [teamId], references: [id], onDelete: SetNull)
   bestPlayerPicks        Outright[]           @relation("BestPlayer")
   bestGoalkeeperPicks    Outright[]           @relation("BestGoalkeeper")
@@ -216,6 +239,7 @@ model Player {
   goldenGloveSettlements OutrightSettlement[] @relation("GoldenGloveWinner")
 
   @@unique([tournamentId, externalId])
+  @@unique([seasonId, externalId])
   @@index([tournamentId, isGoalkeeper])
   @@index([tournamentId, sequenceNumber])
   @@index([tournamentId, source])
@@ -224,7 +248,20 @@ model Player {
 }
 
 model Match {
-  id                     Int                    @id
+  isResultOverride       Boolean                @default(false) @map("is_result_override")
+  competitionId          String?                @map("competition_id") @db.Uuid
+  seasonId               String?                @map("season_id") @db.Uuid
+  gameweekId             String?                @map("gameweek_id") @db.Uuid
+  scoringGameweekId      String?                @map("scoring_gameweek_id") @db.Uuid
+  predictionLockAt       DateTime?              @map("prediction_lock_at") @db.Timestamptz(6)
+  competition            Competition?           @relation(fields: [competitionId], references: [id], onDelete: Restrict)
+  season                 Season?                @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  gameweek               Gameweek?              @relation("FixtureGameweek", fields: [gameweekId], references: [id], onDelete: Restrict)
+  scoringGameweek        Gameweek?              @relation("ScoringGameweek", fields: [scoringGameweekId], references: [id], onDelete: Restrict)
+  bankers                GameweekBanker[]
+  consensus              ConsensusSnapshot?
+  aiGenerations          AIGeneration[]
+  id                     Int                    @id @default(autoincrement())
   tournamentId           String?                @map("tournament_id") @db.Uuid
   externalId             String?                @unique @map("external_id")
   matchday               Int?
@@ -262,22 +299,25 @@ model Match {
 }
 
 model Prediction {
-  id                 String        @id @default(uuid()) @db.Uuid
-  userId             String        @map("user_id") @db.Uuid
-  matchId            Int           @map("match_id")
-  predictedOutcome   MatchOutcome? @map("predicted_outcome")
-  predictedHomeScore Int?          @map("predicted_home_score")
-  predictedAwayScore Int?          @map("predicted_away_score")
-  predictedPenaltyShootout Boolean? @map("predicted_penalty_shootout")
-  pointsAwarded      Int?          @map("points_awarded")
-  isExactScore       Boolean       @default(false) @map("is_exact_score")
-  isCorrectOutcome   Boolean       @default(false) @map("is_correct_outcome")
-  isLocked           Boolean       @default(false) @map("is_locked")
-  submittedAt        DateTime      @default(now()) @map("submitted_at") @db.Timestamptz(6)
-  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  scoredAt           DateTime?     @map("scored_at") @db.Timestamptz(6)
-  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  match              Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  basePoints               Int?          @map("base_points")
+  pointsMultiplier         Int           @default(1) @map("points_multiplier")
+  upsetPoints              Int           @default(0) @map("upset_points")
+  id                       String        @id @default(uuid()) @db.Uuid
+  userId                   String        @map("user_id") @db.Uuid
+  matchId                  Int           @map("match_id")
+  predictedOutcome         MatchOutcome? @map("predicted_outcome")
+  predictedHomeScore       Int?          @map("predicted_home_score")
+  predictedAwayScore       Int?          @map("predicted_away_score")
+  predictedPenaltyShootout Boolean?      @map("predicted_penalty_shootout")
+  pointsAwarded            Int?          @map("points_awarded")
+  isExactScore             Boolean       @default(false) @map("is_exact_score")
+  isCorrectOutcome         Boolean       @default(false) @map("is_correct_outcome")
+  isLocked                 Boolean       @default(false) @map("is_locked")
+  submittedAt              DateTime      @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  updatedAt                DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  scoredAt                 DateTime?     @map("scored_at") @db.Timestamptz(6)
+  user                     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match                    Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@unique([userId, matchId])
   @@index([matchId])
@@ -290,7 +330,7 @@ model Outright {
   tournamentId         String?     @map("tournament_id") @db.Uuid
   championTeamId       String      @map("champion_team_id") @db.Uuid
   secondRunnerUpTeamId String      @map("second_runner_up_team_id") @db.Uuid
-  thirdPlaceTeamId      String?     @map("third_place_team_id") @db.Uuid
+  thirdPlaceTeamId     String?     @map("third_place_team_id") @db.Uuid
   fairPlayTeamId       String      @map("fair_play_team_id") @db.Uuid
   bestPlayerId         String      @map("best_player_id") @db.Uuid
   bestGkId             String      @map("best_gk_id") @db.Uuid
@@ -303,7 +343,7 @@ model Outright {
   tournament           Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   championTeam         Team        @relation("ChampionTeam", fields: [championTeamId], references: [id], onDelete: Restrict)
   secondRunnerUpTeam   Team        @relation("SecondRunnerUpTeam", fields: [secondRunnerUpTeamId], references: [id], onDelete: Restrict)
-  thirdPlaceTeam      Team?       @relation("ThirdPlaceTeam", fields: [thirdPlaceTeamId], references: [id], onDelete: Restrict)
+  thirdPlaceTeam       Team?       @relation("ThirdPlaceTeam", fields: [thirdPlaceTeamId], references: [id], onDelete: Restrict)
   fairPlayTeam         Team        @relation("FairPlayTeam", fields: [fairPlayTeamId], references: [id], onDelete: Restrict)
   bestPlayer           Player      @relation("BestPlayer", fields: [bestPlayerId], references: [id], onDelete: Restrict)
   bestGoalkeeper       Player      @relation("BestGoalkeeper", fields: [bestGkId], references: [id], onDelete: Restrict)
@@ -315,6 +355,7 @@ model Outright {
 }
 
 model League {
+  seasons             LeagueSeason[]
   id                  String                     @id @default(uuid()) @db.Uuid
   name                String
   joinCode            String                     @unique @map("join_code") @db.VarChar(8)
@@ -528,4 +569,370 @@ model OutrightSettlement {
 
   @@index([settledAt])
   @@map("outright_settlements")
+}
+
+enum CompetitionType {
+  LEAGUE
+  KNOCKOUT
+  HYBRID
+}
+
+enum SeasonStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+}
+
+enum GameweekStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+}
+
+enum SeasonPickTarget {
+  TEAM
+  PLAYER
+}
+
+enum LeagueMode {
+  CLASSIC
+  HEAD_TO_HEAD
+}
+
+model Competition {
+  id              String          @id @default(uuid()) @db.Uuid
+  name            String
+  shortName       String          @map("short_name")
+  slug            String          @unique
+  logoUrl         String?         @map("logo_url")
+  region          String?
+  type            CompetitionType
+  provider        String          @default("football-data")
+  providerCode    String?         @map("provider_code")
+  externalId      String?         @map("external_id")
+  isActive        Boolean         @default(true) @map("is_active")
+  displayPriority Int             @default(0) @map("display_priority")
+  seasons         Season[]
+  matches         Match[]
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([provider, providerCode])
+  @@map("competitions")
+}
+
+model Season {
+  usesGameweeks      Boolean                @default(false) @map("uses_gameweeks")
+  id                 String                 @id @default(uuid()) @db.Uuid
+  competitionId      String                 @map("competition_id") @db.Uuid
+  legacyTournamentId String?                @unique @map("legacy_tournament_id") @db.Uuid
+  displayName        String                 @map("display_name")
+  startsAt           DateTime               @map("starts_at") @db.Timestamptz(6)
+  endsAt             DateTime?              @map("ends_at") @db.Timestamptz(6)
+  providerSeason     Int?                   @map("provider_season")
+  isCurrent          Boolean                @default(false) @map("is_current")
+  status             SeasonStatus           @default(UPCOMING)
+  timezone           String                 @default("UTC")
+  scoringRules       Json                   @default("{\"outcome\":1,\"exact\":3,\"penalty\":0,\"legacyKnockout\":false}") @map("scoring_rules")
+  picksLockAt        DateTime?              @map("picks_lock_at") @db.Timestamptz(6)
+  picksLockGameweek  Int?                   @default(3) @map("picks_lock_gameweek")
+  underdogEnabled    Boolean                @default(false) @map("underdog_enabled")
+  underdogThreshold  Float                  @default(15) @map("underdog_threshold")
+  underdogPoints     Int                    @default(1) @map("underdog_points")
+  underdogMinSample  Int                    @default(20) @map("underdog_min_sample")
+  aiConfig           Json                   @default("{\"enabled\":false}") @map("ai_config")
+  competition        Competition            @relation(fields: [competitionId], references: [id], onDelete: Restrict)
+  legacyTournament   Tournament?            @relation(fields: [legacyTournamentId], references: [id], onDelete: Restrict)
+  gameweeks          Gameweek[]
+  matches            Match[]
+  teams              Team[]
+  players            Player[]
+  pickRules          SeasonPickRule[]
+  standings          SeasonStanding[]
+  rivals             SeasonRival[]
+  achievements       UserAchievement[]
+  leagues            LeagueSeason[]
+  notifications      PlatformNotification[]
+  aiGenerations      AIGeneration[]
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([competitionId, displayName])
+  @@index([isCurrent, status])
+  @@map("seasons")
+}
+
+model Gameweek {
+  id             String             @id @default(uuid()) @db.Uuid
+  seasonId       String             @map("season_id") @db.Uuid
+  number         Int
+  name           String?
+  startsAt       DateTime?          @map("starts_at") @db.Timestamptz(6)
+  endsAt         DateTime?          @map("ends_at") @db.Timestamptz(6)
+  status         GameweekStatus     @default(UPCOMING)
+  finalized      Boolean            @default(false)
+  finalizedAt    DateTime?          @map("finalized_at") @db.Timestamptz(6)
+  season         Season             @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  matches        Match[]            @relation("FixtureGameweek")
+  scoringMatches Match[]            @relation("ScoringGameweek")
+  bankers        GameweekBanker[]
+  standings      GameweekStanding[]
+  achievements   UserAchievement[]
+  bonusQuestions BonusQuestion[]
+  h2hFixtures    H2HFixture[]
+
+  @@unique([seasonId, number])
+  @@map("gameweeks")
+}
+
+model GameweekBanker {
+  userId     String    @map("user_id") @db.Uuid
+  gameweekId String    @map("gameweek_id") @db.Uuid
+  matchId    Int       @map("match_id")
+  chosenAt   DateTime  @default(now()) @map("chosen_at") @db.Timestamptz(6)
+  lockedAt   DateTime? @map("locked_at") @db.Timestamptz(6)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameweek   Gameweek  @relation(fields: [gameweekId], references: [id], onDelete: Restrict)
+  match      Match     @relation(fields: [matchId], references: [id], onDelete: Restrict)
+
+  @@id([userId, gameweekId])
+  @@unique([userId, matchId])
+  @@map("gameweek_bankers")
+}
+
+model SeasonStanding {
+  seasonId        String @map("season_id") @db.Uuid
+  userId          String @map("user_id") @db.Uuid
+  totalPoints     Int    @default(0) @map("total_points")
+  exactScores     Int    @default(0) @map("exact_scores")
+  correctOutcomes Int    @default(0) @map("correct_outcomes")
+  gameweekWins    Int    @default(0) @map("gameweek_wins")
+  predictionCount Int    @default(0) @map("prediction_count")
+  rank            Int    @default(0)
+  stats           Json   @default("{}")
+  season          Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([seasonId, userId])
+  @@map("season_standings")
+}
+
+model GameweekStanding {
+  gameweekId        String    @map("gameweek_id") @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  points            Int
+  exactScores       Int       @map("exact_scores")
+  correctOutcomes   Int       @map("correct_outcomes")
+  predictionCount   Int       @map("prediction_count")
+  rank              Int
+  cumulativePoints  Int       @map("cumulative_points")
+  cumulativeRank    Int       @map("cumulative_rank")
+  cumulativeExact   Int       @map("cumulative_exact")
+  cumulativeCorrect Int       @map("cumulative_correct")
+  cumulativeWins    Int       @map("cumulative_wins")
+  lastSubmittedAt   DateTime? @map("last_submitted_at") @db.Timestamptz(6)
+  gameweek          Gameweek  @relation(fields: [gameweekId], references: [id], onDelete: Restrict)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([gameweekId, userId])
+  @@map("gameweek_standings")
+}
+
+model SeasonPickRule {
+  id                String           @id @default(uuid()) @db.Uuid
+  seasonId          String           @map("season_id") @db.Uuid
+  key               String
+  target            SeasonPickTarget
+  selectionCount    Int              @default(1) @map("selection_count")
+  points            Int
+  enabled           Boolean          @default(true)
+  lockAt            DateTime?        @map("lock_at") @db.Timestamptz(6)
+  settledSelections String[]         @default([]) @map("settled_selections")
+  settled           Boolean          @default(false)
+  season            Season           @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  picks             SeasonPick[]
+
+  @@unique([seasonId, key])
+  @@map("season_pick_rules")
+}
+
+model SeasonPick {
+  id            String         @id @default(uuid()) @db.Uuid
+  ruleId        String         @map("rule_id") @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  selections    String[]
+  pointsAwarded Int?           @map("points_awarded")
+  submittedAt   DateTime       @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  rule          SeasonPickRule @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, userId])
+  @@map("season_picks")
+}
+
+model SeasonRival {
+  seasonId String @map("season_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  rivalId  String @map("rival_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  user     User   @relation("RivalOwner", fields: [userId], references: [id], onDelete: Cascade)
+  rival    User   @relation("RivalTarget", fields: [rivalId], references: [id], onDelete: Cascade)
+
+  @@id([seasonId, userId])
+  @@map("season_rivals")
+}
+
+model AchievementDefinition {
+  id       String            @id
+  criteria Json
+  enabled  Boolean           @default(true)
+  awards   UserAchievement[]
+
+  @@map("achievement_definitions")
+}
+
+model UserAchievement {
+  id           String                @id @default(uuid()) @db.Uuid
+  definitionId String                @map("definition_id")
+  userId       String                @map("user_id") @db.Uuid
+  seasonId     String                @map("season_id") @db.Uuid
+  gameweekId   String?               @map("gameweek_id") @db.Uuid
+  contextKey   String                @map("context_key")
+  earnedAt     DateTime              @default(now()) @map("earned_at") @db.Timestamptz(6)
+  revokedAt    DateTime?             @map("revoked_at") @db.Timestamptz(6)
+  metadata     Json                  @default("{}")
+  definition   AchievementDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season       Season                @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  gameweek     Gameweek?             @relation(fields: [gameweekId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, seasonId, definitionId, contextKey])
+  @@map("user_achievements")
+}
+
+model LeagueSeason {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  leagueId             String                    @map("league_id") @db.Uuid
+  seasonId             String                    @map("season_id") @db.Uuid
+  mode                 LeagueMode                @default(CLASSIC)
+  participantsLockedAt DateTime?                 @map("participants_locked_at") @db.Timestamptz(6)
+  league               League                    @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  season               Season                    @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  participants         LeagueSeasonParticipant[]
+  fixtures             H2HFixture[]
+
+  @@unique([leagueId, seasonId])
+  @@map("league_seasons")
+}
+
+model LeagueSeasonParticipant {
+  leagueSeasonId String       @map("league_season_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  joinedAt       DateTime     @default(now()) @map("joined_at") @db.Timestamptz(6)
+  h2hEligible    Boolean      @default(false) @map("h2h_eligible")
+  leagueSeason   LeagueSeason @relation(fields: [leagueSeasonId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([leagueSeasonId, userId])
+  @@map("league_season_participants")
+}
+
+model H2HFixture {
+  id              String       @id @default(uuid()) @db.Uuid
+  leagueSeasonId  String       @map("league_season_id") @db.Uuid
+  gameweekId      String       @map("gameweek_id") @db.Uuid
+  slot            Int
+  homeUserId      String       @map("home_user_id") @db.Uuid
+  awayUserId      String?      @map("away_user_id") @db.Uuid
+  homePoints      Int?         @map("home_points")
+  awayPoints      Int?         @map("away_points")
+  homeTablePoints Int?         @map("home_table_points")
+  awayTablePoints Int?         @map("away_table_points")
+  leaderBeforeId  String?      @map("leader_before_id") @db.Uuid
+  settled         Boolean      @default(false)
+  leagueSeason    LeagueSeason @relation(fields: [leagueSeasonId], references: [id], onDelete: Cascade)
+  gameweek        Gameweek     @relation(fields: [gameweekId], references: [id], onDelete: Restrict)
+  homeUser        User         @relation("H2HHome", fields: [homeUserId], references: [id], onDelete: Cascade)
+  awayUser        User?        @relation("H2HAway", fields: [awayUserId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueSeasonId, gameweekId, slot])
+  @@map("h2h_fixtures")
+}
+
+model BonusQuestion {
+  id            String        @id @default(uuid()) @db.Uuid
+  gameweekId    String        @map("gameweek_id") @db.Uuid
+  text          String
+  textMy        String?       @map("text_my")
+  type          String        @default("SINGLE_CHOICE")
+  options       Json
+  points        Int
+  lockAt        DateTime      @map("lock_at") @db.Timestamptz(6)
+  isActive      Boolean       @default(true) @map("is_active")
+  settledAnswer String?       @map("settled_answer")
+  gameweek      Gameweek      @relation(fields: [gameweekId], references: [id], onDelete: Restrict)
+  answers       BonusAnswer[]
+
+  @@map("bonus_questions")
+}
+
+model BonusAnswer {
+  questionId    String        @map("question_id") @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  answer        String
+  pointsAwarded Int?          @map("points_awarded")
+  submittedAt   DateTime      @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  question      BonusQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, userId])
+  @@map("bonus_answers")
+}
+
+model ConsensusSnapshot {
+  matchId         Int      @id @map("match_id")
+  homeCount       Int      @map("home_count")
+  drawCount       Int      @map("draw_count")
+  awayCount       Int      @map("away_count")
+  predictionCount Int      @map("prediction_count")
+  averageHome     Float    @map("average_home")
+  averageAway     Float    @map("average_away")
+  frozenAt        DateTime @map("frozen_at") @db.Timestamptz(6)
+  match           Match    @relation(fields: [matchId], references: [id], onDelete: Restrict)
+
+  @@map("consensus_snapshots")
+}
+
+model AIGeneration {
+  id          String    @id @default(uuid()) @db.Uuid
+  seasonId    String    @map("season_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  matchId     Int       @map("match_id")
+  provider    String
+  model       String
+  status      String
+  generatedAt DateTime? @map("generated_at") @db.Timestamptz(6)
+  error       String?
+  season      Season    @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match       Match     @relation(fields: [matchId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, matchId])
+  @@map("ai_generations")
+}
+
+model PlatformNotification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  seasonId  String    @map("season_id") @db.Uuid
+  eventKey  String    @map("event_key")
+  type      String
+  params    Json
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season    Season    @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, eventKey])
+  @@index([userId, createdAt])
+  @@map("platform_notifications")
 }

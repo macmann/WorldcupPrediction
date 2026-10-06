@@ -1,4 +1,6 @@
 import type { Job } from "bullmq";
+import { randomUUID } from "node:crypto";
+import { recalculateSeason } from "../services/platform/recalculation";
 import { getScoringQueue } from "./queues";
 import { recalculateMatch } from "../services/scoring";
 import { formatErrorWithCause } from "../lib/errorFormatting";
@@ -25,7 +27,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string) {
 export async function enqueueScoringJob(matchId: number) {
   try {
     return await withTimeout(
-      getScoringQueue().add(scoringEngineJobName, { matchId }, { jobId: `score-${matchId}` }),
+      getScoringQueue().add(scoringEngineJobName, { matchId }, { jobId: `score-${matchId}-${randomUUID()}`, removeOnComplete: true, removeOnFail: 100 }),
       scoringEnqueueTimeoutMs,
       `Queueing scoring job for match ${matchId}`
     );
@@ -38,3 +40,9 @@ export async function enqueueScoringJob(matchId: number) {
 export async function processScoringEngineJob(job: Job<ScoreMatchPayload>) {
   return recalculateMatch(Number(job.data.matchId));
 }
+
+export const seasonScoringJobName = "score-season";
+export async function enqueueSeasonScoringJob(seasonId: string) {
+  return getScoringQueue().add(seasonScoringJobName, { seasonId }, { jobId: `season-${seasonId}-${randomUUID()}`, removeOnComplete: true, removeOnFail: 100 });
+}
+export async function processSeasonScoringJob(job: Job<{ seasonId: string }>) { return recalculateSeason(job.data.seasonId); }

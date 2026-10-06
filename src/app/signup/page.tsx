@@ -10,7 +10,7 @@ import { useStore } from "@/store/useStore";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { setUser } = useStore();
+  const { setUser, t } = useStore();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -50,10 +50,10 @@ export default function SignupPage() {
         </span>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">Create account</p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">Join FFM - WC2026</h1>
+          <h1 className="mt-2 text-4xl font-black tracking-tight">{t("platform.signupTitle")}</h1>
         </div>
       </div>
-      <p className="mt-3 text-sm font-medium text-emerald-50">Sign up once, then continue to the dashboard to enter your tournament winner picks.</p>
+      <p className="mt-3 text-sm font-medium text-emerald-50">{t("platform.signupHelp")}</p>
 
       <Card className="mt-8 text-slate-950">
         <form onSubmit={submit} className="space-y-4">

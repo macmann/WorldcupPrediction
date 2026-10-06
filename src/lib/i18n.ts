@@ -1,3 +1,4 @@
+import { platformTranslations } from "./platformTranslations";
 export const locales = ["en", "my"] as const;
 
 export type Locale = (typeof locales)[number];
@@ -11,7 +12,8 @@ export const localeLabels: Record<Locale, string> = {
 
 export const translations = {
   en: {
-    "app.eyebrow": "2026 Pool",
+    ...platformTranslations.en,
+    "app.eyebrow": "Football Friends",
     "nav.home": "Home",
     "nav.predict": "Predict",
     "nav.winners": "WC26",
@@ -272,7 +274,8 @@ export const translations = {
     "auth.logoutError": "Could not log out. Please try again."
   },
   my: {
-    "app.eyebrow": "၂၀၂၆ ခန့်မှန်းပြိုင်ပွဲ",
+    ...platformTranslations.my,
+    "app.eyebrow": "ဘောလုံးမိတ်ဆွေများ",
     "nav.home": "ပင်မ",
     "nav.predict": "ခန့်မှန်း",
     "nav.winners": "WC26",

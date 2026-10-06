@@ -1,3 +1,13 @@
+# Football Friends Game Information
+
+_Last updated: October 5, 2026_
+
+The application now supports recurring competition seasons. See [current platform rules](docs/platform.md) for weekly gameplay, Banker, H2H, picks, bonuses, achievements, privacy and correction behavior. Modern seasons default to 1 point for the correct outcome plus 3 additional points for an exact score (4 total); Banker doubles the match base award. Rules are stored per season.
+
+The World Cup rules below describe the historical product and retained legacy competitions. Migrated World Cup seasons retain their original 2-outcome / 3-additional-exact / 1-penalty rules; their old data is preserved. These legacy rules do not override the configurable rules of a new season.
+
+---
+
 # Football Fantasy Myanmar - WC 2026 Game Information
 
 _Last updated: June 4, 2026_

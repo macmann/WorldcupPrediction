@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 export function ViewportFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDesktopAdmin = pathname.startsWith("/admin-console");
+  const isDesktopAdmin = pathname.startsWith("/admin-console") || pathname.startsWith("/admin-platform");
 
   if (isDesktopAdmin) {
     return <div className="min-h-dvh w-full bg-slate-100">{children}</div>;

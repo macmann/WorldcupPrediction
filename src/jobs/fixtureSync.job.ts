@@ -16,6 +16,7 @@ export async function scheduleFixtureSyncJob() {
 export async function processFixtureSyncJob(_job?: Job) {
   try {
     const result = await ingestFixtures();
+    if (result.errors.length) throw new Error(result.errors.join("; "));
     await recordAdminJobStatus(JOB_FIXTURE_SYNC, "Fixture ingestion", { success: true, payload: result });
     return result;
   } catch (error) {

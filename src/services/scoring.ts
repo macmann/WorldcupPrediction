@@ -1,3 +1,4 @@
+import { recalculateSeason } from "./platform/recalculation";
 import { MatchStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { captureLeagueRankSnapshots } from "../lib/rankSnapshots";
@@ -13,6 +14,7 @@ function standardTimeScore(match: { homeScore90: number | null; awayScore90: num
 
 export async function recalculateMatch(matchId: number) {
   const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (match?.seasonId) return recalculateSeason(match.seasonId);
   const actual = match ? standardTimeScore(match) : { home: null, away: null };
   const actualWinner: MatchOutcome | null = match && isKnockoutStage(match.stage)
     ? match.homeScore !== null && match.awayScore !== null
@@ -75,6 +77,7 @@ export async function recalculateMatch(matchId: number) {
     });
 
     const pointsByUser = new Map(pointAggregates.map((aggregate) => [aggregate.userId, aggregate._sum.pointsAwarded ?? 0]));
+    for (const pick of await tx.outright.findMany({ where: { pointsAwarded: { not: null } }, select: { userId: true, pointsAwarded: true } })) pointsByUser.set(pick.userId, (pointsByUser.get(pick.userId) ?? 0) + (pick.pointsAwarded ?? 0));
     const exactByUser = new Map(exactAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));
     const outcomeByUser = new Map(outcomeAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));
     const matchesPlayedByUser = new Map(matchesPlayedAggregates.map((aggregate) => [aggregate.userId, aggregate._count._all]));

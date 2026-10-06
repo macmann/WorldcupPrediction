@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "FFM - WC2026",
-  "short_name": "FFM WC2026",
-  "description": "Predict scores, join private leagues, and climb the World Cup leaderboard.",
+  "name": "Football Friends",
+  "short_name": "Football Friends",
+  "description": "Predict scores, join private leagues, and climb the season leaderboards.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",
@@ -47,7 +47,7 @@
       "sizes": "540x720",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Dashboard with World Cup predictions and league standings"
+      "label": "Dashboard with football predictions and league standings"
     },
     {
       "src": "/screenshot-predict.png",
@@ -61,7 +61,7 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Wide screen view of FFM WC2026"
+      "label": "Wide screen view of Football Friends"
     }
   ],
   "shortcuts": [
