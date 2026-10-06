@@ -1,3 +1,4 @@
+import { bootstrapPremierLeague, backfillLegacyTournament } from "../src/services/platform/setup";
 import { platformSchemaReadiness } from "../src/services/platform/schemaReadiness";
 import type { Gameweek, Match } from "@prisma/client";
 import test from "node:test";
@@ -41,6 +42,21 @@ test("PostgreSQL domain integration (run npm run test:integration)", { skip: pro
     const matches: Match[] = [];
     for (let i = 0; i < 5; i++) matches.push(await prisma.match.create({ data: { seasonId: season.id, competitionId: competition.id, gameweekId: gws[i < 3 ? 0 : i - 2].id, scoringGameweekId: gws[i < 3 ? 0 : i - 2].id, homeTeamId: a.id, awayTeamId: b.id, homeTeam: a.name, awayTeam: b.name, kickoffTime: new Date(future.getTime() + i * 10000) } }));
     const prediction = (id: number, home = 2, away = 1) => ({ matchId: id, predictedOutcome: home > away ? "HOME" as const : home < away ? "AWAY" as const : "DRAW" as const, predictedHomeScore: home, predictedAwayScore: away });
+    await t.test("EPL bootstrap reuses migrated provider identity without deleting historical season data", async () => {
+      const legacy = await prisma.tournament.create({ data: { name: "Premier League", slug: "legacy-epl-probe", externalId: "football-data:PL", startsAt: new Date("2025-08-01T00:00:00Z"), endsAt: new Date("2026-06-01T00:00:00Z"), hostCountries: ["England"] } });
+      const archive = await backfillLegacyTournament(legacy.id);
+      const setup = await bootstrapPremierLeague();
+      assert.equal(setup.competition.id, archive.competitionId);
+      assert.equal(setup.competition.type, "LEAGUE");
+      assert.equal(setup.season.displayName, "2026/27");
+      assert.equal(setup.season.legacyTournamentId, null);
+      assert.equal(await prisma.gameweek.count({ where: { seasonId: setup.season.id } }), 38);
+      assert.equal(await prisma.match.count({ where: { seasonId: setup.season.id } }), 0);
+      const again = await bootstrapPremierLeague(); assert.equal(again.season.id, setup.season.id);
+      assert.equal(await prisma.competition.count({ where: { provider: "football-data", providerCode: "PL" } }), 1);
+      assert.equal((await prisma.season.findUniqueOrThrow({ where: { id: archive.id } })).legacyTournamentId, legacy.id);
+      assert.equal((await prisma.season.findUniqueOrThrow({ where: { id: archive.id } })).displayName, "2025");
+    });
     await t.test("schema readiness rejects a database missing is_system and accepts the migrated schema", async () => {
       assert.equal((await platformSchemaReadiness()).ready, true);
       const rollback = new Error("rollback schema probe");
