@@ -43,3 +43,7 @@ Achievements are persistent definitions with JSON criteria and season-scoped ear
 PWA caches public static assets only; personalized navigation/API responses are fetched from the server and never cached for another signed-in account. Prediction entry remains responsive on mobile. New strings are in the English/Myanmar dictionaries; add future languages through the same store.
 
 Football-data.org credentials and plan access are required for real EPL fixtures, results, squads and live updates. Integration tests exercise actual PostgreSQL services with synthetic test-only records, not upstream availability. No production mock fixtures are installed. Live provider and AI API access must be verified with deployment credentials.
+
+## Matchday interface
+
+The seasonal screens share a deep-green/lime matchday palette, pitch-line hero, compact club crests and a horizontal Gameweek picker. The dashboard combines prediction progress/deadline, live fixture centre, Banker and season picks with personal standings and social cards. Predictions support All / To predict / Saved / Live filters and collapsible score entry; server-authoritative locking is unchanged. Desktop uses a full-width layout and header navigation, while phones retain the floating five-tab dock. Sticky prediction progress measures the actual header height, including wrapped Myanmar labels. Keyboard focus, 44px filter targets, browser zoom and reduced-motion preferences are supported. Join/create actions refresh seasonal data immediately.

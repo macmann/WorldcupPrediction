@@ -4,11 +4,14 @@ import { usePathname } from "next/navigation";
 
 export function ViewportFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDesktopAdmin = pathname.startsWith("/admin-console") || pathname.startsWith("/admin-platform");
+  const isDesktopAdmin = pathname === "/admin" || pathname.startsWith("/admin-console") || pathname.startsWith("/admin-platform");
 
   if (isDesktopAdmin) {
     return <div className="min-h-dvh w-full bg-slate-100">{children}</div>;
   }
+
+  const seasonal = ["/dashboard", "/predict", "/leagues", "/stats", "/profile", "/season-picks"].some(route => pathname === route || pathname.startsWith(`${route}/`));
+  if (seasonal) return <div className="min-h-dvh bg-[#f3f5f1]">{children}</div>;
 
   return (
     <div className="min-h-dvh bg-slate-200 md:flex md:items-stretch md:justify-center">
