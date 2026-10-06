@@ -68,3 +68,84 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .legal-content a { @apply font-black text-indigo-700 underline; }
 .legal-content strong,
 .legal-content b { @apply font-black; }
+
+/* Seasonal matchday surfaces share one palette across mobile and desktop. */
+.season-shell { color: #152b22; }
+.season-header { position: sticky; top: 0; z-index: 30; background: rgba(250, 252, 249, .96); border-bottom: 1px solid #e0e7df; backdrop-filter: blur(16px); }
+.season-header-inner { max-width: 1120px; margin: auto; padding: max(1rem, env(safe-area-inset-top)) 1.25rem 1rem; }
+.brand-mark { display: grid; place-items: center; height: 44px; width: 44px; flex-shrink: 0; border-radius: 14px; background: #123d2e; color: #d5f879; box-shadow: 0 4px 12px #123d2e20; }
+.season-content { max-width: 1120px; margin: auto; padding: 1.25rem 1.25rem calc(7rem + env(safe-area-inset-bottom)); }
+.season-content > * + * { margin-top: 1.25rem; }
+.season-card { box-shadow: 0 3px 12px #152b2205; }
+.section-kicker { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #547360; }
+.season-dashboard { display: grid; gap: 1rem; }
+.matchday-hero { position: relative; isolation: isolate; overflow: hidden; padding: 1.5rem; border-radius: 24px; color: white; background: radial-gradient(ellipse at 100% 0%, #37664d, transparent 70%), #123d2e; box-shadow: 0 12px 30px #123d2e16; }
+.pitch-art { position: absolute; width: 270px; height: 390px; right: -100px; top: -45px; transform: rotate(-20deg); border: 1px solid #ffffff16; background: repeating-linear-gradient(0deg, #ffffff03 0 42px, transparent 42px 84px); border-radius: 4px; pointer-events: none; }
+.pitch-art::before { content: ''; position: absolute; inset: 30px 0; border-top: 1px solid #ffffff16; border-bottom: 1px solid #ffffff16; }
+.pitch-art::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid #ffffff16; }
+.pitch-art span { position: absolute; top: calc(50% - 45px); left: calc(50% - 45px); height: 90px; width: 90px; border: 1px solid #ffffff16; border-radius: 50%; }
+.season-chip { display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border: 1px solid #ffffff25; border-radius: 999px; font-size: 10px; font-weight: 800; color: #daf792; text-transform: uppercase; letter-spacing: .08em; }
+.completion-ring { width: 64px; height: 64px; display: grid; place-items: center; flex-shrink: 0; background: conic-gradient(#d5f879 var(--completion), #ffffff20 0); border-radius: 50%; }
+.completion-ring > span { display: grid; grid-auto-flow: column; align-items: baseline; justify-content: center; width: 54px; height: 54px; align-content: center; border-radius: 50%; background: #163f30; font-size: 23px; font-weight: 900; }
+.completion-ring small { font-size: 12px; font-weight: 600; opacity: .6; }
+.matchday-cta { display: flex; justify-content: space-between; align-items: center; border-radius: 12px; padding: 14px 16px; background: #d5f879; color: #123d2e; font-size: 13px; font-weight: 900; transition: background .15s, transform .15s; }
+.matchday-cta:hover { background: #e4ff9c; }
+.matchday-cta:active { transform: scale(.99); }
+.fixture-row { display: block; padding: 16px 0; border-bottom: 1px solid #eef1ec; }
+.fixture-row:last-of-type { border-bottom: 0; }
+.club-badge { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 36px; padding: 4px; border-radius: 10px; background: #f1f5ef; color: #42624e; font-size: 9px; font-weight: 900; }
+.score-chip { padding: 6px 9px; border-radius: 8px; background: #f1f5ef; color: #173c29; font-size: 11px; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.live-pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 5px 8px; background: #fff0ef; color: #b3323c; font-size: 10px; font-weight: 800; }
+.live-pill > span { height: 5px; width: 5px; border-radius: 50%; background: currentColor; }
+.season-empty { display: flex; min-height: 150px; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; border: 1px dashed #dce5d9; border-radius: 16px; background: #f8faf6; }
+.season-empty h3 { font-size: 13px; font-weight: 800; }
+.season-empty p { font-size: 12px; color: #64746a; line-height: 1.6; }
+.season-picks-teaser { display: flex; align-items: center; gap: 14px; padding: 20px; border-radius: 20px; background: #e6eddf; color: #264a2e; }
+.metric-tile { position: relative; overflow: hidden; border: 1px solid #e0e7df; border-radius: 16px; padding: 16px; background: white; }
+.metric-tile::after { content: ''; position: absolute; right: -8px; bottom: -10px; width: 45px; height: 45px; border: 1px solid #e6edde; border-radius: 50%; }
+.gameweek-toolbar { padding: 14px; background: white; border: 1px solid #e0e7df; border-radius: 18px; }
+.gameweek-strip { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px; scrollbar-width: thin; }
+.gameweek-strip button { min-width: 44px; min-height: 44px; border-radius: 12px; font-size: 12px; font-weight: 800; flex-shrink: 0; border: 1px solid transparent; }
+.gameweek-strip button[aria-pressed='true'] { background: #123d2e; color: #d5f879; }
+.gameweek-strip button[aria-pressed='false'] { background: #f3f5ef; color: #506254; }
+.predict-progress { position: sticky; top: calc(var(--season-header-height, 140px) + 8px); z-index: 20; padding: 14px 16px; border: 1px solid #dbe5d4; border-radius: 16px; background: #f6f9ef; box-shadow: 0 4px 16px #123d2e08; }
+.prediction-filters { display: flex; gap: 6px; overflow-x: auto; padding-top: 12px; }
+.prediction-filters button { flex-shrink: 0; min-height: 44px; padding: 8px 12px; border-radius: 10px; font-size: 11px; font-weight: 800; background: white; color: #647467; }
+.prediction-filters button[aria-pressed='true'] { background: #123d2e; color: white; }
+.match-card { border-left: 3px solid #d8e0d2; }
+.match-card.is-banker { border-left-color: #d9a839; }
+.match-card.is-live { border-left-color: #c14a56; }
+.prediction-summary { display: flex; align-items: center; gap: 6px; border-top: 1px solid #edf0ea; padding-top: 12px; margin-top: 14px; }
+.prediction-summary .score-chip { margin-left: auto; }
+.season-content details > summary { border-radius: 8px; }
+.season-content details[open] > summary { margin-bottom: 12px; }
+.season-content summary::-webkit-details-marker { display: none; }
+.season-content :is(button, a, summary, input, select):focus-visible, .season-header :is(a, button, select):focus-visible { outline: 2px solid #168358; outline-offset: 3px; }
+.season-content :is(input[type=checkbox], progress) { accent-color: #26794b; }
+@media (min-width: 768px) {
+  .season-content { padding-top: 2rem; padding-bottom: 3rem; }
+  .season-dashboard { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .matchday-hero { grid-row: span 2; padding: 2rem; }
+  .fixture-feed { grid-row: span 2; }
+  .season-picks-teaser { align-self: stretch; }
+  .season-header-inner { padding-left: 2rem; padding-right: 2rem; }
+  .season-content { padding-left: 2rem; padding-right: 2rem; }
+  .season-content > .home-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .season-content > .match-card { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .season-content > .gameweek-toolbar { display: flex; align-items: center; gap: 20px; }
+  .gameweek-strip { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+.season-social-grid { display: grid; gap: 1rem; }
+@media (min-width: 768px) {
+  .season-social-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .predict-match { max-width: 720px; margin-left: auto; margin-right: auto; }
+}
+
+.gameweek-strip { min-width: 0; }
+.season-content progress { border: 0; border-radius: 999px; overflow: hidden; background: #e1e8dc; }
+.season-content progress::-webkit-progress-bar { background: #e1e8dc; }
+.season-content progress::-webkit-progress-value { background: #26794b; border-radius: 999px; }
+.season-social-grid { grid-template-columns: minmax(0, 1fr); }
+.season-card, .season-content select { min-width: 0; }
+@media (min-width: 768px) { .season-social-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

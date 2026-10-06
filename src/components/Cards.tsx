@@ -1,5 +1,5 @@
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <article className={`rounded-[1.5rem] bg-white p-5 shadow-card ring-1 ring-slate-100/80 ${className}`}>{children}</article>;
+  return <article className={`season-card rounded-[1.25rem] bg-white p-5 ring-1 ring-slate-200/70 ${className}`}>{children}</article>;
 }
 
 export function SectionTitle({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: React.ReactNode }) {
@@ -16,7 +16,7 @@ export function SectionTitle({ eyebrow, title, action }: { eyebrow?: string; tit
 
 export function SkeletonCard({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="rounded-[1.5rem] bg-white p-5 shadow-card ring-1 ring-slate-100/80">
+    <div className="season-card rounded-[1.25rem] bg-white p-5 ring-1 ring-slate-200/70">
       <div className="h-4 w-24 animate-pulse rounded-full bg-slate-200" />
       <div className="mt-3 h-7 w-3/4 animate-pulse rounded-full bg-slate-200" />
       <div className="mt-4 space-y-2">

@@ -1,3 +1,4 @@
+import { requirePlatformSchema } from "./services/platform/schemaReadiness";
 import { createServer } from "node:http";
 import next from "next";
 import { startBackgroundJobs, stopBackgroundJobs } from "./jobs/runtime";
@@ -11,6 +12,7 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 async function main() {
+  await requirePlatformSchema();
   await app.prepare();
 
   const server = createServer(async (request, response) => {
@@ -45,7 +47,7 @@ async function main() {
   process.on("SIGINT", shutdown);
 
   server.listen(port, hostname, () => {
-    console.log(`Football Fantasy Myanmar - WC 2026 ready on http://${hostname}:${port}`);
+    console.log(`Football Friends ready on http://${hostname}:${port}`);
   });
 
   if (process.env.ENABLE_BACKGROUND_JOBS !== "false") {

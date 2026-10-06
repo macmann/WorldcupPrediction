@@ -1,3 +1,4 @@
+import { requirePlatformSchema } from "../services/platform/schemaReadiness";
 import { schedulePlatformMaintenance, processPlatformMaintenance, platformMaintenanceJobName } from "./platformMaintenance.job";
 import { pathToFileURL } from "node:url";
 import { Worker } from "bullmq";
@@ -19,6 +20,7 @@ export async function scheduleRecurringJobs() {
 
 export async function startBackgroundJobs() {
   if (started) return workers;
+  await requirePlatformSchema();
   try {
     workers = [
       new Worker(

@@ -1,9 +1,9 @@
 "use client";
+import { useCallback, useEffect, useRef } from "react";
 import { CompetitionSelector } from "@/components/CompetitionSelector";
-
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
-import { PlatformLogo } from "@/components/Icons";
+import { BallIcon } from "@/components/Icons";
 import { UserProfile } from "@/components/UserProfile";
 import { AnnouncementBanner } from "@/components/SystemStatusGate";
 import { AnnouncementPopup } from "@/components/AnnouncementPopup";
@@ -11,26 +11,25 @@ import { useStore } from "@/store/useStore";
 
 export function AppShell({ children, title, eyebrow }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
   const { t } = useStore();
-
-  return (
-    <AuthGate>
-      <AnnouncementPopup />
-      <header className="sticky top-0 z-40 bg-gradient-to-br from-navy via-[#0a1b3e] to-[#0c2742] px-5 pb-8 pt-[max(1.5rem,env(safe-area-inset-top))] text-white shadow-[0_18px_44px_rgba(6,20,46,0.18)]">
-        <div className="flex items-start gap-3">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.35rem] bg-white/10 shadow-lg shadow-emerald-950/20 ring-1 ring-white/15">
-            <PlatformLogo className="h-12 w-12" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">{eyebrow ?? t("app.eyebrow")}</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">{title ?? t("platform.title")}</h1>
-          </div>
-          <UserProfile />
-        </div>
-        <CompetitionSelector />
-      </header>
-      <AnnouncementBanner />
-      <section className="-mt-4 min-h-[calc(100vh-8rem)] space-y-5 rounded-t-[2rem] bg-slate-50 px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-5">{children}</section>
-      <BottomNav />
-    </AuthGate>
-  );
+  const resizeObserver = useRef<ResizeObserver | null>(null);
+  const attachHeader = useCallback((node: HTMLElement | null) => {
+    resizeObserver.current?.disconnect();
+    if (!node) return;
+    const measure = () => document.documentElement.style.setProperty("--season-header-height", `${node.getBoundingClientRect().height}px`);
+    measure();
+    resizeObserver.current = new ResizeObserver(measure);
+    resizeObserver.current.observe(node);
+  }, []);
+  useEffect(() => () => resizeObserver.current?.disconnect(), []);
+  return <AuthGate><div className="season-shell">
+    <AnnouncementPopup />
+    <header ref={attachHeader} className="season-header"><div className="season-header-inner">
+      <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="brand-mark"><BallIcon className="h-6 w-6" /></span><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-800">{t("platform.title")}</p><h1 className="mt-0.5 truncate text-xl font-black tracking-tight text-navy">{title ?? t("platform.title")}</h1></div></div><UserProfile /></div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-semibold text-slate-500">{eyebrow ?? t("ui.seasonSocial")}</p><CompetitionSelector /></div>
+      <BottomNav desktop />
+    </div></header>
+    <AnnouncementBanner />
+    <main className="season-content">{children}</main>
+    <BottomNav />
+  </div></AuthGate>;
 }

@@ -28,6 +28,10 @@ npm run build
 npm run platform:recalculate -- <season-id>
 ```
 
+## Signup and deployment schema readiness
+
+If signup reports a missing `is_system` column, the deployed database is behind the new Prisma schema. After backup/review, run `npm run platform:migrate`, `npm run platform:bootstrap`, and restart web/workers. See the [migration guide](docs/platform-migration.md) for historical migration failures. `npm run platform:check-schema` is a read-only readiness check. Keep Redis: BullMQ workers depend on it for scheduled fixture/live/scoring/reminder jobs.
+
 ## Football provider alternative
 
 [football-data.org](https://www.football-data.org/) is a separate service from API-Football and matches the existing adapter. Set `FOOTBALL_API_BASE_URL=https://api.football-data.org/v4` and its own `FOOTBALL_API_KEY`. Competition records hold codes such as `PL`; Season records hold provider year such as `2026`. No API-Football account or endpoint is used. Verify EPL coverage, rate limits, historical-season access, squad availability and live-score delay against your account plan before relying on live updates. Pricing was not verified during this implementation.

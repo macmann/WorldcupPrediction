@@ -35,3 +35,8 @@ export const UsersIcon = (props: IconProps) => <IconBase {...props}><path d="M16
 export const HistoryIcon = (props: IconProps) => <IconBase {...props}><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 3v6h6" /><path d="M12 7v5l3 2" /></IconBase>;
 export const LockIcon = (props: IconProps) => <IconBase {...props}><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></IconBase>;
 export const PlusIcon = (props: IconProps) => <IconBase {...props}><path d="M12 5v14" /><path d="M5 12h14" /></IconBase>;
+
+export const ChartIcon = (props: IconProps) => <IconBase {...props}><path d="M4 4v16h16" /><path d="m7 14 4-4 4 2 5-7" /></IconBase>;
+export const PersonIcon = (props: IconProps) => <IconBase {...props}><circle cx="12" cy="8" r="4" /><path d="M5 21v-2a7 7 0 0 1 14 0v2" /></IconBase>;
+
+export const ArrowUpRightIcon = (props: IconProps) => <IconBase {...props}><path d="M7 17 17 7M7 7h10v10" /></IconBase>;

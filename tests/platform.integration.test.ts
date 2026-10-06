@@ -1,3 +1,4 @@
+import { platformSchemaReadiness } from "../src/services/platform/schemaReadiness";
 import type { Gameweek, Match } from "@prisma/client";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -40,6 +41,17 @@ test("PostgreSQL domain integration (run npm run test:integration)", { skip: pro
     const matches: Match[] = [];
     for (let i = 0; i < 5; i++) matches.push(await prisma.match.create({ data: { seasonId: season.id, competitionId: competition.id, gameweekId: gws[i < 3 ? 0 : i - 2].id, scoringGameweekId: gws[i < 3 ? 0 : i - 2].id, homeTeamId: a.id, awayTeamId: b.id, homeTeam: a.name, awayTeam: b.name, kickoffTime: new Date(future.getTime() + i * 10000) } }));
     const prediction = (id: number, home = 2, away = 1) => ({ matchId: id, predictedOutcome: home > away ? "HOME" as const : home < away ? "AWAY" as const : "DRAW" as const, predictedHomeScore: home, predictedAwayScore: away });
+    await t.test("schema readiness rejects a database missing is_system and accepts the migrated schema", async () => {
+      assert.equal((await platformSchemaReadiness()).ready, true);
+      const rollback = new Error("rollback schema probe");
+      await assert.rejects(prisma.$transaction(async tx => {
+        await tx.$executeRawUnsafe('ALTER TABLE users RENAME COLUMN is_system TO legacy_probe_is_system');
+        const state = await platformSchemaReadiness(tx);
+        assert.equal(state.ready, false); assert.ok(state.missing.includes("users.is_system"));
+        throw rollback;
+      }), error => error === rollback);
+      assert.equal((await platformSchemaReadiness()).ready, true);
+    });
     await t.test("competition/season/gameweek mapping is enforced by database triggers", async () => {
       assert.ok(matches[0].id > 537001);
       assert.equal(matches[0].seasonId, season.id);
