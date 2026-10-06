@@ -46,8 +46,13 @@ export async function backfillLegacyTournament(tournamentId: string) {
   return prisma.$transaction(async tx => {
     const existing = await tx.season.findUnique({ where: { legacyTournamentId: tournamentId } });
     if (existing) return existing;
-    const competition = await tx.competition.upsert({ where: { slug: `legacy-${tournament.slug}` },
-      create: { id: tournament.id, name: tournament.name, shortName: tournament.name, slug: `legacy-${tournament.slug}`, region: tournament.hostCountries.join(", "), type: "HYBRID", provider: tournament.externalId?.startsWith("football-data:") ? "football-data" : "legacy", providerCode: tournament.externalId?.startsWith("football-data:") ? tournament.externalId.slice(14) : null, displayPriority: 100 }, update: {} });
+    const provider = tournament.externalId?.startsWith("football-data:") ? "football-data" : "legacy";
+    const providerCode = provider === "football-data" ? tournament.externalId!.slice(14) : null;
+    // Different legacy tournaments can represent seasons of the same provider
+    // competition. Their archive seasons stay separate, but share its identity.
+    const providerCompetition = providerCode ? await tx.competition.findUnique({ where: { provider_providerCode: { provider, providerCode } } }) : null;
+    const competition = providerCompetition ?? await tx.competition.upsert({ where: { slug: `legacy-${tournament.slug}` },
+      create: { id: tournament.id, name: tournament.name, shortName: tournament.name, slug: `legacy-${tournament.slug}`, region: tournament.hostCountries.join(", "), type: "HYBRID", provider, providerCode, displayPriority: 100 }, update: {} });
     const season = await tx.season.create({ data: { id: tournament.id, competitionId: competition.id, legacyTournamentId: tournament.id, displayName: String(tournament.startsAt.getUTCFullYear()), startsAt: tournament.startsAt, endsAt: tournament.endsAt, providerSeason: tournament.startsAt.getUTCFullYear(), status: tournament.endsAt && tournament.endsAt < new Date() ? "COMPLETED" : "ACTIVE", picksLockGameweek: null, scoringRules: { outcome: 2, exact: 3, penalty: 1, legacyKnockout: true } as Prisma.InputJsonValue } });
     await tx.match.updateMany({ where: { tournamentId }, data: { seasonId: season.id, competitionId: competition.id } });
     await tx.team.updateMany({ where: { tournamentId }, data: { seasonId: season.id } });

@@ -57,6 +57,22 @@ test("PostgreSQL domain integration (run npm run test:integration)", { skip: pro
       assert.equal((await prisma.season.findUniqueOrThrow({ where: { id: archive.id } })).legacyTournamentId, legacy.id);
       assert.equal((await prisma.season.findUniqueOrThrow({ where: { id: archive.id } })).displayName, "2025");
     });
+    await t.test("legacy backfill shares a preconfigured provider competition and preserves its modern season", async () => {
+      const competition = await prisma.competition.create({ data: { name: "Configured league", shortName: "CL", slug: "configured-league", type: "LEAGUE", provider: "football-data", providerCode: "PD" } });
+      const modern = await prisma.season.create({ data: { competitionId: competition.id, displayName: "2026/27", startsAt: future, usesGameweeks: true } });
+      const legacy = await prisma.tournament.create({ data: { name: "League archive", slug: "another-league-archive", externalId: "football-data:PD", startsAt: new Date("2024-08-01T00:00:00Z"), hostCountries: ["Spain"] } });
+      const match = await prisma.match.create({ data: { tournamentId: legacy.id, homeTeam: "Archive Home", awayTeam: "Archive Away", kickoffTime: past } });
+      const archive = await backfillLegacyTournament(legacy.id);
+      assert.equal(archive.id, legacy.id);
+      assert.equal(archive.competitionId, competition.id);
+      assert.equal(archive.legacyTournamentId, legacy.id);
+      assert.equal(archive.displayName, "2024");
+      assert.equal((await prisma.match.findUniqueOrThrow({ where: { id: match.id } })).seasonId, archive.id);
+      assert.equal((await backfillLegacyTournament(legacy.id)).id, archive.id);
+      assert.equal(await prisma.competition.count({ where: { provider: "football-data", providerCode: "PD" } }), 1);
+      assert.equal(await prisma.season.count({ where: { competitionId: competition.id } }), 2);
+      assert.equal((await prisma.season.findUniqueOrThrow({ where: { id: modern.id } })).legacyTournamentId, null);
+    });
     await t.test("schema readiness rejects a database missing is_system and accepts the migrated schema", async () => {
       assert.equal((await platformSchemaReadiness()).ready, true);
       const rollback = new Error("rollback schema probe");
